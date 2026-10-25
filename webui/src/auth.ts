@@ -310,15 +310,3 @@ export function cancelLogin(): void {
   settleWaiters(false)
 }
 
-export async function logout(): Promise<void> {
-  const doFetch = nativeFetch ?? window.fetch
-  try {
-    await doFetch('/api/auth/session', { method: 'DELETE' })
-  } catch { }
-  pinValue = ''
-  pinUnlocked.value = false
-  pinGuard.value = false
-  authenticated.value = false
-  authRequired.value = true
-  window.dispatchEvent(new CustomEvent(AUTH_REQUIRED_EVENT))
-}

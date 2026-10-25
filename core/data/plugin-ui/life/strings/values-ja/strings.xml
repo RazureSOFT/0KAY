@@ -220,6 +220,14 @@
   <string name="companion.cognition.desc">リアルタイム状態と全パラメータ。変更は右上の「設定を保存」を押すと有効になります。</string>
   <string name="companion.cognition.title">認知コア</string>
   <string name="companion.cognitionCore">認知コア</string>
+  <string name="companion.badge.on">有効</string>
+  <string name="companion.badge.off">無効</string>
+  <string name="companion.badge.coreOff">認知コア停止中</string>
+  <string name="companion.unsavedChanges">未保存の変更があります</string>
+  <string name="companion.unsavedLeave">未保存の変更があります。破棄して移動しますか？</string>
+  <string name="companion.resetDefaults">デフォルトに戻す</string>
+  <string name="companion.resetDefaultsConfirm">認知パラメータをすべてデフォルトに戻しますか？自動保存されないため、確認してから保存できます。</string>
+  <string name="companion.defaultHint">デフォルト {n}</string>
   <string name="companion.danger.desc">日常操作は取り消せません：発言の撤回や記憶の削除は永久的です。ここに一度だけの「やり直し」の機会があります。</string>
   <string name="companion.danger.doubleConfirm">二度の確認が必要です。</string>
   <string name="companion.danger.reset">人格全体をリセット</string>
@@ -281,6 +289,7 @@
   <string name="companion.evidencePair">{dim}（{words}）</string>
   <string name="companion.evidenceSeparator">；</string>
   <string name="companion.flash.adaptersRelistened">設定に従って再待ち受けしました</string>
+  <string name="companion.flash.resetDefaults">認知パラメータをデフォルトに戻しました。確認して保存してください</string>
   <string name="companion.flash.analyzedLlm">モデルが理解しました。パラメータを確認・微調整してください</string>
   <string name="companion.flash.analyzedLocal">モデルが利用できないため、ローカル辞書で理解しました。確認してください</string>
   <string name="companion.flash.lifeStarted">命が始まった：彼女は自分の人生を持ち始めた</string>

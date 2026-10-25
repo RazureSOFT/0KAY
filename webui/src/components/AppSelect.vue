@@ -5,7 +5,7 @@ import {uid} from '../uid'
 const {t}=useI18n()
 defineOptions({ inheritAttrs:false })
 type Option = { value: string; label: string; disabled?: boolean }
-const props = withDefaults(defineProps<{ modelValue?: string; options: Array<string | Option>; disabled?: boolean; placeholder?: string; ariaLabel?: string; searchable?: boolean }>(), { modelValue:'', placeholder:'', disabled:false, searchable:false })
+const props = withDefaults(defineProps<{ modelValue?: string; options: Array<string | Option>; disabled?: boolean; placeholder?: string; ariaLabel?: string; searchable?: boolean; inputId?: string }>(), { modelValue:'', placeholder:'', disabled:false, searchable:false })
 const emit = defineEmits<{ 'update:modelValue':[value:string]; change:[value:string]; focus:[event:FocusEvent]; open:[] }>()
 const trigger=ref<HTMLButtonElement|null>(null), menu=ref<HTMLElement|null>(null), searchInput=ref<HTMLInputElement|null>(null)
 const opened=ref(false),active=ref(-1),position=ref<Record<string,string>>({}),upwards=ref(false)
@@ -72,7 +72,7 @@ onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window
 </script>
 <template>
  <div v-bind="$attrs" class="app-select" :class="{ 'is-disabled':disabled, 'is-open':opened }">
-  <button ref="trigger" type="button" class="app-select-trigger" role="combobox" aria-haspopup="listbox" :aria-expanded="opened" :aria-controls="opened?id:undefined" :aria-activedescendant="opened&&active>=0?`${id}-${active}`:undefined" :aria-label="ariaLabel" :disabled="disabled" @click="opened?close():show()" @keydown="keydown" @focus="emit('focus',$event)">
+  <button ref="trigger" type="button" class="app-select-trigger" :id="inputId || undefined" role="combobox" aria-haspopup="listbox" :aria-expanded="opened" :aria-controls="opened?id:undefined" :aria-activedescendant="opened&&active>=0?`${id}-${active}`:undefined" :aria-label="ariaLabel" :disabled="disabled" @click="opened?close():show()" @keydown="keydown" @focus="emit('focus',$event)">
    <span class="app-select-value">{{ label }}</span><span class="app-select-chevron" aria-hidden="true"><svg :class="{'is-open':opened}" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="m6 9 6 6 6-6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
   </button>
   <Teleport to="body"><Transition name="select-menu"><div v-if="opened" :id="id" ref="menu" class="app-select-menu" :class="{'opens-up':upwards}" :style="position" role="listbox" :aria-label="ariaLabel || t('appSelect.label')" @pointerdown.prevent>

@@ -93,7 +93,6 @@ let pixiApp: any = null
 let live2dModel: any = null
 let resizeObserver: ResizeObserver | null = null
 let loadToken = 0
-let rafId = 0
 let transformSaveTimer = 0
 let lastPointer = { x: 0, y: 0, has: false }
 let dragging = false
@@ -713,7 +712,6 @@ onUnmounted(() => {
   try { audioCtx?.close() } catch { }
   audioCtx = null
   loadToken++
-  cancelAnimationFrame(rafId)
   disposeApp()
 })
 

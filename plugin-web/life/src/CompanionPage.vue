@@ -11,7 +11,10 @@ const { confirm } = useConfirm()
 const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {})
 const router = useRouter()
 const zhValue = (key: string) => (i18n.global.t as any)(key, {}, { locale: 'zh' }) as string
-const enumOptions = (keys: string[]) => keys.map((k) => ({ value: zhValue(`life.companion.${k}`), label: t(`life.companion.${k}`) }))
+// Option values are the locale-independent key suffixes; the label carries
+// the translation. Storing translated text as the value (the old scheme)
+// broke saved settings whenever wording changed or the locale differed.
+const enumOptions = (keys: string[]) => keys.map((k) => ({ value: k, label: t(`life.companion.${k}`) }))
 const data = ref<any>({ settings: {}, cognition: null })
 const loading = ref(false); const error = ref(''); const notice = ref('')
 const tab = ref('cognition')
@@ -82,10 +85,10 @@ const COG_DEFAULTS: Record<string, string> = {
   cog_language_enabled: '1', cog_language_framing: 'weak_whorf', cog_language_boundary: '0.6',
   cog_social_enabled: '1', cog_social_empathy: '0.4', cog_social_stage: '2',
   cog_selfhood_enabled: '1', cog_selfhood_discount: '0.1', cog_selfhood_detail: '20',
-  cog_attachment_enabled: '0', get cog_attachment_type() { return zhValue('life.companion.attach.dependent') },
-  cog_tsundere_enabled: '0', get cog_tsundere_type() { return zhValue('life.companion.tsundere.classic') },
-  cog_yandere_enabled: '0', get cog_yandere_type() { return zhValue('life.companion.yandere.mode.yandere') },
-  cog_personadyn_enabled: '0', get cog_personadyn_type() { return zhValue('life.companion.pdt.0') }, get cog_personadyn_gender() { return zhValue('life.companion.pdGender.unspecified') },
+  cog_attachment_enabled: '0', cog_attachment_type: 'attach.dependent',
+  cog_tsundere_enabled: '0', cog_tsundere_type: 'tsundere.classic',
+  cog_yandere_enabled: '0', cog_yandere_type: 'yandere.mode.yandere',
+  cog_personadyn_enabled: '0', cog_personadyn_type: 'pdt.0', cog_personadyn_gender: 'pdGender.unspecified',
   cog_memory_encode: '1', cog_sleep_replay: '1', cog_memory_reconsolidate: '1',
   cog_cls_interleave: '1',
 }
@@ -112,7 +115,7 @@ const PD_GROUP_KEYS: string[][] = [
   Array.from({ length: 78 }, (_, i) => `pdt.${94 + i}`),
 ]
 const personadynTypeGroups = computed(() => PD_GROUP_KEYS.map((keys, g) => ({ label: t(`life.companion.pdg.${g}`), keys })))
-const personadynAllTypes = computed(() => [...new Set(PD_GROUP_KEYS.flat())].map((k) => ({ value: zhValue(`life.companion.${k}`), label: t(`life.companion.${k}`) })))
+const personadynAllTypes = computed(() => [...new Set(PD_GROUP_KEYS.flat())].map((k) => ({ value: k, label: t(`life.companion.${k}`) })))
 const personadynGenderOptions = computed(() => enumOptions(['pdGender.unspecified', 'pdGender.maleScript', 'pdGender.femaleScript', 'pdGender.neutral', 'pdGender.highTradMale', 'pdGender.lowTradMale', 'pdGender.highTradFemale', 'pdGender.feminist']))
 const cogProfileOptions = computed(() => ['typical', 'depression', 'anxiety', 'bpd', 'alexithymia']
   .map((v) => ({ value: v, label: t(`life.companion.profile.${v}`) })))
@@ -125,7 +128,29 @@ const cogStageValue = computed({
   get: () => String(Number(settingsForm.value.cog_social_stage ?? 2)),
   set: (value: string) => { settingsForm.value.cog_social_stage = Number(value) },
 })
-function cogRaw(key: string) { return String(data.value.settings?.[key] ?? COG_DEFAULTS[key] ?? '') }
+const COG_ENUM_KEYS: Record<string, string[]> = {
+  cog_attachment_type: ['attach.secluded', 'attach.dependent', 'attach.delusional', 'attach.monitoring', 'attach.selfHarm', 'attach.exclusion'],
+  cog_tsundere_type: ['tsundere.classic', 'tsundere.cold', 'tsundere.gruff', 'tsundere.indulgent'],
+  cog_yandere_type: ['yandere.mode.yandere', 'yandere.mode.tsundere', 'yandere.mode.neutral', 'yandere.mode.hybrid'],
+  cog_personadyn_type: [...new Set(PD_GROUP_KEYS.flat())],
+  cog_personadyn_gender: ['pdGender.unspecified', 'pdGender.maleScript', 'pdGender.femaleScript', 'pdGender.neutral', 'pdGender.highTradMale', 'pdGender.lowTradMale', 'pdGender.highTradFemale', 'pdGender.feminist'],
+}
+// Older builds stored the zh label itself; map it back onto the stable key so
+// the select still shows the saved choice after the migration.
+function cogRaw(key: string) {
+  const raw = String(data.value.settings?.[key] ?? COG_DEFAULTS[key] ?? '')
+  const keys = COG_ENUM_KEYS[key]
+  if (keys && !keys.includes(raw)) {
+    const hit = keys.find((k) => zhValue(`life.companion.${k}`) === raw)
+    return hit ?? raw
+  }
+  return raw
+}
+// Analysis payloads still speak the zh label; convert a stored key for them.
+function enumZh(value: unknown): string {
+  const text = String(value ?? '')
+  return zhValue(`life.companion.${text}`) !== `life.companion.${text}` ? zhValue(`life.companion.${text}`) : text
+}
 function syncCogSettings() {
   const out: Record<string, any> = {}
   for (const [key, fallback] of Object.entries(COG_DEFAULTS)) {
@@ -226,9 +251,9 @@ function applyPreset(fields: Record<string, any>, label: string) {
 const PRESETS = [
   { labelKey: 'life.companion.preset.regular', fields: { cog_affect_enabled: true, cog_affect_profile: 'typical', cog_affect_threat: 0.2, cog_affect_reward: 1, cog_attachment_enabled: false, cog_tsundere_enabled: false, cog_personadyn_enabled: false } },
   { labelKey: 'life.companion.preset.depression', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_affect_threat: 0.45, cog_affect_reward: 0.7 } },
-  { labelKey: 'life.companion.preset.tsundere', fields: { cog_tsundere_enabled: true, cog_tsundere_type: zhValue('life.companion.tsundere.classic') } },
-  { labelKey: 'life.companion.preset.personadyn', fields: { cog_personadyn_enabled: true, cog_personadyn_type: zhValue('life.companion.pdt.1') } },
-  { labelKey: 'life.companion.preset.yandereSecluded', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_attachment_enabled: true, cog_attachment_type: zhValue('life.companion.attach.secluded') } },
+  { labelKey: 'life.companion.preset.tsundere', fields: { cog_tsundere_enabled: true, cog_tsundere_type: 'tsundere.classic' } },
+  { labelKey: 'life.companion.preset.personadyn', fields: { cog_personadyn_enabled: true, cog_personadyn_type: 'pdt.1' } },
+  { labelKey: 'life.companion.preset.yandereSecluded', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_attachment_enabled: true, cog_attachment_type: 'attach.secluded' } },
   { labelKey: 'life.companion.preset.yandereDependent', fields: { cog_affect_enabled: true, cog_attachment_enabled: true, cog_attachment_type: zhValue('life.companion.attach.dependent') } },
   { labelKey: 'life.companion.preset.yandereDelusional', fields: { cog_affect_enabled: true, cog_affect_profile: 'depression', cog_attachment_enabled: true, cog_attachment_type: zhValue('life.companion.attach.delusional') } },
 ]
@@ -661,8 +686,49 @@ function syncSettings() {
   personaText.value = String(data.value.settings?.persona_text || '')
   worldActors.value = String(data.value.settings?.world_actors || '')
   worldPlaces.value = String(data.value.settings?.world_places || '')
+  // Baseline AFTER every ref above is set — snapshotting mid-way made the
+  // page report "unsaved changes" immediately on load.
+  savedSnapshot.value = settingsSnapshot()
 }
 const saving = ref(false)
+
+// ---- Transparency: draft-vs-saved state -------------------------------
+// The form is a draft until 保存设置; without a visible difference users
+// tab away and lose edits, or believe stale values are live.
+function settingsSnapshot(): string {
+  return JSON.stringify({ ...cogPayload(), world_density: worldDensity.value,
+    world_fictional: worldFictional.value, world_country: worldCountry.value,
+    world_city: worldCity.value, world_district: worldDistrict.value,
+    world_premise: worldPremise.value, world_actors: worldActors.value, world_places: worldPlaces.value,
+    persona_text: personaText.value })
+}
+// Baseline must be a ref: a plain let gives the computed no reactive
+// dependency, so it evaluates once and dirty never updates again.
+const savedSnapshot = ref('')
+const dirty = computed(() => !loading.value && savedSnapshot.value !== '' && settingsSnapshot() !== savedSnapshot.value)
+
+function onBeforeUnload(e: BeforeUnloadEvent) {
+  if (dirty.value) { e.preventDefault(); e.returnValue = '' }
+}
+let removeLeaveGuard: (() => void) | null = null
+
+function cardBadge(active: boolean): { cls: string; text: string } {
+  if (!settingsForm.value.cog_enabled) return { cls: 'core-off', text: t('life.companion.badge.coreOff') }
+  return active ? { cls: 'ok', text: t('life.companion.badge.on') } : { cls: '', text: t('life.companion.badge.off') }
+}
+
+async function resetCogDefaults() {
+  const ok = await confirm({
+    title: t('life.companion.resetDefaults'),
+    message: t('life.companion.resetDefaultsConfirm'),
+    confirmLabel: t('life.companion.resetDefaults'),
+  })
+  if (!ok) return
+  for (const [key, fallback] of Object.entries(COG_DEFAULTS)) {
+    settingsForm.value[key] = COG_BOOL_KEYS.includes(key) ? fallback === '1' : COG_TEXT_KEYS.includes(key) ? fallback : Number(fallback)
+  }
+  flash(t('life.companion.flash.resetDefaults'))
+}
 async function saveSettings() {
   if (saving.value) return
   saving.value = true
@@ -674,6 +740,7 @@ async function saveSettings() {
       persona_text: personaText.value }
     const result = await act('settings_set', { settings })
     if (result?.rejected?.length) flash(t('life.companion.flash.settingsSavedIgnored', { items: result.rejected.join(t('life.companion.listSeparator')) })); else flash(t('life.companion.flash.settingsSaved'))
+    savedSnapshot.value = settingsSnapshot()
   } finally { saving.value = false }
 }
 
@@ -825,7 +892,7 @@ async function analyzePersona() {
     const result = await act('persona_analyze', { text: body.text, gender: personaForm.value.gender })
     if (result) {
       analysis.value = result
-      analysis.value.personadynGender = result.personadyn?.gender || settingsForm.cog_personadyn_gender || zhValue('life.companion.pdGender.unspecified')
+      analysis.value.personadynGender = result.personadyn?.gender || enumZh(settingsForm.cog_personadyn_gender) || zhValue('life.companion.pdGender.unspecified')
       if (!personaForm.value.gender && result.gender) personaForm.value.gender = result.gender
       flash(result.source === 'llm' ? t('life.companion.flash.analyzedLlm') : t('life.companion.flash.analyzedLocal'))
     }
@@ -849,7 +916,7 @@ async function savePersona() {
       tsundere: analysis.value.tsundere || {},
       personadyn: {
         ...(analysis.value.personadyn || {}),
-        gender: analysis.value.personadynGender || settingsForm.cog_personadyn_gender || zhValue('life.companion.pdGender.unspecified'),
+        gender: analysis.value.personadynGender || enumZh(settingsForm.cog_personadyn_gender) || zhValue('life.companion.pdGender.unspecified'),
       },
     })
     if (!result) return
@@ -869,6 +936,22 @@ onMounted(loadPersona)
 watch(tab, (value) => { if (value === 'persona') loadPersona() })
 
 onMounted(load)
+
+// Unsaved-draft guards: warn on tab close and on in-app navigation.
+onMounted(() => {
+  window.addEventListener('beforeunload', onBeforeUnload)
+  if (router) {
+    const stop = router.beforeEach(() => {
+      if (!dirty.value) return true
+      return window.confirm(t('life.companion.unsavedLeave')) ? true : false
+    })
+    removeLeaveGuard = stop
+  }
+})
+onUnmounted(() => {
+  window.removeEventListener('beforeunload', onBeforeUnload)
+  if (removeLeaveGuard) { removeLeaveGuard(); removeLeaveGuard = null }
+})
 
 const stateUpdatedAt = ref('')
 let pollTimer: ReturnType<typeof setInterval> | undefined
@@ -898,12 +981,13 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
       <div class="hero-main">
         <div class="hero-copy">
           <p class="eyebrow"><b>◉</b> L.I.F.E / COGNITION</p>
-          <h1>{{ t('life.companion.title') }}</h1>
+          <h1>{{ t('life.companion.title') }} <span v-if="dirty" class="dirty-pill">{{ t('life.companion.unsavedChanges') }}</span></h1>
           <p class="sub">{{ t('life.companion.subtitle') }}</p>
         </div>
         <div class="hero-actions">
           <button class="btn" :class="{ tonic: !life?.alive }" :disabled="lifeBusy || loading" @click="life?.alive ? stopLife() : startLife()">{{ lifeBusy ? lifeBusyLabel() : (life?.alive ? t('life.companion.life.pause') : t('life.companion.life.start')) }}</button>
-          <button class="fab" :disabled="saving || loading" @click="saveSettings"><span class="fab-ic">✦</span>{{ saving ? t('life.companion.saving') : t('life.companion.saveSettings') }}</button>
+          <button class="fab" :class="{ dirty }" :disabled="saving || loading" @click="saveSettings"><span class="fab-ic">✦</span>{{ saving ? t('life.companion.saving') : t('life.companion.saveSettings') }}</button>
+          <button class="btn" :disabled="saving || loading" @click="resetCogDefaults">{{ t('life.companion.resetDefaults') }}</button>
           <button class="btn tonic" :disabled="loading" @click="load">{{ loading ? t('life.companion.refreshing') : t('life.companion.refresh') }}</button>
         </div>
       </div>
@@ -1265,17 +1349,17 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 
       <div class="grid2">
         <article class="card">
-          <h3>{{ t('life.companion.decision.title') }}</h3>
+          <h3>{{ t('life.companion.decision.title') }} <span class="count-pill" :class="cardBadge(true).cls">{{ cardBadge(true).text }}</span></h3>
           <div class="settings-grid">
-            <label><span>{{ t('life.companion.decision.planDepth') }}</span><input v-model.number="settingsForm.cog_plan_depth" type="number" min="1" max="6" class="field tiny" /></label>
-            <label><span>{{ t('life.companion.decision.wmCapacity') }}</span><input v-model.number="settingsForm.cog_wm_capacity" type="number" min="1" max="12" class="field tiny" /></label>
-            <label><span>{{ t('life.companion.decision.strategyTemp') }}</span><input v-model.number="settingsForm.cog_tau" type="number" step="0.05" min="0.05" max="1" class="field tiny" /></label>
-            <label><span>{{ t('life.companion.decision.discount') }}</span><input v-model.number="settingsForm.cog_gamma" type="number" step="0.01" min="0" max="0.999" class="field tiny" /></label>
-            <label><span>{{ t('life.companion.decision.habitRate') }}</span><input v-model.number="settingsForm.cog_alpha_habit" type="number" step="0.01" min="0" max="1" class="field tiny" /></label>
-            <label><span>{{ t('life.companion.decision.modelfreeRate') }}</span><input v-model.number="settingsForm.cog_alpha_mf" type="number" step="0.01" min="0" max="1" class="field tiny" /></label>
-            <label><span>{{ t('life.companion.decision.surpriseThreshold') }}</span><input v-model.number="settingsForm.cog_theta_pe" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>{{ t('life.companion.decision.noveltyThreshold') }}</span><input v-model.number="settingsForm.cog_theta_n" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>{{ t('life.companion.decision.prospectionHorizon') }}</span><input v-model.number="settingsForm.cog_prospection_horizon" type="number" min="1" max="8" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.planDepth') }}</span><small class="def-hint">{{ t('life.companion.defaultHint', { n: COG_DEFAULTS.cog_plan_depth }) }}</small><input v-model.number="settingsForm.cog_plan_depth" type="number" min="1" max="6" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.wmCapacity') }}</span><small class="def-hint">{{ t('life.companion.defaultHint', { n: COG_DEFAULTS.cog_wm_capacity }) }}</small><input v-model.number="settingsForm.cog_wm_capacity" type="number" min="1" max="12" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.strategyTemp') }}</span><small class="def-hint">{{ t('life.companion.defaultHint', { n: COG_DEFAULTS.cog_tau }) }}</small><input v-model.number="settingsForm.cog_tau" type="number" step="0.05" min="0.05" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.discount') }}</span><small class="def-hint">{{ t('life.companion.defaultHint', { n: COG_DEFAULTS.cog_gamma }) }}</small><input v-model.number="settingsForm.cog_gamma" type="number" step="0.01" min="0" max="0.999" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.habitRate') }}</span><small class="def-hint">{{ t('life.companion.defaultHint', { n: COG_DEFAULTS.cog_alpha_habit }) }}</small><input v-model.number="settingsForm.cog_alpha_habit" type="number" step="0.01" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.modelfreeRate') }}</span><small class="def-hint">{{ t('life.companion.defaultHint', { n: COG_DEFAULTS.cog_alpha_mf }) }}</small><input v-model.number="settingsForm.cog_alpha_mf" type="number" step="0.01" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.surpriseThreshold') }}</span><small class="def-hint">{{ t('life.companion.defaultHint', { n: COG_DEFAULTS.cog_theta_pe }) }}</small><input v-model.number="settingsForm.cog_theta_pe" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.noveltyThreshold') }}</span><small class="def-hint">{{ t('life.companion.defaultHint', { n: COG_DEFAULTS.cog_theta_n }) }}</small><input v-model.number="settingsForm.cog_theta_n" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.decision.prospectionHorizon') }}</span><small class="def-hint">{{ t('life.companion.defaultHint', { n: COG_DEFAULTS.cog_prospection_horizon }) }}</small><input v-model.number="settingsForm.cog_prospection_horizon" type="number" min="1" max="8" class="field tiny" /></label>
           </div>
           <div class="switches">
             <label class="sw"><input type="checkbox" v-model="settingsForm.cog_use_thalamic_gate" /><span>{{ t('life.companion.decision.thalamicGate') }}</span></label>
@@ -1287,12 +1371,12 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
         </article>
 
         <article class="card">
-          <h3>{{ t('life.companion.affect.title') }}</h3>
+          <h3>{{ t('life.companion.affect.title') }} <span class="count-pill" :class="cardBadge(!!settingsForm.cog_affect_enabled).cls">{{ cardBadge(!!settingsForm.cog_affect_enabled).text }}</span></h3>
           <div class="settings-grid">
             <label><span>{{ t('life.companion.persona.erqProfile') }}</span><AppSelect v-model="settingsForm.cog_affect_profile" :options="cogProfileOptions" :aria-label="t('life.companion.persona.erqProfile')" /></label>
-            <label><span>{{ t('life.companion.affect.vagalBaseline') }}</span><input v-model.number="settingsForm.cog_affect_vagal" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>{{ t('life.companion.persona.threatBaseline') }}</span><input v-model.number="settingsForm.cog_affect_threat" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
-            <label><span>{{ t('life.companion.persona.rewardBaseline') }}</span><input v-model.number="settingsForm.cog_affect_reward" type="number" step="0.1" min="0" max="2" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.affect.vagalBaseline') }}</span><small class="def-hint">{{ t('life.companion.defaultHint', { n: COG_DEFAULTS.cog_affect_vagal }) }}</small><input v-model.number="settingsForm.cog_affect_vagal" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.threatBaseline') }}</span><small class="def-hint">{{ t('life.companion.defaultHint', { n: COG_DEFAULTS.cog_affect_threat }) }}</small><input v-model.number="settingsForm.cog_affect_threat" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
+            <label><span>{{ t('life.companion.persona.rewardBaseline') }}</span><small class="def-hint">{{ t('life.companion.defaultHint', { n: COG_DEFAULTS.cog_affect_reward }) }}</small><input v-model.number="settingsForm.cog_affect_reward" type="number" step="0.1" min="0" max="2" class="field tiny" /></label>
           </div>
           <label class="sw"><input type="checkbox" v-model="settingsForm.cog_affect_enabled" /><span>{{ t('life.companion.affect.enable') }}</span></label>
           <label class="sw"><input type="checkbox" v-model="settingsForm.cog_affect_somatic" /><span>{{ t('life.companion.affect.somatic') }}</span></label>
@@ -1300,7 +1384,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
         </article>
 
         <article class="card">
-          <h3>{{ t('life.companion.language.title') }}</h3>
+          <h3>{{ t('life.companion.language.title') }} <span class="count-pill" :class="cardBadge(!!settingsForm.cog_language_enabled).cls">{{ cardBadge(!!settingsForm.cog_language_enabled).text }}</span></h3>
           <div class="settings-grid">
             <label><span>{{ t('life.companion.language.framing') }}</span><AppSelect v-model="settingsForm.cog_language_framing" :options="cogFramingOptions" :aria-label="t('life.companion.language.framing')" /></label>
             <label><span>{{ t('life.companion.language.boundary') }}</span><input v-model.number="settingsForm.cog_language_boundary" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
@@ -1309,7 +1393,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
         </article>
 
         <article class="card">
-          <h3>{{ t('life.companion.social.title') }}</h3>
+          <h3>{{ t('life.companion.social.title') }} <span class="count-pill" :class="cardBadge(!!settingsForm.cog_social_enabled).cls">{{ cardBadge(!!settingsForm.cog_social_enabled).text }}</span></h3>
           <div class="settings-grid">
             <label><span>{{ t('life.companion.metric.empathy') }}</span><input v-model.number="settingsForm.cog_social_empathy" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
             <label><span>{{ t('life.companion.social.perspectiveStage') }}</span><AppSelect v-model="cogStageValue" :options="cogStageOptions" :aria-label="t('life.companion.social.perspectiveStage')" /></label>
@@ -1318,7 +1402,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
         </article>
 
         <article class="card">
-          <h3>{{ t('life.companion.selfhood.title') }}</h3>
+          <h3>{{ t('life.companion.selfhood.title') }} <span class="count-pill" :class="cardBadge(!!settingsForm.cog_selfhood_enabled).cls">{{ cardBadge(!!settingsForm.cog_selfhood_enabled).text }}</span></h3>
           <div class="settings-grid">
             <label><span>{{ t('life.companion.selfhood.timeDiscount') }}</span><input v-model.number="settingsForm.cog_selfhood_discount" type="number" step="0.05" min="0" max="1" class="field tiny" /></label>
             <label><span>{{ t('life.companion.selfhood.detailScale') }}</span><input v-model.number="settingsForm.cog_selfhood_detail" type="number" step="1" min="1" max="50" class="field tiny" /></label>
@@ -1327,7 +1411,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
         </article>
 
         <article class="card">
-          <h3>{{ t('life.companion.attachmentCard.title') }}</h3>
+          <h3>{{ t('life.companion.attachmentCard.title') }} <span class="count-pill" :class="cardBadge(!!settingsForm.cog_attachment_enabled).cls">{{ cardBadge(!!settingsForm.cog_attachment_enabled).text }}</span></h3>
           <p class="hint">{{ t('life.companion.attachmentCard.hint') }}</p>
           <label class="sw"><input type="checkbox" v-model="settingsForm.cog_attachment_enabled" /><span>{{ t('life.companion.attachmentCard.enable') }}</span></label>
           <div class="settings-grid">
@@ -1337,7 +1421,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
         </article>
 
         <article class="card">
-          <h3>{{ t('life.companion.tsundereCard.title') }}</h3>
+          <h3>{{ t('life.companion.tsundereCard.title') }} <span class="count-pill" :class="cardBadge(!!settingsForm.cog_tsundere_enabled).cls">{{ cardBadge(!!settingsForm.cog_tsundere_enabled).text }}</span></h3>
           <p class="hint">{{ t('life.companion.tsundereCard.hint') }}</p>
           <label class="sw"><input type="checkbox" v-model="settingsForm.cog_tsundere_enabled" /><span>{{ t('life.companion.tsundereCard.enable') }}</span></label>
           <div class="settings-grid">
@@ -1347,7 +1431,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
         </article>
 
         <article class="card">
-          <h3>{{ t('life.companion.yandereCard.title') }}</h3>
+          <h3>{{ t('life.companion.yandereCard.title') }} <span class="count-pill" :class="cardBadge(!!settingsForm.cog_yandere_enabled).cls">{{ cardBadge(!!settingsForm.cog_yandere_enabled).text }}</span></h3>
           <p class="hint">{{ t('life.companion.yandereCard.hint') }}</p>
           <label class="sw"><input type="checkbox" v-model="settingsForm.cog_yandere_enabled" /><span>{{ t('life.companion.yandereCard.enable') }}</span></label>
           <div class="settings-grid">
@@ -1357,7 +1441,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
         </article>
 
         <article class="card">
-          <h3>{{ t('life.companion.personadynCard.title') }}</h3>
+          <h3>{{ t('life.companion.personadynCard.title') }} <span class="count-pill" :class="cardBadge(!!settingsForm.cog_personadyn_enabled).cls">{{ cardBadge(!!settingsForm.cog_personadyn_enabled).text }}</span></h3>
           <p class="hint">{{ t('life.companion.personadynCard.hint') }}</p>
           <label class="sw"><input type="checkbox" v-model="settingsForm.cog_personadyn_enabled" /><span>{{ t('life.companion.personadynCard.enable') }}</span></label>
           <div class="settings-grid">
@@ -1369,7 +1453,7 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
         </article>
 
         <article class="card">
-          <h3>{{ t('life.companion.memoryCard.title') }}</h3>
+          <h3>{{ t('life.companion.memoryCard.title') }} <span class="count-pill" :class="cardBadge(!!settingsForm.cog_memory_encode).cls">{{ cardBadge(!!settingsForm.cog_memory_encode).text }}</span></h3>
           <p class="hint">{{ t('life.companion.memoryCard.hint') }}</p>
           <div class="switches">
             <label class="sw"><input type="checkbox" v-model="settingsForm.cog_memory_encode" /><span>{{ t('life.companion.memoryCard.selectiveEncoding') }}</span></label>
@@ -1572,6 +1656,14 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 </template>
 
 <style scoped>
+/* Transparency affordances: draft-vs-saved pill, per-card active badge,
+   default-value hints on bare numeric parameters. */
+.dirty-pill{display:inline-block;vertical-align:middle;margin-left:10px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em;background:var(--md-tertiary-container,#e8def8);color:var(--md-on-tertiary-container,#1d192b)}
+.fab.dirty{animation:fab-dirty 1.6s ease-in-out infinite}
+@keyframes fab-dirty{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--md-primary,#6750a4) 45%,transparent)}55%{box-shadow:0 0 0 8px transparent}}
+@media (prefers-reduced-motion: reduce){.fab.dirty{animation:none}}
+.count-pill.core-off{background:var(--md-surface-container-high,#d8d3dd);color:var(--md-on-surface-variant,#49454f);font-style:normal}
+.def-hint{display:block;font-size:10.5px;font-weight:500;color:var(--md-on-surface-variant,#49454f);opacity:.85;margin:1px 0 3px}
 
 .world-field{display:block;margin:10px 0}
 .world-label{display:block;font-size:12px;font-weight:600;color:var(--md-on-surface-variant);margin-bottom:4px}

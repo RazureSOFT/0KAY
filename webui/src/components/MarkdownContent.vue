@@ -3,6 +3,14 @@ import { computed } from 'vue'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 const props = defineProps<{ content: string }>()
+// Links inside chat markdown must not navigate the SPA away and lose the
+// in-flight stream.
+DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+  if (node.tagName === 'A') {
+    node.setAttribute('target', '_blank')
+    node.setAttribute('rel', 'noopener noreferrer')
+  }
+})
 const html = computed(() => DOMPurify.sanitize(marked.parse(props.content, { async: false, breaks: true }) as string))
 </script>
 <template><div class="markdown-content" v-html="html" /></template>

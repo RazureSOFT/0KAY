@@ -1,3 +1,6 @@
+// Stable for the lifetime of one page load; changes on every reload/boot.
+const SESSION_BOOT = Date.now().toString(36)
+
 export interface PluginStringsResponse {
   default?: string
   locales?: Record<string, Record<string, string>>
@@ -64,8 +67,16 @@ export async function fetchPluginStrings(
   doFetch: typeof fetch = fetch,
 ): Promise<PluginStringsResponse | null> {
   try {
-    const res = await doFetch(`/api/plugins/${encodeURIComponent(name)}/strings`, {
+    // no-cache: the endpoint sends no Cache-Control, and heuristic caching
+    // served a stale strings table after plugin updates (new keys missing
+    // from the UI until a hard refresh).
+    // Session-unique query: the endpoint revalidates via no-cache+ETag in
+    // well-behaved browsers, but some embedded WebViews cache regardless of
+    // validators. One fetch per session, so a boot token costs nothing and
+    // guarantees a fresh table.
+    const res = await doFetch(`/api/plugins/${encodeURIComponent(name)}/strings?boot=${SESSION_BOOT}`, {
       headers: { Accept: 'application/json' },
+      cache: 'no-cache',
     })
     if (!res.ok) return null
     const data = (await res.json()) as PluginStringsResponse

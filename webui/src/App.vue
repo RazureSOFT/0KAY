@@ -25,6 +25,29 @@ const life = useLifeStore()
 const chat = useChatStore()
 const ui = useUIPatchesStore()
 const route = useRoute()
+
+// Some embedded WebViews never dispatch transitionend (fetch/JS fine, CSS
+// transitions visibly run). Vue's mode="out-in" waits for that event, so
+// navigation would stall forever. Probe once: toggle a real transition and
+// see whether the end event arrives; if not, hand Vue explicit durations so
+// phases close on a timer. Real browsers keep the animation.
+const routeTransitionDuration = ref<number | undefined>(undefined)
+// setTimeout, not requestAnimationFrame: the affected WebView also never
+// schedules rAF callbacks, and the probe must run there too.
+if (typeof window !== 'undefined') {
+  const probe = document.createElement('div')
+  probe.style.cssText = 'position:fixed;left:-99px;top:-99px;width:1px;height:1px;opacity:0.999;transition:opacity 30ms linear;pointer-events:none'
+  document.body.appendChild(probe)
+  let fired = false
+  probe.addEventListener('transitionend', () => { fired = true }, { once: true })
+  setTimeout(() => {
+    probe.style.opacity = '1'
+    setTimeout(() => {
+      routeTransitionDuration.value = fired ? undefined : 0
+      probe.remove()
+    }, 120)
+  }, 30)
+}
 const router = useRouter()
 const lang = computed(() => getLanguage())
 
@@ -393,7 +416,7 @@ async function onSetupSubmit() {
 
       <main class="app-main">
         <RouterView v-slot="{ Component }">
-          <Transition name="route" mode="out-in">
+          <Transition name="route" mode="out-in" :duration="routeTransitionDuration">
             <div :key="route.path" class="route-view"><component :is="Component" /></div>
           </Transition>
         </RouterView>

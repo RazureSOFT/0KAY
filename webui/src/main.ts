@@ -1,3 +1,4 @@
+import './rAF-shim'
 import { createApp } from 'vue'
 import * as VueRuntime from 'vue'
 import * as VueI18nRuntime from 'vue-i18n'
@@ -91,8 +92,16 @@ ui.fetchPatches().then(applyPatchesAndRematch).catch(() => {
   applyThemePatches(ui.themePatches)
 })
 
+// The patch poller refreshes patches.value every 15s even when nothing
+// changed; re-running route/theme/string registration on an identical list
+// churns the app for nothing, so compare content first.
+let lastPatchesJson = ''
 ui.$subscribe(() => {
-  if (ui.loaded) applyPatchesAndRematch()
+  if (!ui.loaded) return
+  const next = JSON.stringify(ui.patches)
+  if (next === lastPatchesJson) return
+  lastPatchesJson = next
+  applyPatchesAndRematch()
 }, { detached: true })
 
 app.mount('#app')

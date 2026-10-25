@@ -220,9 +220,19 @@ async function loadSnapshot() {
   }
 }
 
+// The server closes idle SSE streams; without a reconnect the page keeps
+// saying "live" while silently showing a frozen tail.
+let streamAttempt = 0
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+let manualStop = false
+
 async function openStream() {
   controller?.abort()
-  controller = new AbortController()
+  // Each invocation owns its controller; an aborted predecessor that wakes
+  // up must not read the NEW controller's state and schedule a second
+  // reconnect timer next to this one.
+  const myController = new AbortController()
+  controller = myController
   const params = new URLSearchParams({ limit: '200', level: level.value })
   if (query.value.trim()) params.set('q', query.value.trim())
   connected.value = false
@@ -232,6 +242,7 @@ async function openStream() {
       ({ event, data }) => {
         connected.value = true
         streamError.value = ''
+        streamAttempt = 0
         if (event === 'log') {
           const rec = parse<LogRecord>(data)
           if (rec) pushLog(rec)
@@ -243,14 +254,23 @@ async function openStream() {
           if (ready?.level) level.value = ready.level
         }
       },
-      controller.signal,
+      myController.signal,
     )
   } catch (err) {
-    if (!controller?.signal.aborted) streamError.value = String(err)
+    if (!myController.signal.aborted) streamError.value = String(err)
+  } finally {
+    if (controller === myController) connected.value = false
   }
+  if (manualStop || myController.signal.aborted || controller !== myController) return
+  if (reconnectTimer) clearTimeout(reconnectTimer)
+  const delay = Math.min(1000 * 2 ** streamAttempt, 30000)
+  streamAttempt = Math.min(streamAttempt + 1, 6)
+  reconnectTimer = setTimeout(() => { reconnectTimer = null; void openStream() }, delay)
 }
 
 function reconnect() {
+  if (reconnectTimer) clearTimeout(reconnectTimer)
+  streamAttempt = 0
   void openStream()
 }
 
@@ -295,6 +315,8 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
+  manualStop = true
+  if (reconnectTimer) clearTimeout(reconnectTimer)
   controller?.abort()
   controller = null
 })
@@ -302,6 +324,12 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="console">
+    <header class="page-hero console-hero">
+      <div>
+        <p class="page-eyebrow">0KAY · CONSOLE</p>
+        <h1>{{ t('console.title') }}</h1>
+      </div>
+    </header>
     <header class="console-bar">
       <div class="tabs" role="tablist" :aria-label="t('console.tabsLabel')">
         <button
@@ -445,6 +473,8 @@ onBeforeUnmount(() => {
 @media (prefers-reduced-motion: reduce) {
   .pane-enter-active, .pane-leave-active { transition-duration: 1ms; }
 }
+
+.console-hero { margin-bottom: 4px; }
 
 .console-bar {
   display: flex;

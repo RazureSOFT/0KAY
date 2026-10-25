@@ -346,6 +346,8 @@ function install(context = {}) {
         let nextInput = input;
         let nextInit = init;
         if (resolved.changed) {
+          if (state.hits.length >= 200)
+            state.hits.splice(0, state.hits.length - 199);
           state.hits.push({
             at: Date.now(),
             transport: "fetch",
@@ -392,6 +394,8 @@ function install(context = {}) {
     try {
       const resolved = resolveRequest(entry.url, entry.method, body, { via: "browser" });
       if (resolved.changed) {
+        if (state.hits.length >= 200)
+          state.hits.splice(0, state.hits.length - 199);
         state.hits.push({
           at: Date.now(),
           transport: "xhr",

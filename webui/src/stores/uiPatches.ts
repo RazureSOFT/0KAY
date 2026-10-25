@@ -194,6 +194,67 @@ function applyListOps<T extends { id: string; order?: number }>(
   return list.sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
 }
 
+export const PLUGIN_ASSET_PREFIX = '/api/plugins/'
+
+// A plugin asset URL (module / stylesheet) must be a same-origin relative path
+// under /api/plugins/. Anything else — an absolute https:// URL, a protocol-
+// relative //host, or a data:/javascript: URI — would let an installed patch
+// pull remote code straight into the app origin.
+export function isPluginAssetURL(value: unknown): boolean {
+  if (typeof value !== 'string' || value.length === 0) return false
+  if (value.includes('://') || value.startsWith('//')) return false
+  if (!value.startsWith(PLUGIN_ASSET_PREFIX)) return false
+  return !/[\r\n]/.test(value)
+}
+
+// Page-facing URLs (iframe src, external nav href) may point anywhere the
+// plugin likes, but never at a script-capable scheme.
+export function isSafePageURL(value: unknown): boolean {
+  if (typeof value !== 'string' || value.length === 0) return false
+  if (/[\r\n]/.test(value)) return false
+  const lower = value.trim().toLowerCase()
+  if (lower.startsWith('javascript:') || lower.startsWith('data:') || lower.startsWith('vbscript:')) return false
+  return true
+}
+
+const ASSET_FIELDS = new Set(['module', 'cssUrl'])
+const PAGE_URL_FIELDS = new Set(['src', 'href'])
+
+// sanitizePatchOps drops URL-bearing items that fail validation so no consumer
+// (bootstrap imports, plugin module hosts, theme loader, iframe slots) ever
+// sees an unvetted URL. It is the single chokepoint; callers stay naive.
+export function sanitizePatchOps(ops: unknown): UIPatchOp[] {
+  if (!Array.isArray(ops)) return []
+  const out: UIPatchOp[] = []
+  for (const raw of ops) {
+    if (!raw || typeof raw !== 'object') continue
+    const op = { ...(raw as UIPatchOp) }
+    if (op.item && typeof op.item === 'object') {
+      const item = { ...(op.item as Record<string, unknown>) }
+      let dropped = false
+      for (const field of Object.keys(item)) {
+        if (ASSET_FIELDS.has(field) && item[field] !== undefined && item[field] !== null) {
+          if (!isPluginAssetURL(item[field])) {
+            console.warn(`[uiPatches] dropped op: item.${field} is not a /api/plugins/ asset URL`, op.patchId ?? op.target)
+            dropped = true
+            break
+          }
+        } else if (PAGE_URL_FIELDS.has(field) && item[field] !== undefined && item[field] !== null) {
+          if (!isSafePageURL(item[field])) {
+            console.warn(`[uiPatches] dropped op: item.${field} uses a forbidden scheme`, op.patchId ?? op.target)
+            dropped = true
+            break
+          }
+        }
+      }
+      if (dropped) continue
+      op.item = item
+    }
+    out.push(op)
+  }
+  return out
+}
+
 export const useUIPatchesStore = defineStore('uiPatches', () => {
   const patches = ref<UIPatchOp[]>([])
   const loaded = ref(false)
@@ -205,7 +266,7 @@ export const useUIPatchesStore = defineStore('uiPatches', () => {
       const res = await fetch('/api/ui/patches')
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data = await res.json()
-      patches.value = Array.isArray(data?.ops) ? data.ops : []
+      patches.value = sanitizePatchOps(data?.ops)
       error.value = ''
       loaded.value = true
     } catch (e: any) {
@@ -216,7 +277,10 @@ export const useUIPatchesStore = defineStore('uiPatches', () => {
   function startPolling(ms = 15000) {
     fetchPatches()
     if (timer) clearInterval(timer)
-    timer = setInterval(fetchPatches, ms)
+    timer = setInterval(() => {
+      if (document.hidden) return
+      fetchPatches()
+    }, ms)
   }
 
   function stopPolling() {
@@ -258,10 +322,6 @@ export const useUIPatchesStore = defineStore('uiPatches', () => {
       id: incoming.id,
       axes: incoming.axes ?? (ex as StatusSection).axes,
     })),
-  )
-
-  const statusItems = computed(() =>
-    statusSections.value.filter((s) => s.kind === 'kv' || s.kind === 'count'),
   )
 
   const settingsTabs = computed<SettingsTabItem[]>(() =>
@@ -341,7 +401,6 @@ export const useUIPatchesStore = defineStore('uiPatches', () => {
     navItems,
     routerPatches,
     statusSections,
-    statusItems,
     settingsTabs,
     settingsTab,
     removedSettingsIds,

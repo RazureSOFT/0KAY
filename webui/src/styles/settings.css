@@ -186,6 +186,10 @@
   color: var(--md-on-surface-variant);
   margin-bottom: 8px;
 }
+/* Uppercase does nothing for zh/ja and 0.09em tracking just spreads CJK
+   glyphs apart; drop both (same exemption as .helper-text below). */
+:lang(zh) .field label,
+:lang(ja) .field label { letter-spacing: 0.02em; text-transform: none; }
 #app .settings-page :is(.input, input:not([type="checkbox"]):not([type="range"]):not([type="file"]):not([type="color"]), select, textarea) {
   width: 100%;
   min-height: 54px;

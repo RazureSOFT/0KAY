@@ -119,7 +119,7 @@ describe('fetchPluginStrings', () => {
     let seen = ''
     const doFetch = ((url: string) => { seen = url; return ok({ locales: { en: { k: 'v' } } }) }) as unknown as typeof fetch
     const result = await fetchPluginStrings('demo', doFetch)
-    expect(seen).toBe('/api/plugins/demo/strings')
+    expect(seen).toMatch(/^\/api\/plugins\/demo\/strings\?boot=/)
     expect(result?.locales?.en).toEqual({ k: 'v' })
   })
 
@@ -142,6 +142,6 @@ describe('fetchPluginStrings', () => {
     let seen = ''
     const doFetch = ((url: string) => { seen = url; return ok({ locales: {} }) }) as unknown as typeof fetch
     await fetchPluginStrings('a b/c', doFetch)
-    expect(seen).toBe('/api/plugins/a%20b%2Fc/strings')
+    expect(seen).toMatch(/^\/api\/plugins\/a%20b%2Fc\/strings\?boot=/)
   })
 })

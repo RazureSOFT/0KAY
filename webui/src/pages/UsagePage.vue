@@ -122,7 +122,10 @@ function dayLabel(day: string) {
 
 onMounted(() => {
   fetchUsage()
-  timer = window.setInterval(() => fetchUsage(true), 15000)
+  timer = window.setInterval(() => {
+    if (document.hidden) return
+    fetchUsage(true)
+  }, 15000)
 })
 onUnmounted(() => {
   if (timer) window.clearInterval(timer)
@@ -131,9 +134,9 @@ onUnmounted(() => {
 
 <template>
   <div class="usage-page">
-    <header class="hero">
+    <header class="hero page-hero">
       <div class="hero-copy">
-        <p class="eyebrow">0KAY · USAGE</p>
+        <p class="eyebrow page-eyebrow">0KAY · USAGE</p>
         <h1>{{ t('usage.title') }}</h1>
         <p class="subtitle">{{ t('usage.subtitle') }}</p>
       </div>
@@ -266,9 +269,7 @@ onUnmounted(() => {
 }
 
 .hero { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-lg); margin-bottom: clamp(18px, 2.4vw, 28px); flex-wrap: wrap; }
-.eyebrow { margin: 0 0 8px; color: var(--md-primary); font: 800 12px/1 ui-monospace, monospace; letter-spacing: .18em; }
-.hero h1 { font-size: clamp(26px, 3vw, 38px); font-weight: 800; letter-spacing: -.02em; margin: 0; }
-.subtitle { color: var(--md-on-surface-variant); font-size: 15px; margin-top: 8px; line-height: 1.6; max-width: 70ch; }
+/* eyebrow/h1/subtitle text styles come from theme.css (.page-eyebrow / .page-hero). */
 .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
 .banner { padding: 13px 18px; border-radius: 18px; margin-bottom: 14px; font-size: 13px; font-weight: 600; }
@@ -276,17 +277,9 @@ onUnmounted(() => {
 .banner.ok { background: var(--md-success-container); color: var(--md-on-success-container); }
 
   
-  #app .usage-page .btn {
-    height: 46px; padding: 0 22px; border: 1px solid transparent; border-radius: 999px;
-    font-weight: 700; font-size: 14px; cursor: pointer;
-    transition: transform var(--duration-medium) var(--ease-spring), background-color var(--duration-short) var(--ease-out), box-shadow var(--duration-medium) var(--ease-out);
-  }
-  @media (hover: hover) and (pointer: fine) {
-    #app .usage-page .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-1); }
-  }
-  #app .usage-page .btn:disabled { opacity: .55; cursor: not-allowed; }
+  /* page-level .btn sizing lives in theme.css (#app .usage-page .btn). */
 
-.overview { display: grid; grid-template-columns: minmax(220px, 0.9fr) minmax(280px, 1.5fr) minmax(200px, 1fr); gap: var(--space-lg); margin-bottom: var(--space-xl); }
+.overview { display: grid; grid-template-columns: minmax(min(220px, 100%), 0.9fr) minmax(min(280px, 100%), 1.5fr) minmax(min(200px, 100%), 1fr); gap: var(--space-lg); margin-bottom: var(--space-xl); }
 .card {
   background: var(--md-surface-container-low); border: 1px solid color-mix(in srgb, var(--md-outline-variant) 55%, transparent);
   border-radius: 32px; padding: 24px; box-shadow: var(--shadow-1);
@@ -358,7 +351,7 @@ onUnmounted(() => {
 .axis { display: flex; gap: 6px; height: 22px; padding-top: 6px; }
 .axis span { flex: 1; min-width: 0; text-align: center; font-size: 11px; color: var(--md-on-surface-variant); white-space: nowrap; }
 
-.model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(264px, 1fr)); gap: 16px; }
+.model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(264px, 100%), 1fr)); gap: 16px; }
 .model-card {
   position: relative; overflow: hidden; padding: 22px; border-radius: 26px;
   background: var(--md-surface-container); border: 1px solid color-mix(in srgb, var(--md-outline-variant) 45%, transparent);

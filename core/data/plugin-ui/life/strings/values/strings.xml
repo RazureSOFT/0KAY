@@ -220,6 +220,14 @@
   <string name="companion.cognition.desc">Real-time state and all parameters. Changes take effect after you click "Save settings" in the top right.</string>
   <string name="companion.cognition.title">Cognition core</string>
   <string name="companion.cognitionCore">Cognition core</string>
+  <string name="companion.badge.on">Active</string>
+  <string name="companion.badge.off">Off</string>
+  <string name="companion.badge.coreOff">Cognition off</string>
+  <string name="companion.unsavedChanges">Unsaved changes</string>
+  <string name="companion.unsavedLeave">There are unsaved changes. Leave and discard them?</string>
+  <string name="companion.resetDefaults">Reset to defaults</string>
+  <string name="companion.resetDefaultsConfirm">Reset all cognition parameters to their defaults? Nothing is saved until you press Save — you can review first.</string>
+  <string name="companion.defaultHint">default {n}</string>
   <string name="companion.danger.desc">Daily operations are irreversible: taking back a sentence or deleting a memory is permanent. Here is the one chance to "start over".</string>
   <string name="companion.danger.doubleConfirm">Requires a second confirmation.</string>
   <string name="companion.danger.reset">Reset the whole person</string>
@@ -281,6 +289,7 @@
   <string name="companion.evidencePair">{dim} ({words})</string>
   <string name="companion.evidenceSeparator">; </string>
   <string name="companion.flash.adaptersRelistened">Re-listening per configuration</string>
+  <string name="companion.flash.resetDefaults">Cognition parameters reset to defaults — review and save.</string>
   <string name="companion.flash.analyzedLlm">Understood by the model; please review/tune the parameters</string>
   <string name="companion.flash.analyzedLocal">Model unavailable; understood with the local dictionary, please review</string>
   <string name="companion.flash.lifeStarted">Life has begun: she now has a life of her own</string>

@@ -16,6 +16,8 @@ const pending = ref(false)
 const moduleUrl = computed(() => String(route.meta.module || ''))
 const iframeSrc = computed(() => String(route.meta.src || ''))
 
+let loadToken = 0
+
 const loading = computed(() => pending.value && !comp.value && !loadError.value && !renderError.value)
 
 async function load() {
@@ -24,17 +26,20 @@ async function load() {
     comp.value = null
     return
   }
+  const token = ++loadToken
   pending.value = true
   loadError.value = ''
   renderError.value = ''
   try {
     const mod: any = await import(/* @vite-ignore */ url)
+    if (token !== loadToken) return
     comp.value = mod?.default || mod
   } catch (err: any) {
+    if (token !== loadToken) return
     comp.value = null
     loadError.value = err?.message || String(err)
   } finally {
-    pending.value = false
+    if (token === loadToken) pending.value = false
   }
 }
 

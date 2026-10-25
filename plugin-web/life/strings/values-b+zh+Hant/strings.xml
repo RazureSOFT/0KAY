@@ -220,6 +220,14 @@
   <string name="companion.cognition.desc">即時狀態與全部參數。改動後點右上角「儲存設定」才會生效。</string>
   <string name="companion.cognition.title">認知內核</string>
   <string name="companion.cognitionCore">認知內核</string>
+  <string name="companion.badge.on">已啟用</string>
+  <string name="companion.badge.off">已停用</string>
+  <string name="companion.badge.coreOff">認知核心已停用</string>
+  <string name="companion.unsavedChanges">有未儲存的修改</string>
+  <string name="companion.unsavedLeave">有未儲存的修改，離開將捨棄。確定離開？</string>
+  <string name="companion.resetDefaults">恢復預設參數</string>
+  <string name="companion.resetDefaultsConfirm">把認知參數全部恢復為預設值？不會自動儲存，恢復後可先檢查再點「儲存設定」。</string>
+  <string name="companion.defaultHint">預設 {n}</string>
   <string name="companion.danger.desc">日常操作不可撤銷：撤回一句話、刪除一條記憶都是永久的。這裡保留唯一一次「重來」的機會。</string>
   <string name="companion.danger.doubleConfirm">需要二次確認。</string>
   <string name="companion.danger.reset">重置整個人</string>
@@ -281,6 +289,7 @@
   <string name="companion.evidencePair">{dim}（{words}）</string>
   <string name="companion.evidenceSeparator">；</string>
   <string name="companion.flash.adaptersRelistened">已按設定重新監聽</string>
+  <string name="companion.flash.resetDefaults">認知參數已恢復預設，請檢查後儲存</string>
   <string name="companion.flash.analyzedLlm">已由模型理解，請核對/微調參數</string>
   <string name="companion.flash.analyzedLocal">模型不可用，已用本地詞典理解，請核對</string>
   <string name="companion.flash.lifeStarted">生命已開始：她開始有自己的生活了</string>

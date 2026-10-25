@@ -68,7 +68,10 @@ export const useLifeStore = defineStore('life', () => {
   function connect() {
     fetchState()
     if (pollTimer) clearInterval(pollTimer)
-    pollTimer = setInterval(fetchState, 5000)
+    pollTimer = setInterval(() => {
+      if (document.hidden) return
+      fetchState()
+    }, 5000)
   }
 
   function disconnect() {
@@ -78,12 +81,16 @@ export const useLifeStore = defineStore('life', () => {
     source.value = 'none'
   }
 
+  let fetchSeq = 0
+
   async function fetchState() {
+    const seq = ++fetchSeq
     try {
       let response = await fetch('/api/state')
       if (response.status === 404) {
         response = await fetch('/api/life/state')
       }
+      if (seq !== fetchSeq) return
       if (response.ok) {
         const data = await response.json()
         updateState(data)
@@ -91,9 +98,11 @@ export const useLifeStore = defineStore('life', () => {
         source.value = 'core'
         lastFetchedAt.value = Date.now()
       } else {
+        if (seq !== fetchSeq) return
         isConnected.value = false
       }
     } catch {
+      if (seq !== fetchSeq) return
       isConnected.value = false
       source.value = 'none'
     }

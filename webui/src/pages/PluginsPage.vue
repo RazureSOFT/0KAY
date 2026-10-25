@@ -332,6 +332,7 @@ onMounted(() => {
   sections.fetchSections()
   window.addEventListener('keydown', onKeydown)
   timer = setInterval(() => {
+    if (document.hidden) return
     if (!uninstalling.value && !toggling.value && !detail.value) fetchPlugins(true)
   }, 5000)
 })
@@ -344,9 +345,9 @@ onUnmounted(() => {
 
 <template>
   <div class="plugins-page">
-    <header class="pp-hero">
+    <header class="pp-hero page-hero">
       <div class="pp-hero-copy">
-        <p class="pp-eyebrow">0KAY · PLUGINS</p>
+        <p class="pp-eyebrow page-eyebrow">0KAY · PLUGINS</p>
         <h1>{{ t('plugins.title') }}</h1>
         <p class="subtitle">{{ t('plugins.subtitle') }}</p>
       </div>
@@ -468,6 +469,10 @@ onUnmounted(() => {
         </div>
       </article>
 
+      <div v-if="loading && plugins.length === 0" class="plugin-grid" aria-hidden="true">
+        <div v-for="n in 4" :key="n" class="plugin-card plugin-skeleton"></div>
+      </div>
+
       <div v-if="plugins.length === 0 && !loading" class="empty-state">
         <p>{{ t('plugins.empty') }}</p>
         <p class="hint">{{ t('plugins.emptyHint') }}</p>
@@ -581,9 +586,7 @@ onUnmounted(() => {
   margin-bottom: clamp(18px, 2.4vw, 28px);
   flex-wrap: wrap;
 }
-.pp-eyebrow { margin: 0 0 8px; color: var(--md-primary); font: 800 12px/1 ui-monospace, monospace; letter-spacing: .18em; }
-.page-header h1, .pp-hero h1 { font-size: clamp(26px, 3vw, 38px); font-weight: 800; letter-spacing: -.02em; margin: 0; }
-.subtitle { color: var(--md-on-surface-variant); font-size: 15px; margin-top: 8px; line-height: 1.6; max-width: 70ch; }
+/* eyebrow/h1/subtitle text styles come from theme.css (.page-eyebrow / .page-hero). */
 
 .error-banner { padding: 14px 18px; border-radius: 18px; background: var(--md-error-container); color: var(--md-on-error-container); margin-bottom: var(--space-lg); }
 .notice-banner { padding: 14px 18px; border-radius: 18px; background: var(--md-secondary-container); color: var(--md-on-secondary-container); margin-bottom: var(--space-lg); }
@@ -599,7 +602,13 @@ onUnmounted(() => {
 .tone-success { background: var(--md-success-container); color: var(--md-on-success-container); }
 .tone-muted { background: var(--md-surface-container-high); color: var(--md-on-surface-variant); }
 
-.plugin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(312px, 1fr)); gap: var(--space-lg); }
+/* min() keeps the track from exceeding the viewport on narrow screens — a
+   bare 312px minimum overflows below ~356px viewports. */
+.plugin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(312px, 100%), 1fr)); gap: var(--space-lg); }
+
+.plugin-skeleton { min-height: 168px; animation: plugin-sk 1.2s ease-in-out infinite; }
+@keyframes plugin-sk { 0%, 100% { opacity: .55; } 50% { opacity: .85; } }
+@media (prefers-reduced-motion: reduce) { .plugin-skeleton { animation: none; opacity: .7; } }
 
 #app .plugins-page .plugin-card {
   position: relative;
@@ -680,16 +689,7 @@ onUnmounted(() => {
 .plugin-switch-label { white-space: nowrap; }
 
   
-  #app .plugins-page .btn {
-    height: 46px; padding: 0 22px; border: 1px solid transparent; border-radius: 999px;
-    font-weight: 700; font-size: 14px;
-    display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer;
-    transition: transform var(--duration-medium) var(--ease-spring), background-color var(--duration-short) var(--ease-out), box-shadow var(--duration-medium) var(--ease-out);
-  }
-  @media (hover: hover) and (pointer: fine) {
-    #app .plugins-page .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-1); }
-  }
-  #app .plugins-page .btn:disabled { opacity: .6; cursor: not-allowed; }
+  /* page-level .btn sizing lives in theme.css (#app .plugins-page .btn). */
 
 .empty-state { grid-column: 1 / -1; padding: var(--space-xxl); text-align: center; background: var(--md-surface-container); border-radius: 32px; color: var(--md-on-surface-variant); }
 .empty-state p { margin: 0; font-size: 15px; font-weight: 600; color: var(--md-on-surface); }

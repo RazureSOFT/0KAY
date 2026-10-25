@@ -368,6 +368,9 @@ body > :not(#app):not(script):not(style):not(link)
  * The list is explicit on purpose: relaxing the global floor would shrink every
  * normal control, and this is the app's visual system (see the cascade note
  * above), so the exceptions belong here rather than in each component. */
+/* New compact controls should not grow this list: give the element the
+   `.compact` class and it opts out of the 36px floor here. */
+#app .compact,
 #app :is(.remove-img, .remove-file, .link) { min-height: 0; }
 #app .models-actions button,
 #app .pp-star,
@@ -424,13 +427,6 @@ body > :not(#app):not(script):not(style):not(link)
  * and beats every component's `.x[data-v]` (0,2,0). A compact icon control must
  * opt out explicitly — see the exception list next to that rule.
  *
- * This block also carries deliberate later-wins duplicates from successive design
- * passes. The pairs that currently disagree are:
- *   .session-item.selected   457 (secondary-container) -> 497 (primary-container)
- *   .composer                468 -> 493 (radius/background restated)
- *   .nav-item.active::before 385/400 -> 498 (radius)
- * The last declaration is what renders. Consolidating them is safe but is a
- * visual change, so it is left explicit rather than silently tidied.
  */
 #app .app-shell { background: var(--md-surface-container); }
 #app .app-header { height: 76px; flex-shrink: 0; background: transparent; border: 0; padding: 0 28px; }
@@ -479,18 +475,34 @@ body > :not(#app):not(script):not(style):not(link)
   /* Nav is a 100+/day control: keep the spring but tighten the duration. */
   transition: transform var(--duration-medium) var(--ease-spring), opacity var(--duration-short) var(--ease-out), border-radius var(--duration-medium) var(--ease-out);
 }
-#app .nav-item.active::before { opacity: 1; transform: translateX(-50%) scale(1); }
+/* border-radius pill per the expressive pass; background comes from the
+   base ::before rule above (secondary-container). */
+#app .nav-item.active::before { opacity: 1; transform: translateX(-50%) scale(1); border-radius: 999px; }
 #app .nav-item.active { background: transparent; color: var(--md-on-secondary-container); font-weight: 750; }
 #app .nav-icon { height: 26px; align-items: center; transition: transform var(--duration-medium) var(--ease-spring); }
 #app .nav-item.active .nav-icon { transform: scale(1.12); }
 #app .nav-label { position: relative; z-index: 1; }
 #app .app-main { border-radius: 30px; background: var(--md-surface); box-shadow: var(--shadow-1); position: relative; }
 
-/* Route transitions: enter decelerates, leave accelerates. */
+/* Route transitions: enter decelerates, leave accelerates.
+ *
+ * Vue's <Transition> ends on the transitionend event. Some embedded WebViews
+ * (observed in the ZCode in-app browser on Windows) never dispatch it — even a
+ * bare 10px div transition fires nothing — so mode="out-in" waits forever and
+ * every SPA navigation renders a permanently stuck page. Other transitions in
+ * this app degrade to no-animation (harmless); the route transition is the
+ * only one whose stall breaks navigation. The @supports guard keeps the
+ * animation for engines that do emit the event and falls back to a hard swap
+ * where it cannot be trusted.
+ */
+/* NOTE: a @supports guard does not work here — the affected WebView claims
+ * support for transition-behavior yet still never fires transitionend, and no
+ * CSS query can detect that. The bound is set from JS instead: App.vue passes
+ * :duration="0" to the Transition when the engine fails the event probe, so
+ * Vue ends phases on a timer rather than the missing event. The transition
+ * declarations below stay for capable engines. */
 .route-view { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .route-view > * { flex: 1; min-height: 0; }
-.route-enter-active { transition: opacity var(--duration-enter, 280ms) var(--ease-out), transform var(--duration-enter, 280ms) var(--ease-emphasized-decel); }
-.route-leave-active { transition: opacity var(--duration-short) var(--ease-emphasized-accel), transform var(--duration-short) var(--ease-emphasized-accel); }
 .route-enter-from { opacity: 0; transform: translateY(12px) scale(0.992); }
 .route-leave-to { opacity: 0; transform: translateY(-4px); }
 
@@ -536,29 +548,29 @@ body > :not(#app):not(script):not(style):not(link)
 #app .sessions { background: var(--md-surface-container-low); border-right: 0; padding: 20px 14px; gap: 16px; }
 #app .sessions > header button { background: var(--md-primary-container); color: var(--md-on-primary-container); border: 0; border-radius: 18px; }
 #app .session-item { border-radius: 18px; padding: 14px; background: transparent; transition: background-color var(--duration-medium) var(--ease-out), border-radius var(--duration-medium) var(--ease-out); }
-#app .session-item.selected { background: var(--md-secondary-container); color: var(--md-on-secondary-container); border-radius: 23px 23px 23px 7px; }
+#app .session-item.selected { background: var(--md-primary-container); color: var(--md-on-primary-container); border-radius: 18px 18px 18px 6px; }
 #app .session-item .origin { font-weight: 650; letter-spacing: 0.35px; }
 #app .filters { background: var(--md-surface-container-high); padding: 4px; border-radius: 20px; }
 #app .filters button { background: transparent; border: 0; min-height: 32px; border-radius: 16px; }
 #app .filters button.chosen { background: var(--md-surface-container-lowest); color: var(--md-primary); box-shadow: var(--shadow-1); }
 #app .conversation-header { border-bottom: 0; padding: 24px 30px 16px; }
 #app .conversation-header h2 { font-size: 22px; }
-#app .message.request { background: var(--md-primary-container); border-radius: 26px 26px 8px 26px; margin-left: min(40px, 4%); }
+#app .message.request { background: var(--md-primary-container); border-radius: 22px 22px 6px 22px; margin-left: min(40px, 4%); }
 #app .message.response { background: var(--md-surface-container-lowest); border-color: var(--md-surface-container-high); border-radius: 8px 26px 26px 26px; }
 #app .turn { animation: surface-arrive var(--duration-long) var(--ease-emphasized) both; }
 #app .steps details { border-radius: 16px; background: var(--md-surface-container-low); }
 #app .composer {
-  border-radius: 28px;
+  border-radius: 24px;
   background: var(--md-surface-container-lowest);
   border: 1px solid var(--md-outline-variant);
-  box-shadow: var(--shadow-2);
+  box-shadow: 0 4px 20px #24345d0c;
   transition: box-shadow var(--duration-medium) var(--ease-out), border-color var(--duration-medium) var(--ease-out);
 }
 #app .composer:focus-within {
   border-color: var(--md-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--md-primary) 9%, transparent), var(--shadow-2);
 }
-#app .composer textarea { border-radius: 28px 28px 0 0; background: transparent; box-shadow: none; }
+#app .composer textarea { border-radius: 24px 24px 0 0; min-height: 104px; background: transparent; box-shadow: none; }
 #app .composer textarea:focus-visible { outline: 0; }
 #app .execution-options { padding: 8px 14px; gap: 8px; border: 0; }
 #app .execution-options :is(button, select) { background: var(--md-surface-container); border-color: transparent; min-height: 36px; border-radius: 12px; }
@@ -572,13 +584,8 @@ body > :not(#app):not(script):not(style):not(link)
 #app .character-profile { padding: 18px; background: var(--md-tertiary-container); border-radius: var(--radius-lg); }
 
 /* Expressive interaction emphasis: composer, selected session, message. */
-#app .composer { border-radius: 24px; background: var(--md-surface-container-lowest); box-shadow: 0 4px 20px #24345d0c; }
-#app .composer textarea { border-radius: 24px 24px 0 0; min-height: 104px; }
 #app .composer footer button[type="submit"] { border-radius: 999px; min-height: 44px; padding-inline: 24px; font-weight: 650; }
 #app .composer footer button[type="submit"]:active { transform: scale(0.96); }
-#app .session-item.selected { border-radius: 18px 18px 18px 6px; background: var(--md-primary-container); color: var(--md-on-primary-container); }
-#app .nav-item.active::before { border-radius: 999px; background: var(--md-secondary-container); }
-#app .message.request { border-radius: 22px 22px 6px 22px; background: var(--md-primary-container); }
 #app .execution-options .app-select-trigger { border-radius: 12px; background: var(--md-surface-container); border-color: transparent; }
 
 /* Agent inbox dialog (teleported) */
@@ -707,3 +714,32 @@ body > :not(#app):not(script):not(style):not(link)
   }
   .expressive-ripple { display: none !important; }
 }
+
+
+/* ---- Shared page hero ----------------------------------------------------
+   PluginsPage and UsagePage used to each carry a private copy of the
+   eyebrow / h1 / subtitle rules (and SettingsPage a third via settings.css).
+   One definition here; page headers that need it keep their layout rules
+   locally and reuse these text styles. */
+.page-header h1,
+.page-hero h1 { font-size: clamp(26px, 3vw, 38px); font-weight: 800; letter-spacing: -.02em; margin: 0; }
+.page-header .subtitle,
+.page-hero .subtitle { color: var(--md-on-surface-variant); font-size: 15px; margin-top: 8px; line-height: 1.6; max-width: 70ch; }
+.page-eyebrow { margin: 0 0 8px; color: var(--md-primary); font: 800 12px/1 ui-monospace, monospace; letter-spacing: .18em; }
+:lang(zh) .page-eyebrow, :lang(ja) .page-eyebrow { letter-spacing: .12em; }
+
+/* Page-level call-to-action buttons (hero refresh/clear actions). The two
+   pages carried byte-identical #app overrides; one rule now serves both. */
+#app .plugins-page .btn,
+#app .usage-page .btn {
+  height: 46px; padding: 0 22px; border: 1px solid transparent; border-radius: 999px;
+  font-weight: 700; font-size: 14px;
+  display: inline-flex; align-items: center; justify-content: center; text-decoration: none; cursor: pointer;
+  transition: transform var(--duration-medium) var(--ease-spring), background-color var(--duration-short) var(--ease-out), box-shadow var(--duration-medium) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  #app .plugins-page .btn:hover:not(:disabled),
+  #app .usage-page .btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--shadow-1); }
+}
+#app .plugins-page .btn:disabled,
+#app .usage-page .btn:disabled { opacity: .6; cursor: not-allowed; }

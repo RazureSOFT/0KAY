@@ -158,7 +158,7 @@ const W = { class: "mp" }, Z = { class: "mp-hero" }, ee = { class: "mp-actions" 
       if (m?.api?.requires?.length) out.push("调用 Core API：" + m.api.requires.join("、"));
       if (m?.api?.exposes?.length) out.push("对外暴露 API：" + m.api.exposes.join("、"));
       if (m?.egress?.length) out.push("出网访问：" + m.egress.join("、"));
-      if (!out.length) out.push("未申请任何额外权限");
+      if (!out.length) out.push("未申请任何额外权限（以插件自述为准）");
       return out;
     }
     async function readmeOf(n) {
@@ -178,7 +178,7 @@ const W = { class: "mp" }, Z = { class: "mp-hero" }, ee = { class: "mp-actions" 
     }
     async function askInstall(n) {
       const t = window.__0KAY_UI__, details = permsOf(n);
-      const message = `${n.full_name}${n.manifest?.version ? ` v${n.manifest.version}` : ""} 申请以下权限：`;
+      const message = `${n.full_name}${n.manifest?.version ? ` v${n.manifest.version}` : ""} 申请以下权限（由插件自行声明，未经核验）：`;
       if (!(t && typeof t.confirm === "function"))
         return window.confirm(message + "\n\n" + details.join("\n"));
       const readme = await readmeOf(n);

@@ -60,11 +60,18 @@ const { style: chatStyle, startDrag: dragChat, startResize: resizeChat } =
 
 const onChatPage = ref(location.pathname === '/')
 function syncRoute() { onChatPage.value = location.pathname === '/' }
-;(function hookHistory() {
+// Module-level single install: the component remounts on every chat-page
+// visit, and re-wrapping history each time stacked another wrapper around the
+// native methods forever.
+let historyHooked = false
+function hookHistory() {
+  if (historyHooked) return
+  historyHooked = true
   const push = history.pushState, replace = history.replaceState
   history.pushState = function (...a: any[]) { const r = push.apply(history, a as any); window.dispatchEvent(new Event('0kay:location')); return r }
   history.replaceState = function (...a: any[]) { const r = replace.apply(history, a as any); window.dispatchEvent(new Event('0kay:location')); return r }
-})()
+}
+hookHistory()
 
 const popup = ref(false)
 const collapsed = ref(false)

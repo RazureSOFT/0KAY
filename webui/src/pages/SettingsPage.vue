@@ -12,6 +12,8 @@ import AboutPanel from '../components/AboutPanel.vue'
 import UpdatesPanel from '../components/UpdatesPanel.vue'
 import ProviderPanel from '../components/ProviderPanel.vue'
 import GeneralPanel from '../components/GeneralPanel.vue'
+import NavIcon from '../components/NavIcon.vue'
+import SettingsField from '../components/SettingsField.vue'
 import ConnectionPanel from '../components/ConnectionPanel.vue'
 import PersonaPanel from '../components/PersonaPanel.vue'
 import PermissionsPanel from '../components/PermissionsPanel.vue'
@@ -19,10 +21,7 @@ import SecurityPanel from '../components/SecurityPanel.vue'
 import McpPanel from '../components/McpPanel.vue'
 import DangerPanel from '../components/DangerPanel.vue'
 import PluginModulePane from '../components/PluginModulePane.vue'
-import AppSelect from '../components/AppSelect.vue'
-import ModelsField from '../components/ModelsField.vue'
 import PathPicker from '../components/PathPicker.vue'
-import MarkdownContent from '../components/MarkdownContent.vue'
 import { useConfirm } from '../composables/confirm'
 import { useSettingsMeta } from '../composables/settingsMeta'
 import { toast } from '../composables/toast'
@@ -50,7 +49,9 @@ const pluginOnlyTabs = computed(() => {
 
 const allTabs = computed(() => [...tabs.value, ...pluginOnlyTabs.value])
 
-const activeTab = ref<string>('general')
+// Seeded from the query BEFORE first paint: initializing to 'general' and
+// switching in onMounted is what made the page flash the general tab.
+const activeTab = ref<string>((route.query.tab as string | undefined) || 'general')
 const saved = ref(false)
 
 const uploadedModels = ref<{ id: string; label: string; url: string }[]>([])
@@ -129,12 +130,6 @@ const moduleTab = computed(() => {
   return tabMeta(activeTab.value)?.module || null
 })
 
-function sectionBool(id: string, key: string): boolean {
-  const v = sectionDrafts.value[id]?.[key]
-  if (typeof v === 'boolean') return v
-  if (v === 'true' || v === 1 || v === '1') return true
-  return false
-}
 
 function loadSectionDraft(id: string) {
   const meta = tabMeta(id)
@@ -332,13 +327,13 @@ async function onFolderSelected(e: Event) {
 
 onMounted(async () => {
   wizard.loadFromStorage()
-  const q = route.query.tab as string | undefined
-  if (q) activeTab.value = q
   loadUploadedModels()
   void loadAvailableModels()
   await sectionsStore.fetchSections()
   for (const sec of sectionsStore.sections) loadSectionDraft(sec.id)
-  if (!allTabs.value.some((tab) => tab.id === activeTab.value) && !isBuiltinTab(activeTab.value)) {
+  // A tab from the query stays selected even before the plugin tabs resolve;
+  // only a tab that is still unknown AFTER the sections load falls back.
+  if (sectionsStore.sections.length && !allTabs.value.some((tab) => tab.id === activeTab.value) && !isBuiltinTab(activeTab.value)) {
     activeTab.value = 'general'
   }
 })
@@ -375,8 +370,12 @@ function save() {
         <h1>{{ t('settings.title') }}</h1>
         <p class="subtitle">{{ t('settings.pageDesc') }}</p>
       </div>
+      <!-- Only the tabs whose state lives in the wizard store are saved here.
+           The other panels save themselves (provider/mcp have their own buttons,
+           security/permissions/connection apply immediately); a global button
+           here used to flash "已保存" without persisting anything. -->
       <button
-        v-if="isBuiltinTab(activeTab) && activeTab !== 'about' && activeTab !== 'updates' && activeTab !== 'danger'"
+        v-if="activeTab === 'persona' || activeTab === 'live2d'"
         class="btn btn-primary"
         @click="save"
       >
@@ -400,18 +399,7 @@ function save() {
         >
           <span class="nav-indicator"></span>
           <span class="nav-icon" aria-hidden="true">
-                        <svg v-if="tab.icon === 'globe'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9S14.5 18.3 12 21c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z" stroke="currentColor" stroke-width="2"/></svg>
-                        <svg v-else-if="tab.icon === 'cloud'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M7 18h10a4 4 0 0 0 .5-7.97A6 6 0 0 0 6.1 9.2 4.5 4.5 0 0 0 7 18z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-                        <svg v-else-if="tab.icon === 'chip'" width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="6" y="6" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                        <svg v-else-if="tab.icon === 'person'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="2"/><path d="M4 20c1.5-3.5 4.5-5 8-5s6.5 1.5 8 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                        <svg v-else-if="tab.icon === 'avatar'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="10" r="6" stroke="currentColor" stroke-width="2"/><path d="M5 21c1.5-3 4-4.5 7-4.5S17.5 18 19 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="10" cy="10" r="1" fill="currentColor"/><circle cx="14" cy="10" r="1" fill="currentColor"/></svg>
-                        <svg v-else-if="tab.icon === 'brightness'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="4" stroke="currentColor" stroke-width="2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                        <svg v-else-if="tab.icon === 'warn'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 4l9 16H3L12 4z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                        <svg v-else-if="tab.icon === 'info'" width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/><path d="M12 11v5M12 7.5v.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                        <svg v-else-if="tab.icon === 'download'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0l-4-4m4 4l4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-                        <svg v-else-if="tab.icon === 'shield'" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 3l7 3v6c0 4.2-2.8 7.6-7 9-4.2-1.4-7-4.8-7-9V6l7-3z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        <svg v-else-if="tab.icon === 'link'" width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" stroke-width="2"/><path d="M14 17h7M17.5 13.5v7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none"><rect x="5" y="11" width="14" height="10" rx="2" stroke="currentColor" stroke-width="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            <NavIcon :name="tab.icon || 'chip'" :size="20" />
           </span>
           <span class="nav-label">{{ tabLabel(tab.id) }}</span>
         </button>
@@ -434,42 +422,19 @@ function save() {
             <p v-if="pluginSection('provider')!.description" class="helper-text">
               {{ pluginSection('provider')!.description }}
             </p>
-            <div
+            <SettingsField
               v-for="f in pluginSection('provider')!.fields"
               :key="f.key"
-              class="field"
-            >
-              <template v-if="f.type === 'bool'">
-                <label class="toggle-label">
-                  <input
-                    type="checkbox"
-                    :checked="sectionBool('provider', f.key)"
-                    @change="sectionDrafts = { ...sectionDrafts, provider: { ...sectionDrafts.provider, [f.key]: ($event.target as HTMLInputElement).checked } }"
-                  />
-                  <span class="toggle-slider"></span>
-                  <span>
-                    <strong>{{ f.label }}</strong>
-                    <br v-if="f.help" />
-                    <small v-if="f.help" class="helper-text">{{ f.help }}</small>
-                  </span>
-                </label>
-              </template>
-              <template v-else-if="f.type === 'select'">
-                <label>{{ f.label }}</label>
-                <AppSelect class="input" :aria-label="f.label" :model-value="String(sectionDrafts.provider?.[f.key] ?? '')" :options="f.options || []" @update:model-value="sectionDrafts = { ...sectionDrafts, provider: { ...sectionDrafts.provider, [f.key]: $event } }" />
-                <p v-if="f.help" class="helper-text">{{ f.help }}</p>
-              </template>
-              <template v-else>
-                <label>{{ f.label }}</label>
-                <input
-                  class="input"
-                  :type="f.type === 'number' ? 'number' : 'text'"
-                  :value="sectionDrafts.provider?.[f.key]"
-                  @input="sectionDrafts = { ...sectionDrafts, provider: { ...sectionDrafts.provider, [f.key]: f.type === 'number' ? Number(($event.target as HTMLInputElement).value) : ($event.target as HTMLInputElement).value } }"
-                />
-                <p v-if="f.help" class="helper-text">{{ f.help }}</p>
-              </template>
-            </div>
+              :field="f"
+              :label="f.label"
+              :help="f.help"
+              :model-value="sectionDrafts.provider?.[f.key]"
+              :section-id="'provider'"
+              :model-options="modelOptions"
+              :available-models="availableModels"
+              @update:model-value="sectionDrafts = { ...sectionDrafts, provider: { ...sectionDrafts.provider, [f.key]: $event } }"
+              @browse="pickerField = f.key"
+            />
             <div v-if="sectionMsg" class="helper-text" :class="sectionMsgKind === 'error' ? 'msg-error' : 'msg-success'" role="status">{{ sectionMsg }}</div>
             <div class="actions-row">
               <button class="btn btn-primary" type="button" :disabled="sectionSaving" @click="saveSection('provider')">
@@ -589,84 +554,32 @@ function save() {
             {{ t('settings.pluginProvidedBy', { name: pluginSection(activeTab)!.plugin_name }) }}
           </p>
 
+          <SettingsField
+            v-for="f in pluginSection(activeTab)!.fields.filter(x => x.type !== 'test')"
+            :key="f.key"
+            :field="f"
+            :label="f.label"
+            :help="f.help"
+            :model-value="sectionDrafts[activeTab]?.[f.key]"
+            :section-id="activeTab"
+            :model-options="modelOptions"
+            :available-models="availableModels"
+            @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }"
+            @browse="pickerField = f.key"
+          />
           <div
-            v-for="f in pluginSection(activeTab)!.fields"
+            v-for="f in pluginSection(activeTab)!.fields.filter(x => x.type === 'test')"
             :key="f.key"
             class="field"
           >
-            <template v-if="f.type === 'bool'">
-              <label class="toggle-label">
-                <input
-                  type="checkbox"
-                  :checked="sectionBool(activeTab, f.key)"
-                  @change="sectionDrafts = { ...sectionDrafts, [activeTab]: { ...sectionDrafts[activeTab], [f.key]: ($event.target as HTMLInputElement).checked } }"
-                />
-                <span class="toggle-slider"></span>
-                <span>
-                  <strong>{{ f.label }}</strong>
-                  <br v-if="f.help" />
-                  <small v-if="f.help" class="helper-text">{{ f.help }}</small>
-                </span>
-              </label>
-            </template>
-            <template v-else-if="f.type === 'select'">
-              <label>{{ f.label }}</label>
-              <AppSelect class="input" :aria-label="f.label" :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="f.options || []" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
-              <p v-if="f.help" class="helper-text">{{ f.help }}</p>
-            </template>
-            <template v-else-if="f.type === 'model'">
-              <label>{{ f.label }}</label>
-              <AppSelect class="input" :aria-label="f.label" :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="modelOptions" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
-              <p v-if="f.help" class="helper-text">{{ f.help }}</p>
-            </template>
-            <template v-else-if="f.type === 'models'">
-              <label>{{ f.label }}</label>
-              <ModelsField :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="availableModels" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
-              <p v-if="f.help" class="helper-text">{{ f.help }}</p>
-            </template>
-            <template v-else-if="f.type === 'note'">
-                            <div class="field-note">
-                <strong v-if="f.label">{{ f.label }}</strong>
-                <MarkdownContent :content="f.help || ''" />
-              </div>
-            </template>
-            <template v-else-if="f.type === 'dir'">
-              <label>{{ f.label }}</label>
-              <div class="path-row">
-                <input
-                  class="input"
-                  type="text"
-                  spellcheck="false"
-                  :value="sectionDrafts[activeTab]?.[f.key]"
-                  :placeholder="f.default_value || ''"
-                  @input="sectionDrafts = { ...sectionDrafts, [activeTab]: { ...sectionDrafts[activeTab], [f.key]: ($event.target as HTMLInputElement).value } }"
-                />
-                <button class="btn btn-tonal" type="button" @click="pickerField = f.key">
-                  {{ t('settings.browse') }}
-                </button>
-              </div>
-              <p v-if="f.help" class="helper-text">{{ f.help }}</p>
-            </template>
-            <template v-else-if="f.type === 'test'">
-              <label>{{ f.label }}</label>
-              <div class="actions-row">
-                <button class="btn btn-tonal" type="button" :disabled="sectionTesting" @click="testPluginSection(activeTab)">
-                  {{ sectionTesting ? t('settings.testing') : (f.label || t('settings.test')) }}
-                </button>
-                <span v-if="sectionTestMsg" class="helper-text">{{ sectionTestMsg }}</span>
-              </div>
-              <p v-if="f.help" class="helper-text">{{ f.help }}</p>
-            </template>
-            <template v-else>
-              <label>{{ f.label }}</label>
-              <input
-                class="input"
-                :type="f.type === 'number' ? 'number' : 'text'"
-                :value="sectionDrafts[activeTab]?.[f.key]"
-                @input="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: f.type === 'number' ? Number(($event.target as HTMLInputElement).value) : ($event.target as HTMLInputElement).value }"
-              />
-              <p v-if="f.help" class="helper-text">{{ f.help }}</p>
-            </template>
+            <label>{{ f.label }}</label>
+            <div class="actions-row">
+              <button class="btn btn-tonal" type="button" :disabled="sectionTesting" @click="testPluginSection(activeTab)">
+                {{ sectionTesting ? t('settings.testing') : (f.label || t('settings.test')) }}
+              </button>
+              <span v-if="sectionTestMsg" class="helper-text">{{ sectionTestMsg }}</span>
+            </div>
+            <p v-if="f.help" class="helper-text">{{ f.help }}</p>
           </div>
 
           <div v-if="sectionMsg" class="helper-text" :class="sectionMsgKind === 'error' ? 'msg-error' : 'msg-success'" role="status">{{ sectionMsg }}</div>
@@ -696,58 +609,19 @@ function save() {
             {{ tabMeta(activeTab)!.description }}
           </p>
 
-          <div v-for="f in tabMeta(activeTab)!.fields" :key="f.key" class="field">
-            <template v-if="f.type === 'bool'">
-              <label class="toggle-label">
-                <input
-                  type="checkbox"
-                  :checked="sectionBool(activeTab, f.key)"
-                  @change="sectionDrafts = { ...sectionDrafts, [activeTab]: { ...sectionDrafts[activeTab], [f.key]: ($event.target as HTMLInputElement).checked } }"
-                />
-                <span class="toggle-slider"></span>
-                <span>
-                  <strong>{{ fieldLabel(tabMeta(activeTab), f.key, `settings.${f.key}`) }}</strong>
-                  <br v-if="f.help || f.helpKey" />
-                  <small v-if="f.help || f.helpKey" class="helper-text">
-                    {{ fieldHelp(tabMeta(activeTab), f.key, `settings.${f.key}Desc`) }}
-                  </small>
-                </span>
-              </label>
-            </template>
-            <template v-else-if="f.type === 'select'">
-              <label>{{ fieldLabel(tabMeta(activeTab), f.key, `settings.${f.key}`) }}</label>
-              <AppSelect class="input" :aria-label="fieldLabel(tabMeta(activeTab), f.key, `settings.${f.key}`)" :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="f.options || []" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
-              <p v-if="f.help || f.helpKey" class="helper-text">
-                {{ fieldHelp(tabMeta(activeTab), f.key, `settings.${f.key}Desc`) }}
-              </p>
-            </template>
-            <template v-else-if="f.type === 'model'">
-              <label>{{ fieldLabel(tabMeta(activeTab), f.key, `settings.${f.key}`) }}</label>
-              <AppSelect class="input" :aria-label="fieldLabel(tabMeta(activeTab), f.key, `settings.${f.key}`)" :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="modelOptions" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
-              <p v-if="f.help || f.helpKey" class="helper-text">
-                {{ fieldHelp(tabMeta(activeTab), f.key, `settings.${f.key}Desc`) }}
-              </p>
-            </template>
-            <template v-else-if="f.type === 'models'">
-              <label>{{ fieldLabel(tabMeta(activeTab), f.key, `settings.${f.key}`) }}</label>
-              <ModelsField :model-value="String(sectionDrafts[activeTab]?.[f.key] ?? '')" :options="availableModels" @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }" />
-              <p v-if="f.help || f.helpKey" class="helper-text">
-                {{ fieldHelp(tabMeta(activeTab), f.key, `settings.${f.key}Desc`) }}
-              </p>
-            </template>
-            <template v-else>
-              <label>{{ fieldLabel(tabMeta(activeTab), f.key, `settings.${f.key}`) }}</label>
-              <input
-                class="input"
-                :type="f.type === 'number' ? 'number' : 'text'"
-                :value="sectionDrafts[activeTab]?.[f.key]"
-                @input="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: f.type === 'number' ? Number(($event.target as HTMLInputElement).value) : ($event.target as HTMLInputElement).value }"
-              />
-              <p v-if="f.help || f.helpKey" class="helper-text">
-                {{ fieldHelp(tabMeta(activeTab), f.key, `settings.${f.key}Desc`) }}
-              </p>
-            </template>
-          </div>
+          <SettingsField
+            v-for="f in tabMeta(activeTab)!.fields"
+            :key="f.key"
+            :field="f"
+            :label="fieldLabel(tabMeta(activeTab), f.key, `settings.${f.key}`)"
+            :help="fieldHelp(tabMeta(activeTab), f.key, `settings.${f.key}Desc`)"
+            :model-value="sectionDrafts[activeTab]?.[f.key]"
+            :section-id="activeTab"
+            :model-options="modelOptions"
+            :available-models="availableModels"
+            @update:model-value="sectionDrafts[activeTab] = { ...sectionDrafts[activeTab], [f.key]: $event }"
+            @browse="pickerField = f.key"
+          />
 
           <div v-if="sectionMsg" class="helper-text" :class="sectionMsgKind === 'error' ? 'msg-error' : 'msg-success'" role="status">{{ sectionMsg }}</div>
           <div class="actions-row">

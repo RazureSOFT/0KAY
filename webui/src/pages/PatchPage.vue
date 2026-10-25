@@ -53,8 +53,12 @@ const moduleUrl = computed(() => String(route.meta.module || patch.value?.module
   border-bottom: 1px solid var(--md-outline-variant);
 }
 .patch-header h1 {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
+  /* Same title scale as the other pages (theme.css .page-hero h1), slightly
+     smaller ceiling for an embedded plugin panel. */
+  font-size: clamp(20px, 2.2vw, 26px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
 }
 .open-link {
   color: var(--md-primary);

@@ -210,7 +210,12 @@ onMounted(() => {
   refresh()
   timer = setInterval(refresh, 3000)
 })
-onUnmounted(() => { if (timer) clearInterval(timer) })
+onUnmounted(() => {
+  if (timer) clearInterval(timer)
+  if (toastTimer) clearTimeout(toastTimer)
+  if (armTimer) clearTimeout(armTimer)
+  if (flashTimer) clearTimeout(flashTimer)
+})
 </script>
 
 <template>
@@ -256,7 +261,7 @@ onUnmounted(() => { if (timer) clearInterval(timer) })
             <label><span>{{ t('minecraft.host') }}</span><input v-model="form.host" :placeholder="t('minecraft.hostPlaceholder')" spellcheck="false" /></label>
             <label><span>{{ t('minecraft.port') }}</span><input v-model="form.port" :placeholder="t('minecraft.portPlaceholder')" spellcheck="false" /></label>
             <label><span>{{ t('minecraft.username') }}</span><input v-model="form.username" :placeholder="t('minecraft.usernamePlaceholder')" spellcheck="false" /></label>
-            <label class="wide"><span>{{ t('minecraft.password') }}</span><input v-model="form.password" :placeholder="t('minecraft.passwordPlaceholder')" spellcheck="false" /></label>
+            <label class="wide"><span>{{ t('minecraft.password') }}</span><input v-model="form.password" type="password" :placeholder="t('minecraft.passwordPlaceholder')" spellcheck="false" autocomplete="off" /></label>
           </div>
           <div class="actions">
             <button class="btn filled" :disabled="actBusy('connect') || !form.host.trim()" @click="connect">

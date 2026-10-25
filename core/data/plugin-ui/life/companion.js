@@ -1,185 +1,185 @@
-import { defineComponent as Uo, ref as G, computed as A, onMounted as Fn, openBlock as _, createElementBlock as v, createElementVNode as n, createTextVNode as N, toDisplayString as r, createCommentVNode as E, Fragment as Q, renderList as Te, normalizeClass as Y, createVNode as Oe, Transition as Ca, withCtx as Bo, unref as Ve, withDirectives as P, vModelText as C, vModelCheckbox as fe, TransitionGroup as Ma, nextTick as Hn, watch as ui, onUnmounted as Zo, vShow as un, normalizeStyle as et } from "vue";
+import { defineComponent as Fo, ref as F, computed as A, onMounted as ci, openBlock as v, createElementBlock as g, createElementVNode as i, createTextVNode as z, toDisplayString as r, createCommentVNode as E, Fragment as Q, renderList as Ee, normalizeClass as D, createVNode as Oe, Transition as Ca, withCtx as Ro, unref as $e, withDirectives as P, vModelText as M, vModelCheckbox as me, TransitionGroup as Ma, nextTick as Fi, watch as pn, onUnmounted as po, vShow as ui, normalizeStyle as ot } from "vue";
 import { useRouter as za } from "vue-router";
-import { i18n as Wn, useConfirm as Fo, AppSelect as De } from "@0kay/host";
-function Ea(me) {
-  return me && me.__esModule && Object.prototype.hasOwnProperty.call(me, "default") ? me.default : me;
+import { i18n as Wi, useConfirm as Wo, AppSelect as Ue } from "@0kay/host";
+function Ea(_e) {
+  return _e && _e.__esModule && Object.prototype.hasOwnProperty.call(_e, "default") ? _e.default : _e;
 }
-var cn = { exports: {} };
-var Oa = cn.exports, No;
+var di = { exports: {} };
+var Oa = di.exports, Do;
 function Aa() {
-  return No || (No = 1, (function(me, g) {
-    (function(a, re) {
-      re(g);
+  return Do || (Do = 1, (function(_e, y) {
+    (function(a, Be) {
+      Be(y);
     })(Oa, (function(a) {
-      var re = "1.9.4";
-      function Z(e) {
-        var t, i, o, s;
-        for (i = 1, o = arguments.length; i < o; i++) {
-          s = arguments[i];
+      var Be = "1.9.4";
+      function O(e) {
+        var t, n, o, s;
+        for (n = 1, o = arguments.length; n < o; n++) {
+          s = arguments[n];
           for (t in s)
             e[t] = s[t];
         }
         return e;
       }
-      var ae = Object.create || /* @__PURE__ */ (function() {
+      var He = Object.create || /* @__PURE__ */ (function() {
         function e() {
         }
         return function(t) {
           return e.prototype = t, new e();
         };
       })();
-      function J(e, t) {
-        var i = Array.prototype.slice;
+      function N(e, t) {
+        var n = Array.prototype.slice;
         if (e.bind)
-          return e.bind.apply(e, i.call(arguments, 1));
-        var o = i.call(arguments, 2);
+          return e.bind.apply(e, n.call(arguments, 1));
+        var o = n.call(arguments, 2);
         return function() {
-          return e.apply(t, o.length ? o.concat(i.call(arguments)) : arguments);
+          return e.apply(t, o.length ? o.concat(n.call(arguments)) : arguments);
         };
       }
-      var Fe = 0;
+      var Le = 0;
       function K(e) {
-        return "_leaflet_id" in e || (e._leaflet_id = ++Fe), e._leaflet_id;
+        return "_leaflet_id" in e || (e._leaflet_id = ++Le), e._leaflet_id;
       }
-      function Ae(e, t, i) {
-        var o, s, c, d;
-        return d = function() {
-          o = !1, s && (c.apply(i, s), s = !1);
+      function Xe(e, t, n) {
+        var o, s, c, h;
+        return h = function() {
+          o = !1, s && (c.apply(n, s), s = !1);
         }, c = function() {
-          o ? s = arguments : (e.apply(i, arguments), setTimeout(d, t), o = !0);
+          o ? s = arguments : (e.apply(n, arguments), setTimeout(h, t), o = !0);
         }, c;
       }
-      function we(e, t, i) {
+      function ce(e, t, n) {
         var o = t[1], s = t[0], c = o - s;
-        return e === o && i ? e : ((e - s) % c + c) % c + s;
+        return e === o && n ? e : ((e - s) % c + c) % c + s;
       }
       function de() {
         return !1;
       }
-      function B(e, t) {
+      function q(e, t) {
         if (t === !1)
           return e;
-        var i = Math.pow(10, t === void 0 ? 6 : t);
-        return Math.round(e * i) / i;
+        var n = Math.pow(10, t === void 0 ? 6 : t);
+        return Math.round(e * n) / n;
       }
-      function Xe(e) {
+      function Te(e) {
         return e.trim ? e.trim() : e.replace(/^\s+|\s+$/g, "");
       }
-      function xe(e) {
-        return Xe(e).split(/\s+/);
+      function Ze(e) {
+        return Te(e).split(/\s+/);
       }
-      function he(e, t) {
-        Object.prototype.hasOwnProperty.call(e, "options") || (e.options = e.options ? ae(e.options) : {});
-        for (var i in t)
-          e.options[i] = t[i];
+      function ee(e, t) {
+        Object.prototype.hasOwnProperty.call(e, "options") || (e.options = e.options ? He(e.options) : {});
+        for (var n in t)
+          e.options[n] = t[n];
         return e.options;
       }
-      function jt(e, t, i) {
+      function Yt(e, t, n) {
         var o = [];
         for (var s in e)
-          o.push(encodeURIComponent(i ? s.toUpperCase() : s) + "=" + encodeURIComponent(e[s]));
+          o.push(encodeURIComponent(n ? s.toUpperCase() : s) + "=" + encodeURIComponent(e[s]));
         return (!t || t.indexOf("?") === -1 ? "?" : "&") + o.join("&");
       }
-      var Ot = /\{ *([\w_ -]+) *\}/g;
-      function ut(e, t) {
-        return e.replace(Ot, function(i, o) {
+      var fn = /\{ *([\w_ -]+) *\}/g;
+      function ge(e, t) {
+        return e.replace(fn, function(n, o) {
           var s = t[o];
           if (s === void 0)
-            throw new Error("No value provided for variable " + i);
+            throw new Error("No value provided for variable " + n);
           return typeof s == "function" && (s = s(t)), s;
         });
       }
-      var He = Array.isArray || function(e) {
+      var Ne = Array.isArray || function(e) {
         return Object.prototype.toString.call(e) === "[object Array]";
       };
-      function qt(e, t) {
-        for (var i = 0; i < e.length; i++)
-          if (e[i] === t)
-            return i;
+      function Nt(e, t) {
+        for (var n = 0; n < e.length; n++)
+          if (e[n] === t)
+            return n;
         return -1;
       }
-      var At = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
-      function Kt(e) {
+      var Rt = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+      function Jt(e) {
         return window["webkit" + e] || window["moz" + e] || window["ms" + e];
       }
-      var Yt = 0;
-      function ci(e) {
-        var t = +/* @__PURE__ */ new Date(), i = Math.max(0, 16 - (t - Yt));
-        return Yt = t + i, window.setTimeout(e, i);
+      var mn = 0;
+      function Dt(e) {
+        var t = +/* @__PURE__ */ new Date(), n = Math.max(0, 16 - (t - mn));
+        return mn = t + n, window.setTimeout(e, n);
       }
-      var It = window.requestAnimationFrame || Kt("RequestAnimationFrame") || ci, $e = window.cancelAnimationFrame || Kt("CancelAnimationFrame") || Kt("CancelRequestAnimationFrame") || function(e) {
+      var Xt = window.requestAnimationFrame || Jt("RequestAnimationFrame") || Dt, Fe = window.cancelAnimationFrame || Jt("CancelAnimationFrame") || Jt("CancelRequestAnimationFrame") || function(e) {
         window.clearTimeout(e);
       };
-      function Se(e, t, i) {
-        if (i && It === ci)
+      function Se(e, t, n) {
+        if (n && Xt === Dt)
           e.call(t);
         else
-          return It.call(window, J(e, t));
+          return Xt.call(window, N(e, t));
       }
-      function Pe(e) {
-        e && $e.call(window, e);
+      function Ce(e) {
+        e && Fe.call(window, e);
       }
-      var Bt = {
+      var Vt = {
         __proto__: null,
-        extend: Z,
-        create: ae,
-        bind: J,
+        extend: O,
+        create: He,
+        bind: N,
         get lastId() {
-          return Fe;
+          return Le;
         },
         stamp: K,
-        throttle: Ae,
-        wrapNum: we,
+        throttle: Xe,
+        wrapNum: ce,
         falseFn: de,
-        formatNum: B,
-        trim: Xe,
-        splitWords: xe,
-        setOptions: he,
-        getParamString: jt,
-        template: ut,
-        isArray: He,
-        indexOf: qt,
-        emptyImageUrl: At,
-        requestFn: It,
-        cancelFn: $e,
+        formatNum: q,
+        trim: Te,
+        splitWords: Ze,
+        setOptions: ee,
+        getParamString: Yt,
+        template: ge,
+        isArray: Ne,
+        indexOf: Nt,
+        emptyImageUrl: Rt,
+        requestFn: Xt,
+        cancelFn: Fe,
         requestAnimFrame: Se,
-        cancelAnimFrame: Pe
+        cancelAnimFrame: Ce
       };
-      function je() {
+      function Qe() {
       }
-      je.extend = function(e) {
+      Qe.extend = function(e) {
         var t = function() {
-          he(this), this.initialize && this.initialize.apply(this, arguments), this.callInitHooks();
-        }, i = t.__super__ = this.prototype, o = ae(i);
+          ee(this), this.initialize && this.initialize.apply(this, arguments), this.callInitHooks();
+        }, n = t.__super__ = this.prototype, o = He(n);
         o.constructor = t, t.prototype = o;
         for (var s in this)
           Object.prototype.hasOwnProperty.call(this, s) && s !== "prototype" && s !== "__super__" && (t[s] = this[s]);
-        return e.statics && Z(t, e.statics), e.includes && (di(e.includes), Z.apply(null, [o].concat(e.includes))), Z(o, e), delete o.statics, delete o.includes, o.options && (o.options = i.options ? ae(i.options) : {}, Z(o.options, e.options)), o._initHooks = [], o.callInitHooks = function() {
+        return e.statics && O(t, e.statics), e.includes && (Qt(e.includes), O.apply(null, [o].concat(e.includes))), O(o, e), delete o.statics, delete o.includes, o.options && (o.options = n.options ? He(n.options) : {}, O(o.options, e.options)), o._initHooks = [], o.callInitHooks = function() {
           if (!this._initHooksCalled) {
-            i.callInitHooks && i.callInitHooks.call(this), this._initHooksCalled = !0;
-            for (var c = 0, d = o._initHooks.length; c < d; c++)
+            n.callInitHooks && n.callInitHooks.call(this), this._initHooksCalled = !0;
+            for (var c = 0, h = o._initHooks.length; c < h; c++)
               o._initHooks[c].call(this);
           }
         }, t;
-      }, je.include = function(e) {
+      }, Qe.include = function(e) {
         var t = this.prototype.options;
-        return Z(this.prototype, e), e.options && (this.prototype.options = t, this.mergeOptions(e.options)), this;
-      }, je.mergeOptions = function(e) {
-        return Z(this.prototype.options, e), this;
-      }, je.addInitHook = function(e) {
-        var t = Array.prototype.slice.call(arguments, 1), i = typeof e == "function" ? e : function() {
+        return O(this.prototype, e), e.options && (this.prototype.options = t, this.mergeOptions(e.options)), this;
+      }, Qe.mergeOptions = function(e) {
+        return O(this.prototype.options, e), this;
+      }, Qe.addInitHook = function(e) {
+        var t = Array.prototype.slice.call(arguments, 1), n = typeof e == "function" ? e : function() {
           this[e].apply(this, t);
         };
-        return this.prototype._initHooks = this.prototype._initHooks || [], this.prototype._initHooks.push(i), this;
+        return this.prototype._initHooks = this.prototype._initHooks || [], this.prototype._initHooks.push(n), this;
       };
-      function di(e) {
+      function Qt(e) {
         if (!(typeof L > "u" || !L || !L.Mixin)) {
-          e = He(e) ? e : [e];
+          e = Ne(e) ? e : [e];
           for (var t = 0; t < e.length; t++)
             e[t] === L.Mixin.Events && console.warn("Deprecated include of L.Mixin.Events: this property will be removed in future releases, please inherit from L.Evented instead.", new Error().stack);
         }
       }
-      var Ue = {
+      var We = {
         /* @method on(type: String, fn: Function, context?: Object): this
          * Adds a listener function (`fn`) to a particular event type of the object. You can optionally specify the context of the listener (object the this keyword will point to). You can also pass several space-separated types (e.g. `'click dblclick'`).
          *
@@ -187,14 +187,14 @@ function Aa() {
          * @method on(eventMap: Object): this
          * Adds a set of type/listener pairs, e.g. `{click: onClick, mousemove: onMouseMove}`
          */
-        on: function(e, t, i) {
+        on: function(e, t, n) {
           if (typeof e == "object")
             for (var o in e)
               this._on(o, e[o], t);
           else {
-            e = xe(e);
+            e = Ze(e);
             for (var s = 0, c = e.length; s < c; s++)
-              this._on(e[s], t, i);
+              this._on(e[s], t, n);
           }
           return this;
         },
@@ -209,32 +209,32 @@ function Aa() {
          * @method off: this
          * Removes all listeners to all events on the object. This includes implicitly attached events.
          */
-        off: function(e, t, i) {
+        off: function(e, t, n) {
           if (!arguments.length)
             delete this._events;
           else if (typeof e == "object")
             for (var o in e)
               this._off(o, e[o], t);
           else {
-            e = xe(e);
-            for (var s = arguments.length === 1, c = 0, d = e.length; c < d; c++)
-              s ? this._off(e[c]) : this._off(e[c], t, i);
+            e = Ze(e);
+            for (var s = arguments.length === 1, c = 0, h = e.length; c < h; c++)
+              s ? this._off(e[c]) : this._off(e[c], t, n);
           }
           return this;
         },
         // attach listener (without syntactic sugar now)
-        _on: function(e, t, i, o) {
+        _on: function(e, t, n, o) {
           if (typeof t != "function") {
             console.warn("wrong listener type: " + typeof t);
             return;
           }
-          if (this._listens(e, t, i) === !1) {
-            i === this && (i = void 0);
-            var s = { fn: t, ctx: i };
+          if (this._listens(e, t, n) === !1) {
+            n === this && (n = void 0);
+            var s = { fn: t, ctx: n };
             o && (s.once = !0), this._events = this._events || {}, this._events[e] = this._events[e] || [], this._events[e].push(s);
           }
         },
-        _off: function(e, t, i) {
+        _off: function(e, t, n) {
           var o, s, c;
           if (this._events && (o = this._events[e], !!o)) {
             if (arguments.length === 1) {
@@ -248,10 +248,10 @@ function Aa() {
               console.warn("wrong listener type: " + typeof t);
               return;
             }
-            var d = this._listens(e, t, i);
-            if (d !== !1) {
-              var p = o[d];
-              this._firingCount && (p.fn = de, this._events[e] = o = o.slice()), o.splice(d, 1);
+            var h = this._listens(e, t, n);
+            if (h !== !1) {
+              var p = o[h];
+              this._firingCount && (p.fn = de, this._events[e] = o = o.slice()), o.splice(h, 1);
             }
           }
         },
@@ -259,10 +259,10 @@ function Aa() {
         // Fires an event of the specified type. You can optionally provide a data
         // object — the first argument of the listener function will contain its
         // properties. The event can optionally be propagated to event parents.
-        fire: function(e, t, i) {
-          if (!this.listens(e, i))
+        fire: function(e, t, n) {
+          if (!this.listens(e, n))
             return this;
-          var o = Z({}, t, {
+          var o = O({}, t, {
             type: e,
             target: this,
             sourceTarget: t && t.sourceTarget || this
@@ -271,56 +271,56 @@ function Aa() {
             var s = this._events[e];
             if (s) {
               this._firingCount = this._firingCount + 1 || 1;
-              for (var c = 0, d = s.length; c < d; c++) {
+              for (var c = 0, h = s.length; c < h; c++) {
                 var p = s[c], f = p.fn;
                 p.once && this.off(e, f, p.ctx), f.call(p.ctx || this, o);
               }
               this._firingCount--;
             }
           }
-          return i && this._propagateEvent(o), this;
+          return n && this._propagateEvent(o), this;
         },
         // @method listens(type: String, propagate?: Boolean): Boolean
         // @method listens(type: String, fn: Function, context?: Object, propagate?: Boolean): Boolean
         // Returns `true` if a particular event type has any listeners attached to it.
         // The verification can optionally be propagated, it will return `true` if parents have the listener attached to it.
-        listens: function(e, t, i, o) {
+        listens: function(e, t, n, o) {
           typeof e != "string" && console.warn('"string" type argument expected');
           var s = t;
-          typeof t != "function" && (o = !!t, s = void 0, i = void 0);
+          typeof t != "function" && (o = !!t, s = void 0, n = void 0);
           var c = this._events && this._events[e];
-          if (c && c.length && this._listens(e, s, i) !== !1)
+          if (c && c.length && this._listens(e, s, n) !== !1)
             return !0;
           if (o) {
-            for (var d in this._eventParents)
-              if (this._eventParents[d].listens(e, t, i, o))
+            for (var h in this._eventParents)
+              if (this._eventParents[h].listens(e, t, n, o))
                 return !0;
           }
           return !1;
         },
         // returns the index (number) or false
-        _listens: function(e, t, i) {
+        _listens: function(e, t, n) {
           if (!this._events)
             return !1;
           var o = this._events[e] || [];
           if (!t)
             return !!o.length;
-          i === this && (i = void 0);
+          n === this && (n = void 0);
           for (var s = 0, c = o.length; s < c; s++)
-            if (o[s].fn === t && o[s].ctx === i)
+            if (o[s].fn === t && o[s].ctx === n)
               return s;
           return !1;
         },
         // @method once(…): this
         // Behaves as [`on(…)`](#evented-on), except the listener will only get fired once and then removed.
-        once: function(e, t, i) {
+        once: function(e, t, n) {
           if (typeof e == "object")
             for (var o in e)
               this._on(o, e[o], t, !0);
           else {
-            e = xe(e);
+            e = Ze(e);
             for (var s = 0, c = e.length; s < c; s++)
-              this._on(e[s], t, i, !0);
+              this._on(e[s], t, n, !0);
           }
           return this;
         },
@@ -336,30 +336,30 @@ function Aa() {
         },
         _propagateEvent: function(e) {
           for (var t in this._eventParents)
-            this._eventParents[t].fire(e.type, Z({
+            this._eventParents[t].fire(e.type, O({
               layer: e.target,
               propagatedFrom: e.target
             }, e), !0);
         }
       };
-      Ue.addEventListener = Ue.on, Ue.removeEventListener = Ue.clearAllEventListeners = Ue.off, Ue.addOneTimeEventListener = Ue.once, Ue.fireEvent = Ue.fire, Ue.hasEventListeners = Ue.listens;
-      var xt = je.extend(Ue);
-      function M(e, t, i) {
-        this.x = i ? Math.round(e) : e, this.y = i ? Math.round(t) : t;
+      We.addEventListener = We.on, We.removeEventListener = We.clearAllEventListeners = We.off, We.addOneTimeEventListener = We.once, We.fireEvent = We.fire, We.hasEventListeners = We.listens;
+      var Pt = Qe.extend(We);
+      function W(e, t, n) {
+        this.x = n ? Math.round(e) : e, this.y = n ? Math.round(t) : t;
       }
-      var _t = Math.trunc || function(e) {
+      var en = Math.trunc || function(e) {
         return e > 0 ? Math.floor(e) : Math.ceil(e);
       };
-      M.prototype = {
+      W.prototype = {
         // @method clone(): Point
         // Returns a copy of the current point.
         clone: function() {
-          return new M(this.x, this.y);
+          return new W(this.x, this.y);
         },
         // @method add(otherPoint: Point): Point
         // Returns the result of addition of the current and the given points.
         add: function(e) {
-          return this.clone()._add(V(e));
+          return this.clone()._add($(e));
         },
         _add: function(e) {
           return this.x += e.x, this.y += e.y, this;
@@ -367,7 +367,7 @@ function Aa() {
         // @method subtract(otherPoint: Point): Point
         // Returns the result of subtraction of the given point from the current.
         subtract: function(e) {
-          return this.clone()._subtract(V(e));
+          return this.clone()._subtract($(e));
         },
         _subtract: function(e) {
           return this.x -= e.x, this.y -= e.y, this;
@@ -394,13 +394,13 @@ function Aa() {
         // [scaling matrix](https://en.wikipedia.org/wiki/Scaling_%28geometry%29#Matrix_representation)
         // defined by `scale`.
         scaleBy: function(e) {
-          return new M(this.x * e.x, this.y * e.y);
+          return new W(this.x * e.x, this.y * e.y);
         },
         // @method unscaleBy(scale: Point): Point
         // Inverse of `scaleBy`. Divide each coordinate of the current point by
         // each coordinate of `scale`.
         unscaleBy: function(e) {
-          return new M(this.x / e.x, this.y / e.y);
+          return new W(this.x / e.x, this.y / e.y);
         },
         // @method round(): Point
         // Returns a copy of the current point with rounded coordinates.
@@ -432,38 +432,38 @@ function Aa() {
           return this.clone()._trunc();
         },
         _trunc: function() {
-          return this.x = _t(this.x), this.y = _t(this.y), this;
+          return this.x = en(this.x), this.y = en(this.y), this;
         },
         // @method distanceTo(otherPoint: Point): Number
         // Returns the cartesian distance between the current and the given points.
         distanceTo: function(e) {
-          e = V(e);
-          var t = e.x - this.x, i = e.y - this.y;
-          return Math.sqrt(t * t + i * i);
+          e = $(e);
+          var t = e.x - this.x, n = e.y - this.y;
+          return Math.sqrt(t * t + n * n);
         },
         // @method equals(otherPoint: Point): Boolean
         // Returns `true` if the given point has the same coordinates.
         equals: function(e) {
-          return e = V(e), e.x === this.x && e.y === this.y;
+          return e = $(e), e.x === this.x && e.y === this.y;
         },
         // @method contains(otherPoint: Point): Boolean
         // Returns `true` if both coordinates of the given point are less than the corresponding current point coordinates (in absolute values).
         contains: function(e) {
-          return e = V(e), Math.abs(e.x) <= Math.abs(this.x) && Math.abs(e.y) <= Math.abs(this.y);
+          return e = $(e), Math.abs(e.x) <= Math.abs(this.x) && Math.abs(e.y) <= Math.abs(this.y);
         },
         // @method toString(): String
         // Returns a string representation of the point for debugging purposes.
         toString: function() {
-          return "Point(" + B(this.x) + ", " + B(this.y) + ")";
+          return "Point(" + q(this.x) + ", " + q(this.y) + ")";
         }
       };
-      function V(e, t, i) {
-        return e instanceof M ? e : He(e) ? new M(e[0], e[1]) : e == null ? e : typeof e == "object" && "x" in e && "y" in e ? new M(e.x, e.y) : new M(e, t, i);
+      function $(e, t, n) {
+        return e instanceof W ? e : Ne(e) ? new W(e[0], e[1]) : e == null ? e : typeof e == "object" && "x" in e && "y" in e ? new W(e.x, e.y) : new W(e, t, n);
       }
       function m(e, t) {
         if (e)
-          for (var i = t ? [e, t] : e, o = 0, s = i.length; o < s; o++)
-            this.extend(i[o]);
+          for (var n = t ? [e, t] : e, o = 0, s = n.length; o < s; o++)
+            this.extend(n[o]);
       }
       m.prototype = {
         // @method extend(point: Point): this
@@ -472,19 +472,19 @@ function Aa() {
         // @method extend(otherBounds: Bounds): this
         // Extend the bounds to contain the given bounds
         extend: function(e) {
-          var t, i;
+          var t, n;
           if (!e)
             return this;
-          if (e instanceof M || typeof e[0] == "number" || "x" in e)
-            t = i = V(e);
-          else if (e = T(e), t = e.min, i = e.max, !t || !i)
+          if (e instanceof W || typeof e[0] == "number" || "x" in e)
+            t = n = $(e);
+          else if (e = T(e), t = e.min, n = e.max, !t || !n)
             return this;
-          return !this.min && !this.max ? (this.min = t.clone(), this.max = i.clone()) : (this.min.x = Math.min(t.x, this.min.x), this.max.x = Math.max(i.x, this.max.x), this.min.y = Math.min(t.y, this.min.y), this.max.y = Math.max(i.y, this.max.y)), this;
+          return !this.min && !this.max ? (this.min = t.clone(), this.max = n.clone()) : (this.min.x = Math.min(t.x, this.min.x), this.max.x = Math.max(n.x, this.max.x), this.min.y = Math.min(t.y, this.min.y), this.max.y = Math.max(n.y, this.max.y)), this;
         },
         // @method getCenter(round?: Boolean): Point
         // Returns the center point of the bounds.
         getCenter: function(e) {
-          return V(
+          return $(
             (this.min.x + this.max.x) / 2,
             (this.min.y + this.max.y) / 2,
             e
@@ -493,12 +493,12 @@ function Aa() {
         // @method getBottomLeft(): Point
         // Returns the bottom-left point of the bounds.
         getBottomLeft: function() {
-          return V(this.min.x, this.max.y);
+          return $(this.min.x, this.max.y);
         },
         // @method getTopRight(): Point
         // Returns the top-right point of the bounds.
         getTopRight: function() {
-          return V(this.max.x, this.min.y);
+          return $(this.max.x, this.min.y);
         },
         // @method getTopLeft(): Point
         // Returns the top-left point of the bounds (i.e. [`this.min`](#bounds-min)).
@@ -521,24 +521,24 @@ function Aa() {
         // @method contains(point: Point): Boolean
         // Returns `true` if the rectangle contains the given point.
         contains: function(e) {
-          var t, i;
-          return typeof e[0] == "number" || e instanceof M ? e = V(e) : e = T(e), e instanceof m ? (t = e.min, i = e.max) : t = i = e, t.x >= this.min.x && i.x <= this.max.x && t.y >= this.min.y && i.y <= this.max.y;
+          var t, n;
+          return typeof e[0] == "number" || e instanceof W ? e = $(e) : e = T(e), e instanceof m ? (t = e.min, n = e.max) : t = n = e, t.x >= this.min.x && n.x <= this.max.x && t.y >= this.min.y && n.y <= this.max.y;
         },
         // @method intersects(otherBounds: Bounds): Boolean
         // Returns `true` if the rectangle intersects the given bounds. Two bounds
         // intersect if they have at least one point in common.
         intersects: function(e) {
           e = T(e);
-          var t = this.min, i = this.max, o = e.min, s = e.max, c = s.x >= t.x && o.x <= i.x, d = s.y >= t.y && o.y <= i.y;
-          return c && d;
+          var t = this.min, n = this.max, o = e.min, s = e.max, c = s.x >= t.x && o.x <= n.x, h = s.y >= t.y && o.y <= n.y;
+          return c && h;
         },
         // @method overlaps(otherBounds: Bounds): Boolean
         // Returns `true` if the rectangle overlaps the given bounds. Two bounds
         // overlap if their intersection is an area.
         overlaps: function(e) {
           e = T(e);
-          var t = this.min, i = this.max, o = e.min, s = e.max, c = s.x > t.x && o.x < i.x, d = s.y > t.y && o.y < i.y;
-          return c && d;
+          var t = this.min, n = this.max, o = e.min, s = e.max, c = s.x > t.x && o.x < n.x, h = s.y > t.y && o.y < n.y;
+          return c && h;
         },
         // @method isValid(): Boolean
         // Returns `true` if the bounds are properly initialized.
@@ -550,10 +550,10 @@ function Aa() {
         // For example, a ratio of 0.5 extends the bounds by 50% in each direction.
         // Negative values will retract the bounds.
         pad: function(e) {
-          var t = this.min, i = this.max, o = Math.abs(t.x - i.x) * e, s = Math.abs(t.y - i.y) * e;
+          var t = this.min, n = this.max, o = Math.abs(t.x - n.x) * e, s = Math.abs(t.y - n.y) * e;
           return T(
-            V(t.x - o, t.y - s),
-            V(i.x + o, i.y + s)
+            $(t.x - o, t.y - s),
+            $(n.x + o, n.y + s)
           );
         },
         // @method equals(otherBounds: Bounds): Boolean
@@ -565,43 +565,43 @@ function Aa() {
       function T(e, t) {
         return !e || e instanceof m ? e : new m(e, t);
       }
-      function y(e, t) {
+      function b(e, t) {
         if (e)
-          for (var i = t ? [e, t] : e, o = 0, s = i.length; o < s; o++)
-            this.extend(i[o]);
+          for (var n = t ? [e, t] : e, o = 0, s = n.length; o < s; o++)
+            this.extend(n[o]);
       }
-      y.prototype = {
+      b.prototype = {
         // @method extend(latlng: LatLng): this
         // Extend the bounds to contain the given point
         // @alternative
         // @method extend(otherBounds: LatLngBounds): this
         // Extend the bounds to contain the given bounds
         extend: function(e) {
-          var t = this._southWest, i = this._northEast, o, s;
-          if (e instanceof X)
+          var t = this._southWest, n = this._northEast, o, s;
+          if (e instanceof ne)
             o = e, s = e;
-          else if (e instanceof y) {
+          else if (e instanceof b) {
             if (o = e._southWest, s = e._northEast, !o || !s)
               return this;
           } else
-            return e ? this.extend($(e) || ee(e)) : this;
-          return !t && !i ? (this._southWest = new X(o.lat, o.lng), this._northEast = new X(s.lat, s.lng)) : (t.lat = Math.min(o.lat, t.lat), t.lng = Math.min(o.lng, t.lng), i.lat = Math.max(s.lat, i.lat), i.lng = Math.max(s.lng, i.lng)), this;
+            return e ? this.extend(ie(e) || G(e)) : this;
+          return !t && !n ? (this._southWest = new ne(o.lat, o.lng), this._northEast = new ne(s.lat, s.lng)) : (t.lat = Math.min(o.lat, t.lat), t.lng = Math.min(o.lng, t.lng), n.lat = Math.max(s.lat, n.lat), n.lng = Math.max(s.lng, n.lng)), this;
         },
         // @method pad(bufferRatio: Number): LatLngBounds
         // Returns bounds created by extending or retracting the current bounds by a given ratio in each direction.
         // For example, a ratio of 0.5 extends the bounds by 50% in each direction.
         // Negative values will retract the bounds.
         pad: function(e) {
-          var t = this._southWest, i = this._northEast, o = Math.abs(t.lat - i.lat) * e, s = Math.abs(t.lng - i.lng) * e;
-          return new y(
-            new X(t.lat - o, t.lng - s),
-            new X(i.lat + o, i.lng + s)
+          var t = this._southWest, n = this._northEast, o = Math.abs(t.lat - n.lat) * e, s = Math.abs(t.lng - n.lng) * e;
+          return new b(
+            new ne(t.lat - o, t.lng - s),
+            new ne(n.lat + o, n.lng + s)
           );
         },
         // @method getCenter(): LatLng
         // Returns the center point of the bounds.
         getCenter: function() {
-          return new X(
+          return new ne(
             (this._southWest.lat + this._northEast.lat) / 2,
             (this._southWest.lng + this._northEast.lng) / 2
           );
@@ -619,12 +619,12 @@ function Aa() {
         // @method getNorthWest(): LatLng
         // Returns the north-west point of the bounds.
         getNorthWest: function() {
-          return new X(this.getNorth(), this.getWest());
+          return new ne(this.getNorth(), this.getWest());
         },
         // @method getSouthEast(): LatLng
         // Returns the south-east point of the bounds.
         getSouthEast: function() {
-          return new X(this.getSouth(), this.getEast());
+          return new ne(this.getSouth(), this.getEast());
         },
         // @method getWest(): Number
         // Returns the west longitude of the bounds
@@ -652,23 +652,23 @@ function Aa() {
         // @method contains (latlng: LatLng): Boolean
         // Returns `true` if the rectangle contains the given point.
         contains: function(e) {
-          typeof e[0] == "number" || e instanceof X || "lat" in e ? e = $(e) : e = ee(e);
-          var t = this._southWest, i = this._northEast, o, s;
-          return e instanceof y ? (o = e.getSouthWest(), s = e.getNorthEast()) : o = s = e, o.lat >= t.lat && s.lat <= i.lat && o.lng >= t.lng && s.lng <= i.lng;
+          typeof e[0] == "number" || e instanceof ne || "lat" in e ? e = ie(e) : e = G(e);
+          var t = this._southWest, n = this._northEast, o, s;
+          return e instanceof b ? (o = e.getSouthWest(), s = e.getNorthEast()) : o = s = e, o.lat >= t.lat && s.lat <= n.lat && o.lng >= t.lng && s.lng <= n.lng;
         },
         // @method intersects(otherBounds: LatLngBounds): Boolean
         // Returns `true` if the rectangle intersects the given bounds. Two bounds intersect if they have at least one point in common.
         intersects: function(e) {
-          e = ee(e);
-          var t = this._southWest, i = this._northEast, o = e.getSouthWest(), s = e.getNorthEast(), c = s.lat >= t.lat && o.lat <= i.lat, d = s.lng >= t.lng && o.lng <= i.lng;
-          return c && d;
+          e = G(e);
+          var t = this._southWest, n = this._northEast, o = e.getSouthWest(), s = e.getNorthEast(), c = s.lat >= t.lat && o.lat <= n.lat, h = s.lng >= t.lng && o.lng <= n.lng;
+          return c && h;
         },
         // @method overlaps(otherBounds: LatLngBounds): Boolean
         // Returns `true` if the rectangle overlaps the given bounds. Two bounds overlap if their intersection is an area.
         overlaps: function(e) {
-          e = ee(e);
-          var t = this._southWest, i = this._northEast, o = e.getSouthWest(), s = e.getNorthEast(), c = s.lat > t.lat && o.lat < i.lat, d = s.lng > t.lng && o.lng < i.lng;
-          return c && d;
+          e = G(e);
+          var t = this._southWest, n = this._northEast, o = e.getSouthWest(), s = e.getNorthEast(), c = s.lat > t.lat && o.lat < n.lat, h = s.lng > t.lng && o.lng < n.lng;
+          return c && h;
         },
         // @method toBBoxString(): String
         // Returns a string with bounding box coordinates in a 'southwest_lng,southwest_lat,northeast_lng,northeast_lat' format. Useful for sending requests to web services that return geo data.
@@ -678,7 +678,7 @@ function Aa() {
         // @method equals(otherBounds: LatLngBounds, maxMargin?: Number): Boolean
         // Returns `true` if the rectangle is equivalent (within a small margin of error) to the given bounds. The margin of error can be overridden by setting `maxMargin` to a small number.
         equals: function(e, t) {
-          return e ? (e = ee(e), this._southWest.equals(e.getSouthWest(), t) && this._northEast.equals(e.getNorthEast(), t)) : !1;
+          return e ? (e = G(e), this._southWest.equals(e.getSouthWest(), t) && this._northEast.equals(e.getNorthEast(), t)) : !1;
         },
         // @method isValid(): Boolean
         // Returns `true` if the bounds are properly initialized.
@@ -686,70 +686,70 @@ function Aa() {
           return !!(this._southWest && this._northEast);
         }
       };
-      function ee(e, t) {
-        return e instanceof y ? e : new y(e, t);
+      function G(e, t) {
+        return e instanceof b ? e : new b(e, t);
       }
-      function X(e, t, i) {
+      function ne(e, t, n) {
         if (isNaN(e) || isNaN(t))
           throw new Error("Invalid LatLng object: (" + e + ", " + t + ")");
-        this.lat = +e, this.lng = +t, i !== void 0 && (this.alt = +i);
+        this.lat = +e, this.lng = +t, n !== void 0 && (this.alt = +n);
       }
-      X.prototype = {
+      ne.prototype = {
         // @method equals(otherLatLng: LatLng, maxMargin?: Number): Boolean
         // Returns `true` if the given `LatLng` point is at the same position (within a small margin of error). The margin of error can be overridden by setting `maxMargin` to a small number.
         equals: function(e, t) {
           if (!e)
             return !1;
-          e = $(e);
-          var i = Math.max(
+          e = ie(e);
+          var n = Math.max(
             Math.abs(this.lat - e.lat),
             Math.abs(this.lng - e.lng)
           );
-          return i <= (t === void 0 ? 1e-9 : t);
+          return n <= (t === void 0 ? 1e-9 : t);
         },
         // @method toString(): String
         // Returns a string representation of the point (for debugging purposes).
         toString: function(e) {
-          return "LatLng(" + B(this.lat, e) + ", " + B(this.lng, e) + ")";
+          return "LatLng(" + q(this.lat, e) + ", " + q(this.lng, e) + ")";
         },
         // @method distanceTo(otherLatLng: LatLng): Number
         // Returns the distance (in meters) to the given `LatLng` calculated using the [Spherical Law of Cosines](https://en.wikipedia.org/wiki/Spherical_law_of_cosines).
         distanceTo: function(e) {
-          return Be.distance(this, $(e));
+          return je.distance(this, ie(e));
         },
         // @method wrap(): LatLng
         // Returns a new `LatLng` object with the longitude wrapped so it's always between -180 and +180 degrees.
         wrap: function() {
-          return Be.wrapLatLng(this);
+          return je.wrapLatLng(this);
         },
         // @method toBounds(sizeInMeters: Number): LatLngBounds
         // Returns a new `LatLngBounds` object in which each boundary is `sizeInMeters/2` meters apart from the `LatLng`.
         toBounds: function(e) {
-          var t = 180 * e / 40075017, i = t / Math.cos(Math.PI / 180 * this.lat);
-          return ee(
-            [this.lat - t, this.lng - i],
-            [this.lat + t, this.lng + i]
+          var t = 180 * e / 40075017, n = t / Math.cos(Math.PI / 180 * this.lat);
+          return G(
+            [this.lat - t, this.lng - n],
+            [this.lat + t, this.lng + n]
           );
         },
         clone: function() {
-          return new X(this.lat, this.lng, this.alt);
+          return new ne(this.lat, this.lng, this.alt);
         }
       };
-      function $(e, t, i) {
-        return e instanceof X ? e : He(e) && typeof e[0] != "object" ? e.length === 3 ? new X(e[0], e[1], e[2]) : e.length === 2 ? new X(e[0], e[1]) : null : e == null ? e : typeof e == "object" && "lat" in e ? new X(e.lat, "lng" in e ? e.lng : e.lon, e.alt) : t === void 0 ? null : new X(e, t, i);
+      function ie(e, t, n) {
+        return e instanceof ne ? e : Ne(e) && typeof e[0] != "object" ? e.length === 3 ? new ne(e[0], e[1], e[2]) : e.length === 2 ? new ne(e[0], e[1]) : null : e == null ? e : typeof e == "object" && "lat" in e ? new ne(e.lat, "lng" in e ? e.lng : e.lon, e.alt) : t === void 0 ? null : new ne(e, t, n);
       }
-      var ge = {
+      var et = {
         // @method latLngToPoint(latlng: LatLng, zoom: Number): Point
         // Projects geographical coordinates into pixel coordinates for a given zoom.
         latLngToPoint: function(e, t) {
-          var i = this.projection.project(e), o = this.scale(t);
-          return this.transformation._transform(i, o);
+          var n = this.projection.project(e), o = this.scale(t);
+          return this.transformation._transform(n, o);
         },
         // @method pointToLatLng(point: Point, zoom: Number): LatLng
         // The inverse of `latLngToPoint`. Projects pixel coordinates on a given
         // zoom into geographical coordinates.
         pointToLatLng: function(e, t) {
-          var i = this.scale(t), o = this.transformation.untransform(e, i);
+          var n = this.scale(t), o = this.transformation.untransform(e, n);
           return this.projection.unproject(o);
         },
         // @method project(latlng: LatLng): Point
@@ -782,7 +782,7 @@ function Aa() {
         getProjectedBounds: function(e) {
           if (this.infinite)
             return null;
-          var t = this.projection.bounds, i = this.scale(e), o = this.transformation.transform(t.min, i), s = this.transformation.transform(t.max, i);
+          var t = this.projection.bounds, n = this.scale(e), o = this.transformation.transform(t.min, n), s = this.transformation.transform(t.max, n);
           return new m(o, s);
         },
         // @method distance(latlng1: LatLng, latlng2: LatLng): Number
@@ -806,21 +806,21 @@ function Aa() {
         // Returns a `LatLng` where lat and lng has been wrapped according to the
         // CRS's `wrapLat` and `wrapLng` properties, if they are outside the CRS's bounds.
         wrapLatLng: function(e) {
-          var t = this.wrapLng ? we(e.lng, this.wrapLng, !0) : e.lng, i = this.wrapLat ? we(e.lat, this.wrapLat, !0) : e.lat, o = e.alt;
-          return new X(i, t, o);
+          var t = this.wrapLng ? ce(e.lng, this.wrapLng, !0) : e.lng, n = this.wrapLat ? ce(e.lat, this.wrapLat, !0) : e.lat, o = e.alt;
+          return new ne(n, t, o);
         },
         // @method wrapLatLngBounds(bounds: LatLngBounds): LatLngBounds
         // Returns a `LatLngBounds` with the same size as the given one, ensuring
         // that its center is within the CRS's bounds.
         // Only accepts actual `L.LatLngBounds` instances, not arrays.
         wrapLatLngBounds: function(e) {
-          var t = e.getCenter(), i = this.wrapLatLng(t), o = t.lat - i.lat, s = t.lng - i.lng;
+          var t = e.getCenter(), n = this.wrapLatLng(t), o = t.lat - n.lat, s = t.lng - n.lng;
           if (o === 0 && s === 0)
             return e;
-          var c = e.getSouthWest(), d = e.getNorthEast(), p = new X(c.lat - o, c.lng - s), f = new X(d.lat - o, d.lng - s);
-          return new y(p, f);
+          var c = e.getSouthWest(), h = e.getNorthEast(), p = new ne(c.lat - o, c.lng - s), f = new ne(h.lat - o, h.lng - s);
+          return new b(p, f);
         }
-      }, Be = Z({}, ge, {
+      }, je = O({}, et, {
         wrapLng: [-180, 180],
         // Mean Earth Radius, as recommended for use by
         // the International Union of Geodesy and Geophysics,
@@ -828,39 +828,39 @@ function Aa() {
         R: 6371e3,
         // distance between two geographical points using spherical law of cosines approximation
         distance: function(e, t) {
-          var i = Math.PI / 180, o = e.lat * i, s = t.lat * i, c = Math.sin((t.lat - e.lat) * i / 2), d = Math.sin((t.lng - e.lng) * i / 2), p = c * c + Math.cos(o) * Math.cos(s) * d * d, f = 2 * Math.atan2(Math.sqrt(p), Math.sqrt(1 - p));
+          var n = Math.PI / 180, o = e.lat * n, s = t.lat * n, c = Math.sin((t.lat - e.lat) * n / 2), h = Math.sin((t.lng - e.lng) * n / 2), p = c * c + Math.cos(o) * Math.cos(s) * h * h, f = 2 * Math.atan2(Math.sqrt(p), Math.sqrt(1 - p));
           return this.R * f;
         }
-      }), F = 6378137, Ri = {
-        R: F,
+      }), Re = 6378137, Ae = {
+        R: Re,
         MAX_LATITUDE: 85.0511287798,
         project: function(e) {
-          var t = Math.PI / 180, i = this.MAX_LATITUDE, o = Math.max(Math.min(i, e.lat), -i), s = Math.sin(o * t);
-          return new M(
+          var t = Math.PI / 180, n = this.MAX_LATITUDE, o = Math.max(Math.min(n, e.lat), -n), s = Math.sin(o * t);
+          return new W(
             this.R * e.lng * t,
             this.R * Math.log((1 + s) / (1 - s)) / 2
           );
         },
         unproject: function(e) {
           var t = 180 / Math.PI;
-          return new X(
+          return new ne(
             (2 * Math.atan(Math.exp(e.y / this.R)) - Math.PI / 2) * t,
             e.x * t / this.R
           );
         },
         bounds: (function() {
-          var e = F * Math.PI;
+          var e = Re * Math.PI;
           return new m([-e, -e], [e, e]);
         })()
       };
-      function Vi(e, t, i, o) {
-        if (He(e)) {
+      function qe(e, t, n, o) {
+        if (Ne(e)) {
           this._a = e[0], this._b = e[1], this._c = e[2], this._d = e[3];
           return;
         }
-        this._a = e, this._b = t, this._c = i, this._d = o;
+        this._a = e, this._b = t, this._c = n, this._d = o;
       }
-      Vi.prototype = {
+      qe.prototype = {
         // @method transform(point: Point, scale?: Number): Point
         // Returns a transformed point, optionally multiplied by the given scale.
         // Only accepts actual `L.Point` instances, not arrays.
@@ -875,38 +875,38 @@ function Aa() {
         // Returns the reverse transformation of the given point, optionally divided
         // by the given scale. Only accepts actual `L.Point` instances, not arrays.
         untransform: function(e, t) {
-          return t = t || 1, new M(
+          return t = t || 1, new W(
             (e.x / t - this._b) / this._a,
             (e.y / t - this._d) / this._c
           );
         }
       };
-      function Zt(e, t, i, o) {
-        return new Vi(e, t, i, o);
+      function V(e, t, n, o) {
+        return new qe(e, t, n, o);
       }
-      var hi = Z({}, Be, {
+      var Dn = O({}, je, {
         code: "EPSG:3857",
-        projection: Ri,
+        projection: Ae,
         transformation: (function() {
-          var e = 0.5 / (Math.PI * Ri.R);
-          return Zt(e, 0.5, -e, 0.5);
+          var e = 0.5 / (Math.PI * Ae.R);
+          return V(e, 0.5, -e, 0.5);
         })()
-      }), dn = Z({}, hi, {
+      }), Gi = O({}, Dn, {
         code: "EPSG:900913"
       });
-      function hn(e) {
+      function Vn(e) {
         return document.createElementNS("http://www.w3.org/2000/svg", e);
       }
-      function ct(e, t) {
-        var i = "", o, s, c, d, p, f;
+      function $n(e, t) {
+        var n = "", o, s, c, h, p, f;
         for (o = 0, c = e.length; o < c; o++) {
-          for (p = e[o], s = 0, d = p.length; s < d; s++)
-            f = p[s], i += (s ? "L" : "M") + f.x + " " + f.y;
-          i += t ? I.svg ? "z" : "x" : "";
+          for (p = e[o], s = 0, h = p.length; s < h; s++)
+            f = p[s], n += (s ? "L" : "M") + f.x + " " + f.y;
+          n += t ? Z.svg ? "z" : "x" : "";
         }
-        return i || "M0 0";
+        return n || "M0 0";
       }
-      var Di = document.documentElement.style, ye = "ActiveXObject" in window, vt = ye && !document.addEventListener, pi = "msLaunchUri" in navigator && !("documentMode" in document), Jt = nt("webkit"), pn = nt("android"), $i = nt("android 2") || nt("android 3"), fn = parseInt(/WebKit\/([0-9]+)|$/.exec(navigator.userAgent)[1], 10), mn = pn && nt("Google") && fn < 537 && !("AudioNode" in window), Ui = !!window.opera, _n = !pi && nt("chrome"), Fi = nt("gecko") && !Jt && !Ui && !ye, vn = !_n && nt("safari"), gn = nt("phantom"), yn = "OTransition" in Di, Le = navigator.platform.indexOf("Win") === 0, Xt = ye && "transition" in Di, Qt = "WebKitCSSMatrix" in window && "m11" in new window.WebKitCSSMatrix() && !$i, Hi = "MozPerspective" in Di, bn = !window.L_DISABLE_3D && (Xt || Qt || Hi) && !yn && !gn, kt = typeof orientation < "u" || nt("mobile"), fi = kt && Jt, Nt = kt && Qt, mi = !window.PointerEvent && window.MSPointerEvent, ei = !!(window.PointerEvent || mi), ti = "ontouchstart" in window || !!window.TouchEvent, wn = !window.L_NO_TOUCH && (ti || ei), xn = kt && Ui, le = kt && Fi, dt = (window.devicePixelRatio || window.screen.deviceXDPI / window.screen.logicalXDPI) > 1, ht = (function() {
+      var _n = document.documentElement.style, vn = "ActiveXObject" in window, gt = vn && !document.addEventListener, hi = "msLaunchUri" in navigator && !("documentMode" in document), ye = st("webkit"), pt = st("android"), gn = st("android 2") || st("android 3"), Un = parseInt(/WebKit\/([0-9]+)|$/.exec(navigator.userAgent)[1], 10), ji = pt && st("Google") && Un < 537 && !("AudioNode" in window), yn = !!window.opera, Hn = !hi && st("chrome"), Fn = st("gecko") && !ye && !yn && !vn, qi = !Hn && st("safari"), pi = st("phantom"), Wn = "OTransition" in _n, fi = navigator.platform.indexOf("Win") === 0, mi = vn && "transition" in _n, Gn = "WebKitCSSMatrix" in window && "m11" in new window.WebKitCSSMatrix() && !gn, ke = "MozPerspective" in _n, bn = !window.L_DISABLE_3D && (mi || Gn || ke) && !Wn && !pi, Lt = typeof orientation < "u" || st("mobile"), _i = Lt && ye, vi = Lt && Gn, wn = !window.PointerEvent && window.MSPointerEvent, tn = !!(window.PointerEvent || wn), Tt = "ontouchstart" in window || !!window.TouchEvent, jn = !window.L_NO_TOUCH && (Tt || tn), xn = Lt && yn, kn = Lt && Fn, gi = (window.devicePixelRatio || window.screen.deviceXDPI / window.screen.logicalXDPI) > 1, yi = (function() {
         var e = !1;
         try {
           var t = Object.defineProperty({}, "passive", {
@@ -918,12 +918,12 @@ function Aa() {
         } catch {
         }
         return e;
-      })(), tt = (function() {
+      })(), he = (function() {
         return !!document.createElement("canvas").getContext;
-      })(), it = !!(document.createElementNS && hn("svg").createSVGRect), Gn = !!it && (function() {
+      })(), tt = !!(document.createElementNS && Vn("svg").createSVGRect), ft = !!tt && (function() {
         var e = document.createElement("div");
         return e.innerHTML = "<svg/>", (e.firstChild && e.firstChild.namespaceURI) === "http://www.w3.org/2000/svg";
-      })(), jn = !it && (function() {
+      })(), at = !tt && (function() {
         try {
           var e = document.createElement("div");
           e.innerHTML = '<v:shape adj="1"/>';
@@ -932,114 +932,114 @@ function Aa() {
         } catch {
           return !1;
         }
-      })(), qn = navigator.platform.indexOf("Mac") === 0, Kn = navigator.platform.indexOf("Linux") === 0;
-      function nt(e) {
+      })(), yt = navigator.platform.indexOf("Mac") === 0, Ki = navigator.platform.indexOf("Linux") === 0;
+      function st(e) {
         return navigator.userAgent.toLowerCase().indexOf(e) >= 0;
       }
-      var I = {
-        ie: ye,
-        ielt9: vt,
-        edge: pi,
-        webkit: Jt,
-        android: pn,
-        android23: $i,
-        androidStock: mn,
-        opera: Ui,
-        chrome: _n,
-        gecko: Fi,
-        safari: vn,
-        phantom: gn,
-        opera12: yn,
-        win: Le,
-        ie3d: Xt,
-        webkit3d: Qt,
-        gecko3d: Hi,
+      var Z = {
+        ie: vn,
+        ielt9: gt,
+        edge: hi,
+        webkit: ye,
+        android: pt,
+        android23: gn,
+        androidStock: ji,
+        opera: yn,
+        chrome: Hn,
+        gecko: Fn,
+        safari: qi,
+        phantom: pi,
+        opera12: Wn,
+        win: fi,
+        ie3d: mi,
+        webkit3d: Gn,
+        gecko3d: ke,
         any3d: bn,
-        mobile: kt,
-        mobileWebkit: fi,
-        mobileWebkit3d: Nt,
-        msPointer: mi,
-        pointer: ei,
-        touch: wn,
-        touchNative: ti,
+        mobile: Lt,
+        mobileWebkit: _i,
+        mobileWebkit3d: vi,
+        msPointer: wn,
+        pointer: tn,
+        touch: jn,
+        touchNative: Tt,
         mobileOpera: xn,
-        mobileGecko: le,
-        retina: dt,
-        passiveEvents: ht,
-        canvas: tt,
-        svg: it,
-        vml: jn,
-        inlineSvg: Gn,
-        mac: qn,
-        linux: Kn
-      }, kn = I.msPointer ? "MSPointerDown" : "pointerdown", Pn = I.msPointer ? "MSPointerMove" : "pointermove", _i = I.msPointer ? "MSPointerUp" : "pointerup", Wi = I.msPointer ? "MSPointerCancel" : "pointercancel", vi = {
-        touchstart: kn,
-        touchmove: Pn,
-        touchend: _i,
-        touchcancel: Wi
-      }, Gi = {
-        touchstart: wi,
-        touchmove: Pt,
-        touchend: Pt,
-        touchcancel: Pt
-      }, Rt = {}, Ln = !1;
-      function w(e, t, i) {
-        return t === "touchstart" && bi(), Gi[t] ? (i = Gi[t].bind(this, i), e.addEventListener(vi[t], i, !1), i) : (console.warn("wrong event specified:", t), de);
+        mobileGecko: kn,
+        retina: gi,
+        passiveEvents: yi,
+        canvas: he,
+        svg: tt,
+        vml: at,
+        inlineSvg: ft,
+        mac: yt,
+        linux: Ki
+      }, bi = Z.msPointer ? "MSPointerDown" : "pointerdown", wi = Z.msPointer ? "MSPointerMove" : "pointermove", xi = Z.msPointer ? "MSPointerUp" : "pointerup", ki = Z.msPointer ? "MSPointerCancel" : "pointercancel", qn = {
+        touchstart: bi,
+        touchmove: wi,
+        touchend: xi,
+        touchcancel: ki
+      }, Pn = {
+        touchstart: nn,
+        touchmove: bt,
+        touchend: bt,
+        touchcancel: bt
+      }, St = {}, Kn = !1;
+      function Pi(e, t, n) {
+        return t === "touchstart" && Xi(), Pn[t] ? (n = Pn[t].bind(this, n), e.addEventListener(qn[t], n, !1), n) : (console.warn("wrong event specified:", t), de);
       }
-      function gi(e, t, i) {
-        if (!vi[t]) {
+      function Yi(e, t, n) {
+        if (!qn[t]) {
           console.warn("wrong event specified:", t);
           return;
         }
-        e.removeEventListener(vi[t], i, !1);
+        e.removeEventListener(qn[t], n, !1);
       }
-      function Yn(e) {
-        Rt[e.pointerId] = e;
+      function Ji(e) {
+        St[e.pointerId] = e;
       }
-      function yi(e) {
-        Rt[e.pointerId] && (Rt[e.pointerId] = e);
+      function _(e) {
+        St[e.pointerId] && (St[e.pointerId] = e);
       }
-      function ii(e) {
-        delete Rt[e.pointerId];
+      function $t(e) {
+        delete St[e.pointerId];
       }
-      function bi() {
-        Ln || (document.addEventListener(kn, Yn, !0), document.addEventListener(Pn, yi, !0), document.addEventListener(_i, ii, !0), document.addEventListener(Wi, ii, !0), Ln = !0);
+      function Xi() {
+        Kn || (document.addEventListener(bi, Ji, !0), document.addEventListener(wi, _, !0), document.addEventListener(xi, $t, !0), document.addEventListener(ki, $t, !0), Kn = !0);
       }
-      function Pt(e, t) {
+      function bt(e, t) {
         if (t.pointerType !== (t.MSPOINTER_TYPE_MOUSE || "mouse")) {
           t.touches = [];
-          for (var i in Rt)
-            t.touches.push(Rt[i]);
+          for (var n in St)
+            t.touches.push(St[n]);
           t.changedTouches = [t], e(t);
         }
       }
-      function wi(e, t) {
-        t.MSPOINTER_TYPE_TOUCH && t.pointerType === t.MSPOINTER_TYPE_TOUCH && Ze(t), Pt(e, t);
+      function nn(e, t) {
+        t.MSPOINTER_TYPE_TOUCH && t.pointerType === t.MSPOINTER_TYPE_TOUCH && Me(t), bt(e, t);
       }
-      function xi(e) {
-        var t = {}, i, o;
+      function on(e) {
+        var t = {}, n, o;
         for (o in e)
-          i = e[o], t[o] = i && i.bind ? i.bind(e) : i;
+          n = e[o], t[o] = n && n.bind ? n.bind(e) : n;
         return e = t, t.type = "dblclick", t.detail = 2, t.isTrusted = !1, t._simulated = !0, t;
       }
-      var ki = 200;
-      function Pi(e, t) {
+      var an = 200;
+      function sn(e, t) {
         e.addEventListener("dblclick", t);
-        var i = 0, o;
+        var n = 0, o;
         function s(c) {
           if (c.detail !== 1) {
             o = c.detail;
             return;
           }
           if (!(c.pointerType === "mouse" || c.sourceCapabilities && !c.sourceCapabilities.firesTouchEvents)) {
-            var d = Mi(c);
-            if (!(d.some(function(f) {
+            var h = Ti(c);
+            if (!(h.some(function(f) {
               return f instanceof HTMLLabelElement && f.attributes.for;
-            }) && !d.some(function(f) {
+            }) && !h.some(function(f) {
               return f instanceof HTMLInputElement || f instanceof HTMLSelectElement;
             }))) {
               var p = Date.now();
-              p - i <= ki ? (o++, o === 2 && t(xi(c))) : o = 1, i = p;
+              p - n <= an ? (o++, o === 2 && t(on(c))) : o = 1, n = p;
             }
           }
         }
@@ -1048,140 +1048,140 @@ function Aa() {
           simDblclick: s
         };
       }
-      function ot(e, t) {
+      function rn(e, t) {
         e.removeEventListener("dblclick", t.dblclick), e.removeEventListener("click", t.simDblclick);
       }
-      var Vt = gt(
+      var Ct = Wt(
         ["transform", "webkitTransform", "OTransform", "MozTransform", "msTransform"]
-      ), ni = gt(
+      ), mt = Wt(
         ["webkitTransition", "transition", "OTransition", "MozTransition", "msTransition"]
-      ), at = ni === "webkitTransition" || ni === "OTransition" ? ni + "End" : "transitionend";
-      function te(e) {
+      ), nt = mt === "webkitTransition" || mt === "OTransition" ? mt + "End" : "transitionend";
+      function ln(e) {
         return typeof e == "string" ? document.getElementById(e) : e;
       }
-      function oi(e, t) {
-        var i = e.style[t] || e.currentStyle && e.currentStyle[t];
-        if ((!i || i === "auto") && document.defaultView) {
+      function un(e, t) {
+        var n = e.style[t] || e.currentStyle && e.currentStyle[t];
+        if ((!n || n === "auto") && document.defaultView) {
           var o = document.defaultView.getComputedStyle(e, null);
-          i = o ? o[t] : null;
+          n = o ? o[t] : null;
         }
-        return i === "auto" ? null : i;
+        return n === "auto" ? null : n;
       }
-      function se(e, t, i) {
+      function Y(e, t, n) {
         var o = document.createElement(e);
-        return o.className = t || "", i && i.appendChild(o), o;
+        return o.className = t || "", n && n.appendChild(o), o;
       }
-      function be(e) {
+      function I(e) {
         var t = e.parentNode;
         t && t.removeChild(e);
       }
-      function ai(e) {
+      function Ln(e) {
         for (; e.firstChild; )
           e.removeChild(e.firstChild);
       }
-      function Dt(e) {
+      function Ut(e) {
         var t = e.parentNode;
         t && t.lastChild !== e && t.appendChild(e);
       }
-      function Ce(e) {
+      function Ht(e) {
         var t = e.parentNode;
         t && t.firstChild !== e && t.insertBefore(e, t.firstChild);
       }
-      function $t(e, t) {
+      function Tn(e, t) {
         if (e.classList !== void 0)
           return e.classList.contains(t);
-        var i = Ut(e);
-        return i.length > 0 && new RegExp("(^|\\s)" + t + "(\\s|$)").test(i);
+        var n = wt(e);
+        return n.length > 0 && new RegExp("(^|\\s)" + t + "(\\s|$)").test(n);
       }
-      function j(e, t) {
+      function J(e, t) {
         if (e.classList !== void 0)
-          for (var i = xe(t), o = 0, s = i.length; o < s; o++)
-            e.classList.add(i[o]);
-        else if (!$t(e, t)) {
-          var c = Ut(e);
-          D(e, (c ? c + " " : "") + t);
+          for (var n = Ze(t), o = 0, s = n.length; o < s; o++)
+            e.classList.add(n[o]);
+        else if (!Tn(e, t)) {
+          var c = wt(e);
+          Ft(e, (c ? c + " " : "") + t);
         }
       }
-      function q(e, t) {
-        e.classList !== void 0 ? e.classList.remove(t) : D(e, Xe((" " + Ut(e) + " ").replace(" " + t + " ", " ")));
+      function re(e, t) {
+        e.classList !== void 0 ? e.classList.remove(t) : Ft(e, Te((" " + wt(e) + " ").replace(" " + t + " ", " ")));
       }
-      function D(e, t) {
+      function Ft(e, t) {
         e.className.baseVal === void 0 ? e.className = t : e.className.baseVal = t;
       }
-      function Ut(e) {
+      function wt(e) {
         return e.correspondingElement && (e = e.correspondingElement), e.className.baseVal === void 0 ? e.className : e.className.baseVal;
       }
-      function We(e, t) {
-        "opacity" in e.style ? e.style.opacity = t : "filter" in e.style && Tn(e, t);
+      function le(e, t) {
+        "opacity" in e.style ? e.style.opacity = t : "filter" in e.style && U(e, t);
       }
-      function Tn(e, t) {
-        var i = !1, o = "DXImageTransform.Microsoft.Alpha";
+      function U(e, t) {
+        var n = !1, o = "DXImageTransform.Microsoft.Alpha";
         try {
-          i = e.filters.item(o);
+          n = e.filters.item(o);
         } catch {
           if (t === 1)
             return;
         }
-        t = Math.round(t * 100), i ? (i.Enabled = t !== 100, i.Opacity = t) : e.style.filter += " progid:" + o + "(opacity=" + t + ")";
+        t = Math.round(t * 100), n ? (n.Enabled = t !== 100, n.Opacity = t) : e.style.filter += " progid:" + o + "(opacity=" + t + ")";
       }
-      function gt(e) {
-        for (var t = document.documentElement.style, i = 0; i < e.length; i++)
-          if (e[i] in t)
-            return e[i];
+      function Wt(e) {
+        for (var t = document.documentElement.style, n = 0; n < e.length; n++)
+          if (e[n] in t)
+            return e[n];
         return !1;
       }
-      function qe(e, t, i) {
-        var o = t || new M(0, 0);
-        e.style[Vt] = (I.ie3d ? "translate(" + o.x + "px," + o.y + "px)" : "translate3d(" + o.x + "px," + o.y + "px,0)") + (i ? " scale(" + i + ")" : "");
+      function xt(e, t, n) {
+        var o = t || new W(0, 0);
+        e.style[Ct] = (Z.ie3d ? "translate(" + o.x + "px," + o.y + "px)" : "translate3d(" + o.x + "px," + o.y + "px,0)") + (n ? " scale(" + n + ")" : "");
       }
-      function _e(e, t) {
-        e._leaflet_pos = t, I.any3d ? qe(e, t) : (e.style.left = t.x + "px", e.style.top = t.y + "px");
+      function Pe(e, t) {
+        e._leaflet_pos = t, Z.any3d ? xt(e, t) : (e.style.left = t.x + "px", e.style.top = t.y + "px");
       }
-      function pt(e) {
-        return e._leaflet_pos || new M(0, 0);
+      function it(e) {
+        return e._leaflet_pos || new W(0, 0);
       }
-      var Ke, si, ji;
+      var rt, lt, cn;
       if ("onselectstart" in document)
-        Ke = function() {
-          H(window, "selectstart", Ze);
-        }, si = function() {
-          pe(window, "selectstart", Ze);
+        rt = function() {
+          j(window, "selectstart", Me);
+        }, lt = function() {
+          ue(window, "selectstart", Me);
         };
       else {
-        var yt = gt(
+        var Ke = Wt(
           ["userSelect", "WebkitUserSelect", "OUserSelect", "MozUserSelect", "msUserSelect"]
         );
-        Ke = function() {
-          if (yt) {
+        rt = function() {
+          if (Ke) {
             var e = document.documentElement.style;
-            ji = e[yt], e[yt] = "none";
+            cn = e[Ke], e[Ke] = "none";
           }
-        }, si = function() {
-          yt && (document.documentElement.style[yt] = ji, ji = void 0);
+        }, lt = function() {
+          Ke && (document.documentElement.style[Ke] = cn, cn = void 0);
         };
       }
-      function Ne() {
-        H(window, "dragstart", Ze);
+      function Yn() {
+        j(window, "dragstart", Me);
       }
-      function Ye() {
-        pe(window, "dragstart", Ze);
+      function Jn() {
+        ue(window, "dragstart", Me);
       }
-      var Li, qi;
-      function Ti(e) {
+      var Mt, De;
+      function Ye(e) {
         for (; e.tabIndex === -1; )
           e = e.parentNode;
-        e.style && (Si(), Li = e, qi = e.style.outlineStyle, e.style.outlineStyle = "none", H(window, "keydown", Si));
+        e.style && (Sn(), Mt = e, De = e.style.outlineStyle, e.style.outlineStyle = "none", j(window, "keydown", Sn));
       }
-      function Si() {
-        Li && (Li.style.outlineStyle = qi, Li = void 0, qi = void 0, pe(window, "keydown", Si));
+      function Sn() {
+        Mt && (Mt.style.outlineStyle = De, Mt = void 0, De = void 0, ue(window, "keydown", Sn));
       }
-      function Ci(e) {
+      function Li(e) {
         do
           e = e.parentNode;
         while ((!e.offsetWidth || !e.offsetHeight) && e !== document.body);
         return e;
       }
-      function Ki(e) {
+      function Cn(e) {
         var t = e.getBoundingClientRect();
         return {
           x: t.width / e.offsetWidth || 1,
@@ -1189,135 +1189,135 @@ function Aa() {
           boundingClientRect: t
         };
       }
-      var Lt = {
+      var Qi = {
         __proto__: null,
-        TRANSFORM: Vt,
-        TRANSITION: ni,
-        TRANSITION_END: at,
-        get: te,
-        getStyle: oi,
-        create: se,
-        remove: be,
-        empty: ai,
-        toFront: Dt,
-        toBack: Ce,
-        hasClass: $t,
-        addClass: j,
-        removeClass: q,
-        setClass: D,
-        getClass: Ut,
-        setOpacity: We,
-        testProp: gt,
-        setTransform: qe,
-        setPosition: _e,
-        getPosition: pt,
+        TRANSFORM: Ct,
+        TRANSITION: mt,
+        TRANSITION_END: nt,
+        get: ln,
+        getStyle: un,
+        create: Y,
+        remove: I,
+        empty: Ln,
+        toFront: Ut,
+        toBack: Ht,
+        hasClass: Tn,
+        addClass: J,
+        removeClass: re,
+        setClass: Ft,
+        getClass: wt,
+        setOpacity: le,
+        testProp: Wt,
+        setTransform: xt,
+        setPosition: Pe,
+        getPosition: it,
         get disableTextSelection() {
-          return Ke;
+          return rt;
         },
         get enableTextSelection() {
-          return si;
+          return lt;
         },
-        disableImageDrag: Ne,
-        enableImageDrag: Ye,
-        preventOutline: Ti,
-        restoreOutline: Si,
-        getSizedParentNode: Ci,
-        getScale: Ki
+        disableImageDrag: Yn,
+        enableImageDrag: Jn,
+        preventOutline: Ye,
+        restoreOutline: Sn,
+        getSizedParentNode: Li,
+        getScale: Cn
       };
-      function H(e, t, i, o) {
+      function j(e, t, n, o) {
         if (t && typeof t == "object")
           for (var s in t)
-            Ji(e, s, t[s], i);
+            jt(e, s, t[s], n);
         else {
-          t = xe(t);
-          for (var c = 0, d = t.length; c < d; c++)
-            Ji(e, t[c], i, o);
+          t = Ze(t);
+          for (var c = 0, h = t.length; c < h; c++)
+            jt(e, t[c], n, o);
         }
         return this;
       }
-      var st = "_leaflet_events";
-      function pe(e, t, i, o) {
+      var ut = "_leaflet_events";
+      function ue(e, t, n, o) {
         if (arguments.length === 1)
-          Sn(e), delete e[st];
+          Mn(e), delete e[ut];
         else if (t && typeof t == "object")
           for (var s in t)
-            Xi(e, s, t[s], i);
-        else if (t = xe(t), arguments.length === 2)
-          Sn(e, function(p) {
-            return qt(t, p) !== -1;
+            zn(e, s, t[s], n);
+        else if (t = Ze(t), arguments.length === 2)
+          Mn(e, function(p) {
+            return Nt(t, p) !== -1;
           });
         else
-          for (var c = 0, d = t.length; c < d; c++)
-            Xi(e, t[c], i, o);
+          for (var c = 0, h = t.length; c < h; c++)
+            zn(e, t[c], n, o);
         return this;
       }
-      function Sn(e, t) {
-        for (var i in e[st]) {
-          var o = i.split(/\d/)[0];
-          (!t || t(o)) && Xi(e, o, null, null, i);
+      function Mn(e, t) {
+        for (var n in e[ut]) {
+          var o = n.split(/\d/)[0];
+          (!t || t(o)) && zn(e, o, null, null, n);
         }
       }
-      var Yi = {
+      var Gt = {
         mouseenter: "mouseover",
         mouseleave: "mouseout",
         wheel: !("onwheel" in window) && "mousewheel"
       };
-      function Ji(e, t, i, o) {
-        var s = t + K(i) + (o ? "_" + K(o) : "");
-        if (e[st] && e[st][s])
+      function jt(e, t, n, o) {
+        var s = t + K(n) + (o ? "_" + K(o) : "");
+        if (e[ut] && e[ut][s])
           return this;
         var c = function(p) {
-          return i.call(o || e, p || window.event);
-        }, d = c;
-        !I.touchNative && I.pointer && t.indexOf("touch") === 0 ? c = w(e, t, c) : I.touch && t === "dblclick" ? c = Pi(e, c) : "addEventListener" in e ? t === "touchstart" || t === "touchmove" || t === "wheel" || t === "mousewheel" ? e.addEventListener(Yi[t] || t, c, I.passiveEvents ? { passive: !1 } : !1) : t === "mouseenter" || t === "mouseleave" ? (c = function(p) {
-          p = p || window.event, Ht(e, p) && d(p);
-        }, e.addEventListener(Yi[t], c, !1)) : e.addEventListener(t, d, !1) : e.attachEvent("on" + t, c), e[st] = e[st] || {}, e[st][s] = c;
+          return n.call(o || e, p || window.event);
+        }, h = c;
+        !Z.touchNative && Z.pointer && t.indexOf("touch") === 0 ? c = Pi(e, t, c) : Z.touch && t === "dblclick" ? c = sn(e, c) : "addEventListener" in e ? t === "touchstart" || t === "touchmove" || t === "wheel" || t === "mousewheel" ? e.addEventListener(Gt[t] || t, c, Z.passiveEvents ? { passive: !1 } : !1) : t === "mouseenter" || t === "mouseleave" ? (c = function(p) {
+          p = p || window.event, Xn(e, p) && h(p);
+        }, e.addEventListener(Gt[t], c, !1)) : e.addEventListener(t, h, !1) : e.attachEvent("on" + t, c), e[ut] = e[ut] || {}, e[ut][s] = c;
       }
-      function Xi(e, t, i, o, s) {
-        s = s || t + K(i) + (o ? "_" + K(o) : "");
-        var c = e[st] && e[st][s];
+      function zn(e, t, n, o, s) {
+        s = s || t + K(n) + (o ? "_" + K(o) : "");
+        var c = e[ut] && e[ut][s];
         if (!c)
           return this;
-        !I.touchNative && I.pointer && t.indexOf("touch") === 0 ? gi(e, t, c) : I.touch && t === "dblclick" ? ot(e, c) : "removeEventListener" in e ? e.removeEventListener(Yi[t] || t, c, !1) : e.detachEvent("on" + t, c), e[st][s] = null;
+        !Z.touchNative && Z.pointer && t.indexOf("touch") === 0 ? Yi(e, t, c) : Z.touch && t === "dblclick" ? rn(e, c) : "removeEventListener" in e ? e.removeEventListener(Gt[t] || t, c, !1) : e.detachEvent("on" + t, c), e[ut][s] = null;
       }
-      function Tt(e) {
+      function ct(e) {
         return e.stopPropagation ? e.stopPropagation() : e.originalEvent ? e.originalEvent._stopped = !0 : e.cancelBubble = !0, this;
       }
-      function Ft(e) {
-        return Ji(e, "wheel", Tt), this;
+      function be(e) {
+        return jt(e, "wheel", ct), this;
       }
-      function bt(e) {
-        return H(e, "mousedown touchstart dblclick contextmenu", Tt), e._leaflet_disable_click = !0, this;
+      function dn(e) {
+        return j(e, "mousedown touchstart dblclick contextmenu", ct), e._leaflet_disable_click = !0, this;
       }
-      function Ze(e) {
+      function Me(e) {
         return e.preventDefault ? e.preventDefault() : e.returnValue = !1, this;
       }
-      function ie(e) {
-        return Ze(e), Tt(e), this;
+      function zt(e) {
+        return Me(e), ct(e), this;
       }
-      function Mi(e) {
+      function Ti(e) {
         if (e.composedPath)
           return e.composedPath();
-        for (var t = [], i = e.target; i; )
-          t.push(i), i = i.parentNode;
+        for (var t = [], n = e.target; n; )
+          t.push(n), n = n.parentNode;
         return t;
       }
-      function Qi(e, t) {
+      function Si(e, t) {
         if (!t)
-          return new M(e.clientX, e.clientY);
-        var i = Ki(t), o = i.boundingClientRect;
-        return new M(
+          return new W(e.clientX, e.clientY);
+        var n = Cn(t), o = n.boundingClientRect;
+        return new W(
           // offset.left/top values are in page scale (like clientX/Y),
           // whereas clientLeft/Top (border width) values are the original values (before CSS scale applies).
-          (e.clientX - o.left) / i.x - t.clientLeft,
-          (e.clientY - o.top) / i.y - t.clientTop
+          (e.clientX - o.left) / n.x - t.clientLeft,
+          (e.clientY - o.top) / n.y - t.clientTop
         );
       }
-      var Cn = I.linux && I.chrome ? window.devicePixelRatio : I.mac ? window.devicePixelRatio * 3 : window.devicePixelRatio > 0 ? 2 * window.devicePixelRatio : 1;
-      function b(e) {
-        return I.edge ? e.wheelDeltaY / 2 : (
+      var eo = Z.linux && Z.chrome ? window.devicePixelRatio : Z.mac ? window.devicePixelRatio * 3 : window.devicePixelRatio > 0 ? 2 * window.devicePixelRatio : 1;
+      function Ci(e) {
+        return Z.edge ? e.wheelDeltaY / 2 : (
           // Don't trust window-geometry-based delta
-          e.deltaY && e.deltaMode === 0 ? -e.deltaY / Cn : (
+          e.deltaY && e.deltaMode === 0 ? -e.deltaY / eo : (
             // Pixels
             e.deltaY && e.deltaMode === 1 ? -e.deltaY * 20 : (
               // Lines
@@ -1341,41 +1341,41 @@ function Aa() {
           )
         );
       }
-      function Ht(e, t) {
-        var i = t.relatedTarget;
-        if (!i)
+      function Xn(e, t) {
+        var n = t.relatedTarget;
+        if (!n)
           return !0;
         try {
-          for (; i && i !== e; )
-            i = i.parentNode;
+          for (; n && n !== e; )
+            n = n.parentNode;
         } catch {
           return !1;
         }
-        return i !== e;
+        return n !== e;
       }
-      var Jn = {
+      var to = {
         __proto__: null,
-        on: H,
-        off: pe,
-        stopPropagation: Tt,
-        disableScrollPropagation: Ft,
-        disableClickPropagation: bt,
-        preventDefault: Ze,
-        stop: ie,
-        getPropagationPath: Mi,
-        getMousePosition: Qi,
-        getWheelDelta: b,
-        isExternalTarget: Ht,
-        addListener: H,
-        removeListener: pe
-      }, Mn = xt.extend({
+        on: j,
+        off: ue,
+        stopPropagation: ct,
+        disableScrollPropagation: be,
+        disableClickPropagation: dn,
+        preventDefault: Me,
+        stop: zt,
+        getPropagationPath: Ti,
+        getMousePosition: Si,
+        getWheelDelta: Ci,
+        isExternalTarget: Xn,
+        addListener: j,
+        removeListener: ue
+      }, hn = Pt.extend({
         // @method run(el: HTMLElement, newPos: Point, duration?: Number, easeLinearity?: Number)
         // Run an animation of a given element to a new position, optionally setting
         // duration in seconds (`0.25` by default) and easing linearity factor (3rd
         // argument of the [cubic bezier curve](https://cubic-bezier.com/#0,0,.5,1),
         // `0.5` by default).
-        run: function(e, t, i, o) {
-          this.stop(), this._el = e, this._inProgress = !0, this._duration = i || 0.25, this._easeOutPower = 1 / Math.max(o || 0.5, 0.2), this._startPos = pt(e), this._offset = t.subtract(this._startPos), this._startTime = +/* @__PURE__ */ new Date(), this.fire("start"), this._animate();
+        run: function(e, t, n, o) {
+          this.stop(), this._el = e, this._inProgress = !0, this._duration = n || 0.25, this._easeOutPower = 1 / Math.max(o || 0.5, 0.2), this._startPos = it(e), this._offset = t.subtract(this._startPos), this._startTime = +/* @__PURE__ */ new Date(), this.fire("start"), this._animate();
         },
         // @method stop()
         // Stops the animation (if currently running).
@@ -1386,26 +1386,26 @@ function Aa() {
           this._animId = Se(this._animate, this), this._step();
         },
         _step: function(e) {
-          var t = +/* @__PURE__ */ new Date() - this._startTime, i = this._duration * 1e3;
-          t < i ? this._runFrame(this._easeOut(t / i), e) : (this._runFrame(1), this._complete());
+          var t = +/* @__PURE__ */ new Date() - this._startTime, n = this._duration * 1e3;
+          t < n ? this._runFrame(this._easeOut(t / n), e) : (this._runFrame(1), this._complete());
         },
         _runFrame: function(e, t) {
-          var i = this._startPos.add(this._offset.multiplyBy(e));
-          t && i._round(), _e(this._el, i), this.fire("step");
+          var n = this._startPos.add(this._offset.multiplyBy(e));
+          t && n._round(), Pe(this._el, n), this.fire("step");
         },
         _complete: function() {
-          Pe(this._animId), this._inProgress = !1, this.fire("end");
+          Ce(this._animId), this._inProgress = !1, this.fire("end");
         },
         _easeOut: function(e) {
           return 1 - Math.pow(1 - e, this._easeOutPower);
         }
-      }), oe = xt.extend({
+      }), te = Pt.extend({
         options: {
           // @section Map State Options
           // @option crs: CRS = L.CRS.EPSG3857
           // The [Coordinate Reference System](#crs) to use. Don't change this if you're not
           // sure what it means.
-          crs: hi,
+          crs: Dn,
           // @option center: LatLng = undefined
           // Initial geographic center of the map
           center: void 0,
@@ -1477,20 +1477,20 @@ function Aa() {
           trackResize: !0
         },
         initialize: function(e, t) {
-          t = he(this, t), this._handlers = [], this._layers = {}, this._zoomBoundLayers = {}, this._sizeChanged = !0, this._initContainer(e), this._initLayout(), this._onResize = J(this._onResize, this), this._initEvents(), t.maxBounds && this.setMaxBounds(t.maxBounds), t.zoom !== void 0 && (this._zoom = this._limitZoom(t.zoom)), t.center && t.zoom !== void 0 && this.setView($(t.center), t.zoom, { reset: !0 }), this.callInitHooks(), this._zoomAnimated = ni && I.any3d && !I.mobileOpera && this.options.zoomAnimation, this._zoomAnimated && (this._createAnimProxy(), H(this._proxy, at, this._catchTransitionEnd, this)), this._addLayers(this.options.layers);
+          t = ee(this, t), this._handlers = [], this._layers = {}, this._zoomBoundLayers = {}, this._sizeChanged = !0, this._initContainer(e), this._initLayout(), this._onResize = N(this._onResize, this), this._initEvents(), t.maxBounds && this.setMaxBounds(t.maxBounds), t.zoom !== void 0 && (this._zoom = this._limitZoom(t.zoom)), t.center && t.zoom !== void 0 && this.setView(ie(t.center), t.zoom, { reset: !0 }), this.callInitHooks(), this._zoomAnimated = mt && Z.any3d && !Z.mobileOpera && this.options.zoomAnimation, this._zoomAnimated && (this._createAnimProxy(), j(this._proxy, nt, this._catchTransitionEnd, this)), this._addLayers(this.options.layers);
         },
         // @section Methods for modifying map state
         // @method setView(center: LatLng, zoom: Number, options?: Zoom/pan options): this
         // Sets the view of the map (geographical center and zoom) with the given
         // animation options.
-        setView: function(e, t, i) {
-          if (t = t === void 0 ? this._zoom : this._limitZoom(t), e = this._limitCenter($(e), t, this.options.maxBounds), i = i || {}, this._stop(), this._loaded && !i.reset && i !== !0) {
-            i.animate !== void 0 && (i.zoom = Z({ animate: i.animate }, i.zoom), i.pan = Z({ animate: i.animate, duration: i.duration }, i.pan));
-            var o = this._zoom !== t ? this._tryAnimatedZoom && this._tryAnimatedZoom(e, t, i.zoom) : this._tryAnimatedPan(e, i.pan);
+        setView: function(e, t, n) {
+          if (t = t === void 0 ? this._zoom : this._limitZoom(t), e = this._limitCenter(ie(e), t, this.options.maxBounds), n = n || {}, this._stop(), this._loaded && !n.reset && n !== !0) {
+            n.animate !== void 0 && (n.zoom = O({ animate: n.animate }, n.zoom), n.pan = O({ animate: n.animate, duration: n.duration }, n.pan));
+            var o = this._zoom !== t ? this._tryAnimatedZoom && this._tryAnimatedZoom(e, t, n.zoom) : this._tryAnimatedPan(e, n.pan);
             if (o)
               return clearTimeout(this._sizeTimer), this;
           }
-          return this._resetView(e, t, i.pan && i.pan.noMoveStart), this;
+          return this._resetView(e, t, n.pan && n.pan.noMoveStart), this;
         },
         // @method setZoom(zoom: Number, options?: Zoom/pan options): this
         // Sets the zoom of the map.
@@ -1500,12 +1500,12 @@ function Aa() {
         // @method zoomIn(delta?: Number, options?: Zoom options): this
         // Increases the zoom of the map by `delta` ([`zoomDelta`](#map-zoomdelta) by default).
         zoomIn: function(e, t) {
-          return e = e || (I.any3d ? this.options.zoomDelta : 1), this.setZoom(this._zoom + e, t);
+          return e = e || (Z.any3d ? this.options.zoomDelta : 1), this.setZoom(this._zoom + e, t);
         },
         // @method zoomOut(delta?: Number, options?: Zoom options): this
         // Decreases the zoom of the map by `delta` ([`zoomDelta`](#map-zoomdelta) by default).
         zoomOut: function(e, t) {
-          return e = e || (I.any3d ? this.options.zoomDelta : 1), this.setZoom(this._zoom - e, t);
+          return e = e || (Z.any3d ? this.options.zoomDelta : 1), this.setZoom(this._zoom - e, t);
         },
         // @method setZoomAround(latlng: LatLng, zoom: Number, options: Zoom options): this
         // Zooms the map while keeping a specified geographical point on the map
@@ -1513,19 +1513,19 @@ function Aa() {
         // @alternative
         // @method setZoomAround(offset: Point, zoom: Number, options: Zoom options): this
         // Zooms the map while keeping a specified pixel on the map (relative to the top-left corner) stationary.
-        setZoomAround: function(e, t, i) {
-          var o = this.getZoomScale(t), s = this.getSize().divideBy(2), c = e instanceof M ? e : this.latLngToContainerPoint(e), d = c.subtract(s).multiplyBy(1 - 1 / o), p = this.containerPointToLatLng(s.add(d));
-          return this.setView(p, t, { zoom: i });
+        setZoomAround: function(e, t, n) {
+          var o = this.getZoomScale(t), s = this.getSize().divideBy(2), c = e instanceof W ? e : this.latLngToContainerPoint(e), h = c.subtract(s).multiplyBy(1 - 1 / o), p = this.containerPointToLatLng(s.add(h));
+          return this.setView(p, t, { zoom: n });
         },
         _getBoundsCenterZoom: function(e, t) {
-          t = t || {}, e = e.getBounds ? e.getBounds() : ee(e);
-          var i = V(t.paddingTopLeft || t.padding || [0, 0]), o = V(t.paddingBottomRight || t.padding || [0, 0]), s = this.getBoundsZoom(e, !1, i.add(o));
+          t = t || {}, e = e.getBounds ? e.getBounds() : G(e);
+          var n = $(t.paddingTopLeft || t.padding || [0, 0]), o = $(t.paddingBottomRight || t.padding || [0, 0]), s = this.getBoundsZoom(e, !1, n.add(o));
           if (s = typeof t.maxZoom == "number" ? Math.min(t.maxZoom, s) : s, s === 1 / 0)
             return {
               center: e.getCenter(),
               zoom: s
             };
-          var c = o.subtract(i).divideBy(2), d = this.project(e.getSouthWest(), s), p = this.project(e.getNorthEast(), s), f = this.unproject(d.add(p).divideBy(2).add(c), s);
+          var c = o.subtract(n).divideBy(2), h = this.project(e.getSouthWest(), s), p = this.project(e.getNorthEast(), s), f = this.unproject(h.add(p).divideBy(2).add(c), s);
           return {
             center: f,
             zoom: s
@@ -1535,10 +1535,10 @@ function Aa() {
         // Sets a map view that contains the given geographical bounds with the
         // maximum zoom level possible.
         fitBounds: function(e, t) {
-          if (e = ee(e), !e.isValid())
+          if (e = G(e), !e.isValid())
             throw new Error("Bounds are not valid.");
-          var i = this._getBoundsCenterZoom(e, t);
-          return this.setView(i.center, i.zoom, t);
+          var n = this._getBoundsCenterZoom(e, t);
+          return this.setView(n.center, n.zoom, t);
         },
         // @method fitWorld(options?: fitBounds options): this
         // Sets a map view that mostly contains the whole world with the maximum
@@ -1554,17 +1554,17 @@ function Aa() {
         // @method panBy(offset: Point, options?: Pan options): this
         // Pans the map by a given number of pixels (animated).
         panBy: function(e, t) {
-          if (e = V(e).round(), t = t || {}, !e.x && !e.y)
+          if (e = $(e).round(), t = t || {}, !e.x && !e.y)
             return this.fire("moveend");
           if (t.animate !== !0 && !this.getSize().contains(e))
             return this._resetView(this.unproject(this.project(this.getCenter()).add(e)), this.getZoom()), this;
-          if (this._panAnim || (this._panAnim = new Mn(), this._panAnim.on({
+          if (this._panAnim || (this._panAnim = new hn(), this._panAnim.on({
             step: this._onPanTransitionStep,
             end: this._onPanTransitionEnd
           }, this)), t.noMoveStart || this.fire("movestart"), t.animate !== !1) {
-            j(this._mapPane, "leaflet-pan-anim");
-            var i = this._getMapPanePos().subtract(e).round();
-            this._panAnim.run(this._mapPane, i, t.duration || 0.25, t.easeLinearity);
+            J(this._mapPane, "leaflet-pan-anim");
+            var n = this._getMapPanePos().subtract(e).round();
+            this._panAnim.run(this._mapPane, n, t.duration || 0.25, t.easeLinearity);
           } else
             this._rawPanBy(e), this.fire("move").fire("moveend");
           return this;
@@ -1572,58 +1572,58 @@ function Aa() {
         // @method flyTo(latlng: LatLng, zoom?: Number, options?: Zoom/pan options): this
         // Sets the view of the map (geographical center and zoom) performing a smooth
         // pan-zoom animation.
-        flyTo: function(e, t, i) {
-          if (i = i || {}, i.animate === !1 || !I.any3d)
-            return this.setView(e, t, i);
+        flyTo: function(e, t, n) {
+          if (n = n || {}, n.animate === !1 || !Z.any3d)
+            return this.setView(e, t, n);
           this._stop();
-          var o = this.project(this.getCenter()), s = this.project(e), c = this.getSize(), d = this._zoom;
-          e = $(e), t = t === void 0 ? d : t;
-          var p = Math.max(c.x, c.y), f = p * this.getZoomScale(d, t), x = s.distanceTo(o) || 1, S = 1.42, U = S * S;
-          function ne(Ie) {
-            var Un = Ie ? -1 : 1, Pa = Ie ? f : p, La = f * f - p * p + Un * U * U * x * x, Ta = 2 * Pa * U * x, so = La / Ta, Io = Math.sqrt(so * so + 1) - so, Sa = Io < 1e-9 ? -18 : Math.log(Io);
+          var o = this.project(this.getCenter()), s = this.project(e), c = this.getSize(), h = this._zoom;
+          e = ie(e), t = t === void 0 ? h : t;
+          var p = Math.max(c.x, c.y), f = p * this.getZoomScale(h, t), k = s.distanceTo(o) || 1, S = 1.42, H = S * S;
+          function se(Ie) {
+            var Hi = Ie ? -1 : 1, Pa = Ie ? f : p, La = f * f - p * p + Hi * H * H * k * k, Ta = 2 * Pa * H * k, ho = La / Ta, No = Math.sqrt(ho * ho + 1) - ho, Sa = No < 1e-9 ? -18 : Math.log(No);
             return Sa;
           }
           function Ge(Ie) {
             return (Math.exp(Ie) - Math.exp(-Ie)) / 2;
           }
-          function Re(Ie) {
+          function Ve(Ie) {
             return (Math.exp(Ie) + Math.exp(-Ie)) / 2;
           }
-          function lt(Ie) {
-            return Ge(Ie) / Re(Ie);
+          function ht(Ie) {
+            return Ge(Ie) / Ve(Ie);
           }
-          var Je = ne(0);
-          function Ni(Ie) {
-            return p * (Re(Je) / Re(Je + S * Ie));
+          var Je = se(0);
+          function Rn(Ie) {
+            return p * (Ve(Je) / Ve(Je + S * Ie));
           }
           function ba(Ie) {
-            return p * (Re(Je) * lt(Je + S * Ie) - Ge(Je)) / U;
+            return p * (Ve(Je) * ht(Je + S * Ie) - Ge(Je)) / H;
           }
           function wa(Ie) {
             return 1 - Math.pow(1 - Ie, 1.5);
           }
-          var xa = Date.now(), Oo = (ne(1) - Je) / S, ka = i.duration ? 1e3 * i.duration : 1e3 * Oo * 0.8;
-          function Ao() {
-            var Ie = (Date.now() - xa) / ka, Un = wa(Ie) * Oo;
-            Ie <= 1 ? (this._flyToFrame = Se(Ao, this), this._move(
-              this.unproject(o.add(s.subtract(o).multiplyBy(ba(Un) / x)), d),
-              this.getScaleZoom(p / Ni(Un), d),
+          var xa = Date.now(), Bo = (se(1) - Je) / S, ka = n.duration ? 1e3 * n.duration : 1e3 * Bo * 0.8;
+          function Zo() {
+            var Ie = (Date.now() - xa) / ka, Hi = wa(Ie) * Bo;
+            Ie <= 1 ? (this._flyToFrame = Se(Zo, this), this._move(
+              this.unproject(o.add(s.subtract(o).multiplyBy(ba(Hi) / k)), h),
+              this.getScaleZoom(p / Rn(Hi), h),
               { flyTo: !0 }
             )) : this._move(e, t)._moveEnd(!0);
           }
-          return this._moveStart(!0, i.noMoveStart), Ao.call(this), this;
+          return this._moveStart(!0, n.noMoveStart), Zo.call(this), this;
         },
         // @method flyToBounds(bounds: LatLngBounds, options?: fitBounds options): this
         // Sets the view of the map with a smooth animation like [`flyTo`](#map-flyto),
         // but takes a bounds parameter like [`fitBounds`](#map-fitbounds).
         flyToBounds: function(e, t) {
-          var i = this._getBoundsCenterZoom(e, t);
-          return this.flyTo(i.center, i.zoom, t);
+          var n = this._getBoundsCenterZoom(e, t);
+          return this.flyTo(n.center, n.zoom, t);
         },
         // @method setMaxBounds(bounds: LatLngBounds): this
         // Restricts the map view to the given bounds (see the [maxBounds](#map-maxbounds) option).
         setMaxBounds: function(e) {
-          return e = ee(e), this.listens("moveend", this._panInsideMaxBounds) && this.off("moveend", this._panInsideMaxBounds), e.isValid() ? (this.options.maxBounds = e, this._loaded && this._panInsideMaxBounds(), this.on("moveend", this._panInsideMaxBounds)) : (this.options.maxBounds = null, this);
+          return e = G(e), this.listens("moveend", this._panInsideMaxBounds) && this.off("moveend", this._panInsideMaxBounds), e.isValid() ? (this.options.maxBounds = e, this._loaded && this._panInsideMaxBounds(), this.on("moveend", this._panInsideMaxBounds)) : (this.options.maxBounds = null, this);
         },
         // @method setMinZoom(zoom: Number): this
         // Sets the lower limit for the available zoom levels (see the [minZoom](#map-minzoom) option).
@@ -1641,8 +1641,8 @@ function Aa() {
         // Pans the map to the closest view that would lie inside the given bounds (if it's not already), controlling the animation using the options specific, if any.
         panInsideBounds: function(e, t) {
           this._enforcingBounds = !0;
-          var i = this.getCenter(), o = this._limitCenter(i, this._zoom, ee(e));
-          return i.equals(o) || this.panTo(o, t), this._enforcingBounds = !1, this;
+          var n = this.getCenter(), o = this._limitCenter(n, this._zoom, G(e));
+          return n.equals(o) || this.panTo(o, t), this._enforcingBounds = !1, this;
         },
         // @method panInside(latlng: LatLng, options?: padding options): this
         // Pans the map the minimum amount to make the `latlng` visible. Use
@@ -1651,11 +1651,11 @@ function Aa() {
         // the map will not be panned.
         panInside: function(e, t) {
           t = t || {};
-          var i = V(t.paddingTopLeft || t.padding || [0, 0]), o = V(t.paddingBottomRight || t.padding || [0, 0]), s = this.project(this.getCenter()), c = this.project(e), d = this.getPixelBounds(), p = T([d.min.add(i), d.max.subtract(o)]), f = p.getSize();
+          var n = $(t.paddingTopLeft || t.padding || [0, 0]), o = $(t.paddingBottomRight || t.padding || [0, 0]), s = this.project(this.getCenter()), c = this.project(e), h = this.getPixelBounds(), p = T([h.min.add(n), h.max.subtract(o)]), f = p.getSize();
           if (!p.contains(c)) {
             this._enforcingBounds = !0;
-            var x = c.subtract(p.getCenter()), S = p.extend(c).getSize().subtract(f);
-            s.x += x.x < 0 ? -S.x : S.x, s.y += x.y < 0 ? -S.y : S.y, this.panTo(this.unproject(s), t), this._enforcingBounds = !1;
+            var k = c.subtract(p.getCenter()), S = p.extend(c).getSize().subtract(f);
+            s.x += k.x < 0 ? -S.x : S.x, s.y += k.y < 0 ? -S.y : S.y, this.panTo(this.unproject(s), t), this._enforcingBounds = !1;
           }
           return this;
         },
@@ -1674,16 +1674,16 @@ function Aa() {
         invalidateSize: function(e) {
           if (!this._loaded)
             return this;
-          e = Z({
+          e = O({
             animate: !1,
             pan: !0
           }, e === !0 ? { animate: !0 } : e);
           var t = this.getSize();
           this._sizeChanged = !0, this._lastCenter = null;
-          var i = this.getSize(), o = t.divideBy(2).round(), s = i.divideBy(2).round(), c = o.subtract(s);
-          return !c.x && !c.y ? this : (e.animate && e.pan ? this.panBy(c) : (e.pan && this._rawPanBy(c), this.fire("move"), e.debounceMoveend ? (clearTimeout(this._sizeTimer), this._sizeTimer = setTimeout(J(this.fire, this, "moveend"), 200)) : this.fire("moveend")), this.fire("resize", {
+          var n = this.getSize(), o = t.divideBy(2).round(), s = n.divideBy(2).round(), c = o.subtract(s);
+          return !c.x && !c.y ? this : (e.animate && e.pan ? this.panBy(c) : (e.pan && this._rawPanBy(c), this.fire("move"), e.debounceMoveend ? (clearTimeout(this._sizeTimer), this._sizeTimer = setTimeout(N(this.fire, this, "moveend"), 200)) : this.fire("moveend")), this.fire("resize", {
             oldSize: t,
-            newSize: i
+            newSize: n
           }));
         },
         // @section Methods for modifying map state
@@ -1702,7 +1702,7 @@ function Aa() {
         // modern browsers ([Chrome 50 and newer](https://sites.google.com/a/chromium.org/dev/Home/chromium-security/deprecating-powerful-features-on-insecure-origins))
         // See `Locate options` for more details.
         locate: function(e) {
-          if (e = this._locateOptions = Z({
+          if (e = this._locateOptions = O({
             timeout: 1e4,
             watch: !1
             // setView: false
@@ -1714,8 +1714,8 @@ function Aa() {
               code: 0,
               message: "Geolocation not supported."
             }), this;
-          var t = J(this._handleGeolocationResponse, this), i = J(this._handleGeolocationError, this);
-          return e.watch ? this._locationWatchId = navigator.geolocation.watchPosition(t, i, e) : navigator.geolocation.getCurrentPosition(t, i, e), this;
+          var t = N(this._handleGeolocationResponse, this), n = N(this._handleGeolocationError, this);
+          return e.watch ? this._locationWatchId = navigator.geolocation.watchPosition(t, n, e) : navigator.geolocation.getCurrentPosition(t, n, e), this;
         },
         // @method stopLocate(): this
         // Stops watching location previously initiated by `map.locate({watch: true})`
@@ -1726,19 +1726,19 @@ function Aa() {
         },
         _handleGeolocationError: function(e) {
           if (this._container._leaflet_id) {
-            var t = e.code, i = e.message || (t === 1 ? "permission denied" : t === 2 ? "position unavailable" : "timeout");
+            var t = e.code, n = e.message || (t === 1 ? "permission denied" : t === 2 ? "position unavailable" : "timeout");
             this._locateOptions.setView && !this._loaded && this.fitWorld(), this.fire("locationerror", {
               code: t,
-              message: "Geolocation error: " + i + "."
+              message: "Geolocation error: " + n + "."
             });
           }
         },
         _handleGeolocationResponse: function(e) {
           if (this._container._leaflet_id) {
-            var t = e.coords.latitude, i = e.coords.longitude, o = new X(t, i), s = o.toBounds(e.coords.accuracy * 2), c = this._locateOptions;
+            var t = e.coords.latitude, n = e.coords.longitude, o = new ne(t, n), s = o.toBounds(e.coords.accuracy * 2), c = this._locateOptions;
             if (c.setView) {
-              var d = this.getBoundsZoom(s);
-              this.setView(o, c.maxZoom ? Math.min(d, c.maxZoom) : d);
+              var h = this.getBoundsZoom(s);
+              this.setView(o, c.maxZoom ? Math.min(h, c.maxZoom) : h);
             }
             var p = {
               latlng: o,
@@ -1757,8 +1757,8 @@ function Aa() {
         addHandler: function(e, t) {
           if (!t)
             return this;
-          var i = this[e] = new t(this);
-          return this._handlers.push(i), this.options[e] && i.enable(), this;
+          var n = this[e] = new t(this);
+          return this._handlers.push(n), this.options[e] && n.enable(), this;
         },
         // @method remove(): this
         // Destroys the map and clears all related event listeners.
@@ -1770,12 +1770,12 @@ function Aa() {
           } catch {
             this._container._leaflet_id = void 0, this._containerId = void 0;
           }
-          this._locationWatchId !== void 0 && this.stopLocate(), this._stop(), be(this._mapPane), this._clearControlPos && this._clearControlPos(), this._resizeRequest && (Pe(this._resizeRequest), this._resizeRequest = null), this._clearHandlers(), this._loaded && this.fire("unload");
+          this._locationWatchId !== void 0 && this.stopLocate(), this._stop(), I(this._mapPane), this._clearControlPos && this._clearControlPos(), this._resizeRequest && (Ce(this._resizeRequest), this._resizeRequest = null), this._clearHandlers(), this._loaded && this.fire("unload");
           var e;
           for (e in this._layers)
             this._layers[e].remove();
           for (e in this._panes)
-            be(this._panes[e]);
+            I(this._panes[e]);
           return this._layers = [], this._panes = [], delete this._mapPane, delete this._renderer, this;
         },
         // @section Other Methods
@@ -1784,7 +1784,7 @@ function Aa() {
         // then returns it. The pane is created as a child of `container`, or
         // as a child of the main map pane if not set.
         createPane: function(e, t) {
-          var i = "leaflet-pane" + (e ? " leaflet-" + e.replace("Pane", "") + "-pane" : ""), o = se("div", i, t || this._mapPane);
+          var n = "leaflet-pane" + (e ? " leaflet-" + e.replace("Pane", "") + "-pane" : ""), o = Y("div", n, t || this._mapPane);
           return e && (this._panes[e] = o), o;
         },
         // @section Methods for Getting Map State
@@ -1801,8 +1801,8 @@ function Aa() {
         // @method getBounds(): LatLngBounds
         // Returns the geographical bounds visible in the current map view
         getBounds: function() {
-          var e = this.getPixelBounds(), t = this.unproject(e.getBottomLeft()), i = this.unproject(e.getTopRight());
-          return new y(t, i);
+          var e = this.getPixelBounds(), t = this.unproject(e.getBottomLeft()), n = this.unproject(e.getTopRight());
+          return new b(t, n);
         },
         // @method getMinZoom(): Number
         // Returns the minimum zoom level of the map (if set in the `minZoom` option of the map or of any layers), or `0` by default.
@@ -1819,15 +1819,15 @@ function Aa() {
         // view in its entirety. If `inside` (optional) is set to `true`, the method
         // instead returns the minimum zoom level on which the map view fits into
         // the given bounds in its entirety.
-        getBoundsZoom: function(e, t, i) {
-          e = ee(e), i = V(i || [0, 0]);
-          var o = this.getZoom() || 0, s = this.getMinZoom(), c = this.getMaxZoom(), d = e.getNorthWest(), p = e.getSouthEast(), f = this.getSize().subtract(i), x = T(this.project(p, o), this.project(d, o)).getSize(), S = I.any3d ? this.options.zoomSnap : 1, U = f.x / x.x, ne = f.y / x.y, Ge = t ? Math.max(U, ne) : Math.min(U, ne);
+        getBoundsZoom: function(e, t, n) {
+          e = G(e), n = $(n || [0, 0]);
+          var o = this.getZoom() || 0, s = this.getMinZoom(), c = this.getMaxZoom(), h = e.getNorthWest(), p = e.getSouthEast(), f = this.getSize().subtract(n), k = T(this.project(p, o), this.project(h, o)).getSize(), S = Z.any3d ? this.options.zoomSnap : 1, H = f.x / k.x, se = f.y / k.y, Ge = t ? Math.max(H, se) : Math.min(H, se);
           return o = this.getScaleZoom(Ge, o), S && (o = Math.round(o / (S / 100)) * (S / 100), o = t ? Math.ceil(o / S) * S : Math.floor(o / S) * S), Math.max(s, Math.min(c, o));
         },
         // @method getSize(): Point
         // Returns the current size of the map container (in pixels).
         getSize: function() {
-          return (!this._size || this._sizeChanged) && (this._size = new M(
+          return (!this._size || this._sizeChanged) && (this._size = new W(
             this._container.clientWidth || 0,
             this._container.clientHeight || 0
           ), this._sizeChanged = !1), this._size.clone();
@@ -1836,8 +1836,8 @@ function Aa() {
         // Returns the bounds of the current map view in projected pixel
         // coordinates (sometimes useful in layer and overlay implementations).
         getPixelBounds: function(e, t) {
-          var i = this._getTopLeftPoint(e, t);
-          return new m(i, i.add(this.getSize()));
+          var n = this._getTopLeftPoint(e, t);
+          return new m(n, n.add(this.getSize()));
         },
         // TODO: Check semantics - isn't the pixel origin the 0,0 coord relative to
         // the map pane? "left point of the map layer" can be confusing, specially
@@ -1876,17 +1876,17 @@ function Aa() {
         // Returns the scale factor to be applied to a map transition from zoom level
         // `fromZoom` to `toZoom`. Used internally to help with zoom animations.
         getZoomScale: function(e, t) {
-          var i = this.options.crs;
-          return t = t === void 0 ? this._zoom : t, i.scale(e) / i.scale(t);
+          var n = this.options.crs;
+          return t = t === void 0 ? this._zoom : t, n.scale(e) / n.scale(t);
         },
         // @method getScaleZoom(scale: Number, fromZoom: Number): Number
         // Returns the zoom level that the map would end up at, if it is at `fromZoom`
         // level and everything is scaled by a factor of `scale`. Inverse of
         // [`getZoomScale`](#map-getZoomScale).
         getScaleZoom: function(e, t) {
-          var i = this.options.crs;
+          var n = this.options.crs;
           t = t === void 0 ? this._zoom : t;
-          var o = i.zoom(e * i.scale(t));
+          var o = n.zoom(e * n.scale(t));
           return isNaN(o) ? 1 / 0 : o;
         },
         // @method project(latlng: LatLng, zoom: Number): Point
@@ -1895,25 +1895,25 @@ function Aa() {
         // `Transformation`. The result is pixel coordinate relative to
         // the CRS origin.
         project: function(e, t) {
-          return t = t === void 0 ? this._zoom : t, this.options.crs.latLngToPoint($(e), t);
+          return t = t === void 0 ? this._zoom : t, this.options.crs.latLngToPoint(ie(e), t);
         },
         // @method unproject(point: Point, zoom: Number): LatLng
         // Inverse of [`project`](#map-project).
         unproject: function(e, t) {
-          return t = t === void 0 ? this._zoom : t, this.options.crs.pointToLatLng(V(e), t);
+          return t = t === void 0 ? this._zoom : t, this.options.crs.pointToLatLng($(e), t);
         },
         // @method layerPointToLatLng(point: Point): LatLng
         // Given a pixel coordinate relative to the [origin pixel](#map-getpixelorigin),
         // returns the corresponding geographical coordinate (for the current zoom level).
         layerPointToLatLng: function(e) {
-          var t = V(e).add(this.getPixelOrigin());
+          var t = $(e).add(this.getPixelOrigin());
           return this.unproject(t);
         },
         // @method latLngToLayerPoint(latlng: LatLng): Point
         // Given a geographical coordinate, returns the corresponding pixel coordinate
         // relative to the [origin pixel](#map-getpixelorigin).
         latLngToLayerPoint: function(e) {
-          var t = this.project($(e))._round();
+          var t = this.project(ie(e))._round();
           return t._subtract(this.getPixelOrigin());
         },
         // @method wrapLatLng(latlng: LatLng): LatLng
@@ -1923,7 +1923,7 @@ function Aa() {
         // By default this means longitude is wrapped around the dateline so its
         // value is between -180 and +180 degrees.
         wrapLatLng: function(e) {
-          return this.options.crs.wrapLatLng($(e));
+          return this.options.crs.wrapLatLng(ie(e));
         },
         // @method wrapLatLngBounds(bounds: LatLngBounds): LatLngBounds
         // Returns a `LatLngBounds` with the same size as the given one, ensuring that
@@ -1932,44 +1932,44 @@ function Aa() {
         // value is between -180 and +180 degrees, and the majority of the bounds
         // overlaps the CRS's bounds.
         wrapLatLngBounds: function(e) {
-          return this.options.crs.wrapLatLngBounds(ee(e));
+          return this.options.crs.wrapLatLngBounds(G(e));
         },
         // @method distance(latlng1: LatLng, latlng2: LatLng): Number
         // Returns the distance between two geographical coordinates according to
         // the map's CRS. By default this measures distance in meters.
         distance: function(e, t) {
-          return this.options.crs.distance($(e), $(t));
+          return this.options.crs.distance(ie(e), ie(t));
         },
         // @method containerPointToLayerPoint(point: Point): Point
         // Given a pixel coordinate relative to the map container, returns the corresponding
         // pixel coordinate relative to the [origin pixel](#map-getpixelorigin).
         containerPointToLayerPoint: function(e) {
-          return V(e).subtract(this._getMapPanePos());
+          return $(e).subtract(this._getMapPanePos());
         },
         // @method layerPointToContainerPoint(point: Point): Point
         // Given a pixel coordinate relative to the [origin pixel](#map-getpixelorigin),
         // returns the corresponding pixel coordinate relative to the map container.
         layerPointToContainerPoint: function(e) {
-          return V(e).add(this._getMapPanePos());
+          return $(e).add(this._getMapPanePos());
         },
         // @method containerPointToLatLng(point: Point): LatLng
         // Given a pixel coordinate relative to the map container, returns
         // the corresponding geographical coordinate (for the current zoom level).
         containerPointToLatLng: function(e) {
-          var t = this.containerPointToLayerPoint(V(e));
+          var t = this.containerPointToLayerPoint($(e));
           return this.layerPointToLatLng(t);
         },
         // @method latLngToContainerPoint(latlng: LatLng): Point
         // Given a geographical coordinate, returns the corresponding pixel coordinate
         // relative to the map container.
         latLngToContainerPoint: function(e) {
-          return this.layerPointToContainerPoint(this.latLngToLayerPoint($(e)));
+          return this.layerPointToContainerPoint(this.latLngToLayerPoint(ie(e)));
         },
         // @method mouseEventToContainerPoint(ev: MouseEvent): Point
         // Given a MouseEvent object, returns the pixel coordinate relative to the
         // map container where the event took place.
         mouseEventToContainerPoint: function(e) {
-          return Qi(e, this._container);
+          return Si(e, this._container);
         },
         // @method mouseEventToLayerPoint(ev: MouseEvent): Point
         // Given a MouseEvent object, returns the pixel coordinate relative to
@@ -1985,48 +1985,48 @@ function Aa() {
         },
         // map initialization methods
         _initContainer: function(e) {
-          var t = this._container = te(e);
+          var t = this._container = ln(e);
           if (t) {
             if (t._leaflet_id)
               throw new Error("Map container is already initialized.");
           } else throw new Error("Map container not found.");
-          H(t, "scroll", this._onScroll, this), this._containerId = K(t);
+          j(t, "scroll", this._onScroll, this), this._containerId = K(t);
         },
         _initLayout: function() {
           var e = this._container;
-          this._fadeAnimated = this.options.fadeAnimation && I.any3d, j(e, "leaflet-container" + (I.touch ? " leaflet-touch" : "") + (I.retina ? " leaflet-retina" : "") + (I.ielt9 ? " leaflet-oldie" : "") + (I.safari ? " leaflet-safari" : "") + (this._fadeAnimated ? " leaflet-fade-anim" : ""));
-          var t = oi(e, "position");
+          this._fadeAnimated = this.options.fadeAnimation && Z.any3d, J(e, "leaflet-container" + (Z.touch ? " leaflet-touch" : "") + (Z.retina ? " leaflet-retina" : "") + (Z.ielt9 ? " leaflet-oldie" : "") + (Z.safari ? " leaflet-safari" : "") + (this._fadeAnimated ? " leaflet-fade-anim" : ""));
+          var t = un(e, "position");
           t !== "absolute" && t !== "relative" && t !== "fixed" && t !== "sticky" && (e.style.position = "relative"), this._initPanes(), this._initControlPos && this._initControlPos();
         },
         _initPanes: function() {
           var e = this._panes = {};
-          this._paneRenderers = {}, this._mapPane = this.createPane("mapPane", this._container), _e(this._mapPane, new M(0, 0)), this.createPane("tilePane"), this.createPane("overlayPane"), this.createPane("shadowPane"), this.createPane("markerPane"), this.createPane("tooltipPane"), this.createPane("popupPane"), this.options.markerZoomAnimation || (j(e.markerPane, "leaflet-zoom-hide"), j(e.shadowPane, "leaflet-zoom-hide"));
+          this._paneRenderers = {}, this._mapPane = this.createPane("mapPane", this._container), Pe(this._mapPane, new W(0, 0)), this.createPane("tilePane"), this.createPane("overlayPane"), this.createPane("shadowPane"), this.createPane("markerPane"), this.createPane("tooltipPane"), this.createPane("popupPane"), this.options.markerZoomAnimation || (J(e.markerPane, "leaflet-zoom-hide"), J(e.shadowPane, "leaflet-zoom-hide"));
         },
         // private methods that modify map state
         // @section Map state change events
-        _resetView: function(e, t, i) {
-          _e(this._mapPane, new M(0, 0));
+        _resetView: function(e, t, n) {
+          Pe(this._mapPane, new W(0, 0));
           var o = !this._loaded;
           this._loaded = !0, t = this._limitZoom(t), this.fire("viewprereset");
           var s = this._zoom !== t;
-          this._moveStart(s, i)._move(e, t)._moveEnd(s), this.fire("viewreset"), o && this.fire("load");
+          this._moveStart(s, n)._move(e, t)._moveEnd(s), this.fire("viewreset"), o && this.fire("load");
         },
         _moveStart: function(e, t) {
           return e && this.fire("zoomstart"), t || this.fire("movestart"), this;
         },
-        _move: function(e, t, i, o) {
+        _move: function(e, t, n, o) {
           t === void 0 && (t = this._zoom);
           var s = this._zoom !== t;
-          return this._zoom = t, this._lastCenter = e, this._pixelOrigin = this._getNewPixelOrigin(e), o ? i && i.pinch && this.fire("zoom", i) : ((s || i && i.pinch) && this.fire("zoom", i), this.fire("move", i)), this;
+          return this._zoom = t, this._lastCenter = e, this._pixelOrigin = this._getNewPixelOrigin(e), o ? n && n.pinch && this.fire("zoom", n) : ((s || n && n.pinch) && this.fire("zoom", n), this.fire("move", n)), this;
         },
         _moveEnd: function(e) {
           return e && this.fire("zoomend"), this.fire("moveend");
         },
         _stop: function() {
-          return Pe(this._flyToFrame), this._panAnim && this._panAnim.stop(), this;
+          return Ce(this._flyToFrame), this._panAnim && this._panAnim.stop(), this;
         },
         _rawPanBy: function(e) {
-          _e(this._mapPane, this._getMapPanePos().subtract(e));
+          Pe(this._mapPane, this._getMapPanePos().subtract(e));
         },
         _getZoomSpan: function() {
           return this.getMaxZoom() - this.getMinZoom();
@@ -2042,11 +2042,11 @@ function Aa() {
         // @section Interaction events
         _initEvents: function(e) {
           this._targets = {}, this._targets[K(this._container)] = this;
-          var t = e ? pe : H;
-          t(this._container, "click dblclick mousedown mouseup mouseover mouseout mousemove contextmenu keypress keydown keyup", this._handleDOMEvent, this), this.options.trackResize && t(window, "resize", this._onResize, this), I.any3d && this.options.transform3DLimit && (e ? this.off : this.on).call(this, "moveend", this._onMoveEnd);
+          var t = e ? ue : j;
+          t(this._container, "click dblclick mousedown mouseup mouseover mouseout mousemove contextmenu keypress keydown keyup", this._handleDOMEvent, this), this.options.trackResize && t(window, "resize", this._onResize, this), Z.any3d && this.options.transform3DLimit && (e ? this.off : this.on).call(this, "moveend", this._onMoveEnd);
         },
         _onResize: function() {
-          Pe(this._resizeRequest), this._resizeRequest = Se(
+          Ce(this._resizeRequest), this._resizeRequest = Se(
             function() {
               this.invalidateSize({ debounceMoveend: !0 });
             },
@@ -2061,16 +2061,16 @@ function Aa() {
           Math.max(Math.abs(e.x), Math.abs(e.y)) >= this.options.transform3DLimit && this._resetView(this.getCenter(), this.getZoom());
         },
         _findEventTargets: function(e, t) {
-          for (var i = [], o, s = t === "mouseout" || t === "mouseover", c = e.target || e.srcElement, d = !1; c; ) {
+          for (var n = [], o, s = t === "mouseout" || t === "mouseover", c = e.target || e.srcElement, h = !1; c; ) {
             if (o = this._targets[K(c)], o && (t === "click" || t === "preclick") && this._draggableMoved(o)) {
-              d = !0;
+              h = !0;
               break;
             }
-            if (o && o.listens(t, !0) && (s && !Ht(c, e) || (i.push(o), s)) || c === this._container)
+            if (o && o.listens(t, !0) && (s && !Xn(c, e) || (n.push(o), s)) || c === this._container)
               break;
             c = c.parentNode;
           }
-          return !i.length && !d && !s && this.listens(t, !0) && (i = [this]), i;
+          return !n.length && !h && !s && this.listens(t, !0) && (n = [this]), n;
         },
         _isClickDisabled: function(e) {
           for (; e && e !== this._container; ) {
@@ -2082,33 +2082,33 @@ function Aa() {
         _handleDOMEvent: function(e) {
           var t = e.target || e.srcElement;
           if (!(!this._loaded || t._leaflet_disable_events || e.type === "click" && this._isClickDisabled(t))) {
-            var i = e.type;
-            i === "mousedown" && Ti(t), this._fireDOMEvent(e, i);
+            var n = e.type;
+            n === "mousedown" && Ye(t), this._fireDOMEvent(e, n);
           }
         },
         _mouseEvents: ["click", "dblclick", "mouseover", "mouseout", "contextmenu"],
-        _fireDOMEvent: function(e, t, i) {
+        _fireDOMEvent: function(e, t, n) {
           if (e.type === "click") {
-            var o = Z({}, e);
-            o.type = "preclick", this._fireDOMEvent(o, o.type, i);
+            var o = O({}, e);
+            o.type = "preclick", this._fireDOMEvent(o, o.type, n);
           }
           var s = this._findEventTargets(e, t);
-          if (i) {
-            for (var c = [], d = 0; d < i.length; d++)
-              i[d].listens(t, !0) && c.push(i[d]);
+          if (n) {
+            for (var c = [], h = 0; h < n.length; h++)
+              n[h].listens(t, !0) && c.push(n[h]);
             s = c.concat(s);
           }
           if (s.length) {
-            t === "contextmenu" && Ze(e);
+            t === "contextmenu" && Me(e);
             var p = s[0], f = {
               originalEvent: e
             };
             if (e.type !== "keypress" && e.type !== "keydown" && e.type !== "keyup") {
-              var x = p.getLatLng && (!p._radius || p._radius <= 10);
-              f.containerPoint = x ? this.latLngToContainerPoint(p.getLatLng()) : this.mouseEventToContainerPoint(e), f.layerPoint = this.containerPointToLayerPoint(f.containerPoint), f.latlng = x ? p.getLatLng() : this.layerPointToLatLng(f.layerPoint);
+              var k = p.getLatLng && (!p._radius || p._radius <= 10);
+              f.containerPoint = k ? this.latLngToContainerPoint(p.getLatLng()) : this.mouseEventToContainerPoint(e), f.layerPoint = this.containerPointToLayerPoint(f.containerPoint), f.latlng = k ? p.getLatLng() : this.layerPointToLatLng(f.layerPoint);
             }
-            for (d = 0; d < s.length; d++)
-              if (s[d].fire(t, f, !0), f.originalEvent._stopped || s[d].options.bubblingMouseEvents === !1 && qt(this._mouseEvents, t) !== -1)
+            for (h = 0; h < s.length; h++)
+              if (s[h].fire(t, f, !0), f.originalEvent._stopped || s[h].options.bubblingMouseEvents === !1 && Nt(this._mouseEvents, t) !== -1)
                 return;
           }
         },
@@ -2129,26 +2129,26 @@ function Aa() {
         },
         // private methods for getting map state
         _getMapPanePos: function() {
-          return pt(this._mapPane) || new M(0, 0);
+          return it(this._mapPane) || new W(0, 0);
         },
         _moved: function() {
           var e = this._getMapPanePos();
           return e && !e.equals([0, 0]);
         },
         _getTopLeftPoint: function(e, t) {
-          var i = e && t !== void 0 ? this._getNewPixelOrigin(e, t) : this.getPixelOrigin();
-          return i.subtract(this._getMapPanePos());
+          var n = e && t !== void 0 ? this._getNewPixelOrigin(e, t) : this.getPixelOrigin();
+          return n.subtract(this._getMapPanePos());
         },
         _getNewPixelOrigin: function(e, t) {
-          var i = this.getSize()._divideBy(2);
-          return this.project(e, t)._subtract(i)._add(this._getMapPanePos())._round();
+          var n = this.getSize()._divideBy(2);
+          return this.project(e, t)._subtract(n)._add(this._getMapPanePos())._round();
         },
-        _latLngToNewLayerPoint: function(e, t, i) {
-          var o = this._getNewPixelOrigin(i, t);
+        _latLngToNewLayerPoint: function(e, t, n) {
+          var o = this._getNewPixelOrigin(n, t);
           return this.project(e, t)._subtract(o);
         },
-        _latLngBoundsToNewLayerBounds: function(e, t, i) {
-          var o = this._getNewPixelOrigin(i, t);
+        _latLngBoundsToNewLayerBounds: function(e, t, n) {
+          var o = this._getNewPixelOrigin(n, t);
           return T([
             this.project(e.getSouthWest(), t)._subtract(o),
             this.project(e.getNorthWest(), t)._subtract(o),
@@ -2165,57 +2165,57 @@ function Aa() {
           return this.latLngToLayerPoint(e).subtract(this._getCenterLayerPoint());
         },
         // adjust center for view to get inside bounds
-        _limitCenter: function(e, t, i) {
-          if (!i)
+        _limitCenter: function(e, t, n) {
+          if (!n)
             return e;
-          var o = this.project(e, t), s = this.getSize().divideBy(2), c = new m(o.subtract(s), o.add(s)), d = this._getBoundsOffset(c, i, t);
-          return Math.abs(d.x) <= 1 && Math.abs(d.y) <= 1 ? e : this.unproject(o.add(d), t);
+          var o = this.project(e, t), s = this.getSize().divideBy(2), c = new m(o.subtract(s), o.add(s)), h = this._getBoundsOffset(c, n, t);
+          return Math.abs(h.x) <= 1 && Math.abs(h.y) <= 1 ? e : this.unproject(o.add(h), t);
         },
         // adjust offset for view to get inside bounds
         _limitOffset: function(e, t) {
           if (!t)
             return e;
-          var i = this.getPixelBounds(), o = new m(i.min.add(e), i.max.add(e));
+          var n = this.getPixelBounds(), o = new m(n.min.add(e), n.max.add(e));
           return e.add(this._getBoundsOffset(o, t));
         },
         // returns offset needed for pxBounds to get inside maxBounds at a specified zoom
-        _getBoundsOffset: function(e, t, i) {
+        _getBoundsOffset: function(e, t, n) {
           var o = T(
-            this.project(t.getNorthEast(), i),
-            this.project(t.getSouthWest(), i)
-          ), s = o.min.subtract(e.min), c = o.max.subtract(e.max), d = this._rebound(s.x, -c.x), p = this._rebound(s.y, -c.y);
-          return new M(d, p);
+            this.project(t.getNorthEast(), n),
+            this.project(t.getSouthWest(), n)
+          ), s = o.min.subtract(e.min), c = o.max.subtract(e.max), h = this._rebound(s.x, -c.x), p = this._rebound(s.y, -c.y);
+          return new W(h, p);
         },
         _rebound: function(e, t) {
           return e + t > 0 ? Math.round(e - t) / 2 : Math.max(0, Math.ceil(e)) - Math.max(0, Math.floor(t));
         },
         _limitZoom: function(e) {
-          var t = this.getMinZoom(), i = this.getMaxZoom(), o = I.any3d ? this.options.zoomSnap : 1;
-          return o && (e = Math.round(e / o) * o), Math.max(t, Math.min(i, e));
+          var t = this.getMinZoom(), n = this.getMaxZoom(), o = Z.any3d ? this.options.zoomSnap : 1;
+          return o && (e = Math.round(e / o) * o), Math.max(t, Math.min(n, e));
         },
         _onPanTransitionStep: function() {
           this.fire("move");
         },
         _onPanTransitionEnd: function() {
-          q(this._mapPane, "leaflet-pan-anim"), this.fire("moveend");
+          re(this._mapPane, "leaflet-pan-anim"), this.fire("moveend");
         },
         _tryAnimatedPan: function(e, t) {
-          var i = this._getCenterOffset(e)._trunc();
-          return (t && t.animate) !== !0 && !this.getSize().contains(i) ? !1 : (this.panBy(i, t), !0);
+          var n = this._getCenterOffset(e)._trunc();
+          return (t && t.animate) !== !0 && !this.getSize().contains(n) ? !1 : (this.panBy(n, t), !0);
         },
         _createAnimProxy: function() {
-          var e = this._proxy = se("div", "leaflet-proxy leaflet-zoom-animated");
+          var e = this._proxy = Y("div", "leaflet-proxy leaflet-zoom-animated");
           this._panes.mapPane.appendChild(e), this.on("zoomanim", function(t) {
-            var i = Vt, o = this._proxy.style[i];
-            qe(this._proxy, this.project(t.center, t.zoom), this.getZoomScale(t.zoom, 1)), o === this._proxy.style[i] && this._animatingZoom && this._onZoomTransitionEnd();
+            var n = Ct, o = this._proxy.style[n];
+            xt(this._proxy, this.project(t.center, t.zoom), this.getZoomScale(t.zoom, 1)), o === this._proxy.style[n] && this._animatingZoom && this._onZoomTransitionEnd();
           }, this), this.on("load moveend", this._animMoveEnd, this), this._on("unload", this._destroyAnimProxy, this);
         },
         _destroyAnimProxy: function() {
-          be(this._proxy), this.off("load moveend", this._animMoveEnd, this), delete this._proxy;
+          I(this._proxy), this.off("load moveend", this._animMoveEnd, this), delete this._proxy;
         },
         _animMoveEnd: function() {
           var e = this.getCenter(), t = this.getZoom();
-          qe(this._proxy, this.project(e, t), this.getZoomScale(t, 1));
+          xt(this._proxy, this.project(e, t), this.getZoomScale(t, 1));
         },
         _catchTransitionEnd: function(e) {
           this._animatingZoom && e.propertyName.indexOf("transform") >= 0 && this._onZoomTransitionEnd();
@@ -2223,31 +2223,31 @@ function Aa() {
         _nothingToAnimate: function() {
           return !this._container.getElementsByClassName("leaflet-zoom-animated").length;
         },
-        _tryAnimatedZoom: function(e, t, i) {
+        _tryAnimatedZoom: function(e, t, n) {
           if (this._animatingZoom)
             return !0;
-          if (i = i || {}, !this._zoomAnimated || i.animate === !1 || this._nothingToAnimate() || Math.abs(t - this._zoom) > this.options.zoomAnimationThreshold)
+          if (n = n || {}, !this._zoomAnimated || n.animate === !1 || this._nothingToAnimate() || Math.abs(t - this._zoom) > this.options.zoomAnimationThreshold)
             return !1;
           var o = this.getZoomScale(t), s = this._getCenterOffset(e)._divideBy(1 - 1 / o);
-          return i.animate !== !0 && !this.getSize().contains(s) ? !1 : (Se(function() {
-            this._moveStart(!0, i.noMoveStart || !1)._animateZoom(e, t, !0);
+          return n.animate !== !0 && !this.getSize().contains(s) ? !1 : (Se(function() {
+            this._moveStart(!0, n.noMoveStart || !1)._animateZoom(e, t, !0);
           }, this), !0);
         },
-        _animateZoom: function(e, t, i, o) {
-          this._mapPane && (i && (this._animatingZoom = !0, this._animateToCenter = e, this._animateToZoom = t, j(this._mapPane, "leaflet-zoom-anim")), this.fire("zoomanim", {
+        _animateZoom: function(e, t, n, o) {
+          this._mapPane && (n && (this._animatingZoom = !0, this._animateToCenter = e, this._animateToZoom = t, J(this._mapPane, "leaflet-zoom-anim")), this.fire("zoomanim", {
             center: e,
             zoom: t,
             noUpdate: o
-          }), this._tempFireZoomEvent || (this._tempFireZoomEvent = this._zoom !== this._animateToZoom), this._move(this._animateToCenter, this._animateToZoom, void 0, !0), setTimeout(J(this._onZoomTransitionEnd, this), 250));
+          }), this._tempFireZoomEvent || (this._tempFireZoomEvent = this._zoom !== this._animateToZoom), this._move(this._animateToCenter, this._animateToZoom, void 0, !0), setTimeout(N(this._onZoomTransitionEnd, this), 250));
         },
         _onZoomTransitionEnd: function() {
-          this._animatingZoom && (this._mapPane && q(this._mapPane, "leaflet-zoom-anim"), this._animatingZoom = !1, this._move(this._animateToCenter, this._animateToZoom, void 0, !0), this._tempFireZoomEvent && this.fire("zoom"), delete this._tempFireZoomEvent, this.fire("move"), this._moveEnd(!0));
+          this._animatingZoom && (this._mapPane && re(this._mapPane, "leaflet-zoom-anim"), this._animatingZoom = !1, this._move(this._animateToCenter, this._animateToZoom, void 0, !0), this._tempFireZoomEvent && this.fire("zoom"), delete this._tempFireZoomEvent, this.fire("move"), this._moveEnd(!0));
         }
       });
-      function Xn(e, t) {
-        return new oe(e, t);
+      function no(e, t) {
+        return new te(e, t);
       }
-      var Qe = je.extend({
+      var X = Qe.extend({
         // @section
         // @aka Control Options
         options: {
@@ -2257,7 +2257,7 @@ function Aa() {
           position: "topright"
         },
         initialize: function(e) {
-          he(this, e);
+          ee(this, e);
         },
         /* @section
          * Classes extending L.Control will inherit the following methods:
@@ -2283,21 +2283,21 @@ function Aa() {
         // Adds the control to the given map.
         addTo: function(e) {
           this.remove(), this._map = e;
-          var t = this._container = this.onAdd(e), i = this.getPosition(), o = e._controlCorners[i];
-          return j(t, "leaflet-control"), i.indexOf("bottom") !== -1 ? o.insertBefore(t, o.firstChild) : o.appendChild(t), this._map.on("unload", this.remove, this), this;
+          var t = this._container = this.onAdd(e), n = this.getPosition(), o = e._controlCorners[n];
+          return J(t, "leaflet-control"), n.indexOf("bottom") !== -1 ? o.insertBefore(t, o.firstChild) : o.appendChild(t), this._map.on("unload", this.remove, this), this;
         },
         // @method remove: this
         // Removes the control from the map it is currently active on.
         remove: function() {
-          return this._map ? (be(this._container), this.onRemove && this.onRemove(this._map), this._map.off("unload", this.remove, this), this._map = null, this) : this;
+          return this._map ? (I(this._container), this.onRemove && this.onRemove(this._map), this._map.off("unload", this.remove, this), this._map = null, this) : this;
         },
         _refocusOnMap: function(e) {
           this._map && e && e.screenX > 0 && e.screenY > 0 && this._map.getContainer().focus();
         }
-      }), ri = function(e) {
-        return new Qe(e);
+      }), Et = function(e) {
+        return new X(e);
       };
-      oe.include({
+      te.include({
         // @method addControl(control: Control): this
         // Adds the given control to the map
         addControl: function(e) {
@@ -2309,20 +2309,20 @@ function Aa() {
           return e.remove(), this;
         },
         _initControlPos: function() {
-          var e = this._controlCorners = {}, t = "leaflet-", i = this._controlContainer = se("div", t + "control-container", this._container);
+          var e = this._controlCorners = {}, t = "leaflet-", n = this._controlContainer = Y("div", t + "control-container", this._container);
           function o(s, c) {
-            var d = t + s + " " + t + c;
-            e[s + c] = se("div", d, i);
+            var h = t + s + " " + t + c;
+            e[s + c] = Y("div", h, n);
           }
           o("top", "left"), o("top", "right"), o("bottom", "left"), o("bottom", "right");
         },
         _clearControlPos: function() {
           for (var e in this._controlCorners)
-            be(this._controlCorners[e]);
-          be(this._controlContainer), delete this._controlCorners, delete this._controlContainer;
+            I(this._controlCorners[e]);
+          I(this._controlContainer), delete this._controlCorners, delete this._controlContainer;
         }
       });
-      var zi = Qe.extend({
+      var Qn = X.extend({
         // @section
         // @aka Control.Layers options
         options: {
@@ -2346,12 +2346,12 @@ function Aa() {
           // The function receives both the `L.Layer` instances and their names, as in
           // `sortFunction(layerA, layerB, nameA, nameB)`.
           // By default, it sorts layers alphabetically by their name.
-          sortFunction: function(e, t, i, o) {
-            return i < o ? -1 : o < i ? 1 : 0;
+          sortFunction: function(e, t, n, o) {
+            return n < o ? -1 : o < n ? 1 : 0;
           }
         },
-        initialize: function(e, t, i) {
-          he(this, i), this._layerControlInputs = [], this._layers = [], this._lastZIndex = 0, this._handlingClick = !1, this._preventClick = !1;
+        initialize: function(e, t, n) {
+          ee(this, n), this._layerControlInputs = [], this._layers = [], this._lastZIndex = 0, this._handlingClick = !1, this._preventClick = !1;
           for (var o in e)
             this._addLayer(e[o], o);
           for (o in t)
@@ -2364,7 +2364,7 @@ function Aa() {
           return this._container;
         },
         addTo: function(e) {
-          return Qe.prototype.addTo.call(this, e), this._expandIfNotCollapsed();
+          return X.prototype.addTo.call(this, e), this._expandIfNotCollapsed();
         },
         onRemove: function() {
           this._map.off("zoomend", this._checkDisabledLayers, this);
@@ -2391,83 +2391,83 @@ function Aa() {
         // @method expand(): this
         // Expand the control container if collapsed.
         expand: function() {
-          j(this._container, "leaflet-control-layers-expanded"), this._section.style.height = null;
+          J(this._container, "leaflet-control-layers-expanded"), this._section.style.height = null;
           var e = this._map.getSize().y - (this._container.offsetTop + 50);
-          return e < this._section.clientHeight ? (j(this._section, "leaflet-control-layers-scrollbar"), this._section.style.height = e + "px") : q(this._section, "leaflet-control-layers-scrollbar"), this._checkDisabledLayers(), this;
+          return e < this._section.clientHeight ? (J(this._section, "leaflet-control-layers-scrollbar"), this._section.style.height = e + "px") : re(this._section, "leaflet-control-layers-scrollbar"), this._checkDisabledLayers(), this;
         },
         // @method collapse(): this
         // Collapse the control container if expanded.
         collapse: function() {
-          return q(this._container, "leaflet-control-layers-expanded"), this;
+          return re(this._container, "leaflet-control-layers-expanded"), this;
         },
         _initLayout: function() {
-          var e = "leaflet-control-layers", t = this._container = se("div", e), i = this.options.collapsed;
-          t.setAttribute("aria-haspopup", !0), bt(t), Ft(t);
-          var o = this._section = se("section", e + "-list");
-          i && (this._map.on("click", this.collapse, this), H(t, {
+          var e = "leaflet-control-layers", t = this._container = Y("div", e), n = this.options.collapsed;
+          t.setAttribute("aria-haspopup", !0), dn(t), be(t);
+          var o = this._section = Y("section", e + "-list");
+          n && (this._map.on("click", this.collapse, this), j(t, {
             mouseenter: this._expandSafely,
             mouseleave: this.collapse
           }, this));
-          var s = this._layersLink = se("a", e + "-toggle", t);
-          s.href = "#", s.title = "Layers", s.setAttribute("role", "button"), H(s, {
+          var s = this._layersLink = Y("a", e + "-toggle", t);
+          s.href = "#", s.title = "Layers", s.setAttribute("role", "button"), j(s, {
             keydown: function(c) {
               c.keyCode === 13 && this._expandSafely();
             },
             // Certain screen readers intercept the key event and instead send a click event
             click: function(c) {
-              Ze(c), this._expandSafely();
+              Me(c), this._expandSafely();
             }
-          }, this), i || this.expand(), this._baseLayersList = se("div", e + "-base", o), this._separator = se("div", e + "-separator", o), this._overlaysList = se("div", e + "-overlays", o), t.appendChild(o);
+          }, this), n || this.expand(), this._baseLayersList = Y("div", e + "-base", o), this._separator = Y("div", e + "-separator", o), this._overlaysList = Y("div", e + "-overlays", o), t.appendChild(o);
         },
         _getLayer: function(e) {
           for (var t = 0; t < this._layers.length; t++)
             if (this._layers[t] && K(this._layers[t].layer) === e)
               return this._layers[t];
         },
-        _addLayer: function(e, t, i) {
+        _addLayer: function(e, t, n) {
           this._map && e.on("add remove", this._onLayerChange, this), this._layers.push({
             layer: e,
             name: t,
-            overlay: i
-          }), this.options.sortLayers && this._layers.sort(J(function(o, s) {
+            overlay: n
+          }), this.options.sortLayers && this._layers.sort(N(function(o, s) {
             return this.options.sortFunction(o.layer, s.layer, o.name, s.name);
           }, this)), this.options.autoZIndex && e.setZIndex && (this._lastZIndex++, e.setZIndex(this._lastZIndex)), this._expandIfNotCollapsed();
         },
         _update: function() {
           if (!this._container)
             return this;
-          ai(this._baseLayersList), ai(this._overlaysList), this._layerControlInputs = [];
-          var e, t, i, o, s = 0;
-          for (i = 0; i < this._layers.length; i++)
-            o = this._layers[i], this._addItem(o), t = t || o.overlay, e = e || !o.overlay, s += o.overlay ? 0 : 1;
+          Ln(this._baseLayersList), Ln(this._overlaysList), this._layerControlInputs = [];
+          var e, t, n, o, s = 0;
+          for (n = 0; n < this._layers.length; n++)
+            o = this._layers[n], this._addItem(o), t = t || o.overlay, e = e || !o.overlay, s += o.overlay ? 0 : 1;
           return this.options.hideSingleBase && (e = e && s > 1, this._baseLayersList.style.display = e ? "" : "none"), this._separator.style.display = t && e ? "" : "none", this;
         },
         _onLayerChange: function(e) {
           this._handlingClick || this._update();
-          var t = this._getLayer(K(e.target)), i = t.overlay ? e.type === "add" ? "overlayadd" : "overlayremove" : e.type === "add" ? "baselayerchange" : null;
-          i && this._map.fire(i, t);
+          var t = this._getLayer(K(e.target)), n = t.overlay ? e.type === "add" ? "overlayadd" : "overlayremove" : e.type === "add" ? "baselayerchange" : null;
+          n && this._map.fire(n, t);
         },
         // IE7 bugs out if you create a radio dynamically, so you have to do it this hacky way (see https://stackoverflow.com/a/119079)
         _createRadioElement: function(e, t) {
-          var i = '<input type="radio" class="leaflet-control-layers-selector" name="' + e + '"' + (t ? ' checked="checked"' : "") + "/>", o = document.createElement("div");
-          return o.innerHTML = i, o.firstChild;
+          var n = '<input type="radio" class="leaflet-control-layers-selector" name="' + e + '"' + (t ? ' checked="checked"' : "") + "/>", o = document.createElement("div");
+          return o.innerHTML = n, o.firstChild;
         },
         _addItem: function(e) {
-          var t = document.createElement("label"), i = this._map.hasLayer(e.layer), o;
-          e.overlay ? (o = document.createElement("input"), o.type = "checkbox", o.className = "leaflet-control-layers-selector", o.defaultChecked = i) : o = this._createRadioElement("leaflet-base-layers_" + K(this), i), this._layerControlInputs.push(o), o.layerId = K(e.layer), H(o, "click", this._onInputClick, this);
+          var t = document.createElement("label"), n = this._map.hasLayer(e.layer), o;
+          e.overlay ? (o = document.createElement("input"), o.type = "checkbox", o.className = "leaflet-control-layers-selector", o.defaultChecked = n) : o = this._createRadioElement("leaflet-base-layers_" + K(this), n), this._layerControlInputs.push(o), o.layerId = K(e.layer), j(o, "click", this._onInputClick, this);
           var s = document.createElement("span");
           s.innerHTML = " " + e.name;
           var c = document.createElement("span");
           t.appendChild(c), c.appendChild(o), c.appendChild(s);
-          var d = e.overlay ? this._overlaysList : this._baseLayersList;
-          return d.appendChild(t), this._checkDisabledLayers(), t;
+          var h = e.overlay ? this._overlaysList : this._baseLayersList;
+          return h.appendChild(t), this._checkDisabledLayers(), t;
         },
         _onInputClick: function() {
           if (!this._preventClick) {
-            var e = this._layerControlInputs, t, i, o = [], s = [];
+            var e = this._layerControlInputs, t, n, o = [], s = [];
             this._handlingClick = !0;
             for (var c = e.length - 1; c >= 0; c--)
-              t = e[c], i = this._getLayer(t.layerId).layer, t.checked ? o.push(i) : t.checked || s.push(i);
+              t = e[c], n = this._getLayer(t.layerId).layer, t.checked ? o.push(n) : t.checked || s.push(n);
             for (c = 0; c < s.length; c++)
               this._map.hasLayer(s[c]) && this._map.removeLayer(s[c]);
             for (c = 0; c < o.length; c++)
@@ -2476,23 +2476,23 @@ function Aa() {
           }
         },
         _checkDisabledLayers: function() {
-          for (var e = this._layerControlInputs, t, i, o = this._map.getZoom(), s = e.length - 1; s >= 0; s--)
-            t = e[s], i = this._getLayer(t.layerId).layer, t.disabled = i.options.minZoom !== void 0 && o < i.options.minZoom || i.options.maxZoom !== void 0 && o > i.options.maxZoom;
+          for (var e = this._layerControlInputs, t, n, o = this._map.getZoom(), s = e.length - 1; s >= 0; s--)
+            t = e[s], n = this._getLayer(t.layerId).layer, t.disabled = n.options.minZoom !== void 0 && o < n.options.minZoom || n.options.maxZoom !== void 0 && o > n.options.maxZoom;
         },
         _expandIfNotCollapsed: function() {
           return this._map && !this.options.collapsed && this.expand(), this;
         },
         _expandSafely: function() {
           var e = this._section;
-          this._preventClick = !0, H(e, "click", Ze), this.expand();
+          this._preventClick = !0, j(e, "click", Me), this.expand();
           var t = this;
           setTimeout(function() {
-            pe(e, "click", Ze), t._preventClick = !1;
+            ue(e, "click", Me), t._preventClick = !1;
           });
         }
-      }), en = function(e, t, i) {
-        return new zi(e, t, i);
-      }, Ei = Qe.extend({
+      }), Mi = function(e, t, n) {
+        return new Qn(e, t, n);
+      }, w = X.extend({
         // @section
         // @aka Control.Zoom options
         options: {
@@ -2511,20 +2511,20 @@ function Aa() {
           zoomOutTitle: "Zoom out"
         },
         onAdd: function(e) {
-          var t = "leaflet-control-zoom", i = se("div", t + " leaflet-bar"), o = this.options;
+          var t = "leaflet-control-zoom", n = Y("div", t + " leaflet-bar"), o = this.options;
           return this._zoomInButton = this._createButton(
             o.zoomInText,
             o.zoomInTitle,
             t + "-in",
-            i,
+            n,
             this._zoomIn
           ), this._zoomOutButton = this._createButton(
             o.zoomOutText,
             o.zoomOutTitle,
             t + "-out",
-            i,
+            n,
             this._zoomOut
-          ), this._updateDisabled(), e.on("zoomend zoomlevelschange", this._updateDisabled, this), i;
+          ), this._updateDisabled(), e.on("zoomend zoomlevelschange", this._updateDisabled, this), n;
         },
         onRemove: function(e) {
           e.off("zoomend zoomlevelschange", this._updateDisabled, this);
@@ -2541,23 +2541,23 @@ function Aa() {
         _zoomOut: function(e) {
           !this._disabled && this._map._zoom > this._map.getMinZoom() && this._map.zoomOut(this._map.options.zoomDelta * (e.shiftKey ? 3 : 1));
         },
-        _createButton: function(e, t, i, o, s) {
-          var c = se("a", i, o);
-          return c.innerHTML = e, c.href = "#", c.title = t, c.setAttribute("role", "button"), c.setAttribute("aria-label", t), bt(c), H(c, "click", ie), H(c, "click", s, this), H(c, "click", this._refocusOnMap, this), c;
+        _createButton: function(e, t, n, o, s) {
+          var c = Y("a", n, o);
+          return c.innerHTML = e, c.href = "#", c.title = t, c.setAttribute("role", "button"), c.setAttribute("aria-label", t), dn(c), j(c, "click", zt), j(c, "click", s, this), j(c, "click", this._refocusOnMap, this), c;
         },
         _updateDisabled: function() {
           var e = this._map, t = "leaflet-disabled";
-          q(this._zoomInButton, t), q(this._zoomOutButton, t), this._zoomInButton.setAttribute("aria-disabled", "false"), this._zoomOutButton.setAttribute("aria-disabled", "false"), (this._disabled || e._zoom === e.getMinZoom()) && (j(this._zoomOutButton, t), this._zoomOutButton.setAttribute("aria-disabled", "true")), (this._disabled || e._zoom === e.getMaxZoom()) && (j(this._zoomInButton, t), this._zoomInButton.setAttribute("aria-disabled", "true"));
+          re(this._zoomInButton, t), re(this._zoomOutButton, t), this._zoomInButton.setAttribute("aria-disabled", "false"), this._zoomOutButton.setAttribute("aria-disabled", "false"), (this._disabled || e._zoom === e.getMinZoom()) && (J(this._zoomOutButton, t), this._zoomOutButton.setAttribute("aria-disabled", "true")), (this._disabled || e._zoom === e.getMaxZoom()) && (J(this._zoomInButton, t), this._zoomInButton.setAttribute("aria-disabled", "true"));
         }
       });
-      oe.mergeOptions({
+      te.mergeOptions({
         zoomControl: !0
-      }), oe.addInitHook(function() {
-        this.options.zoomControl && (this.zoomControl = new Ei(), this.addControl(this.zoomControl));
+      }), te.addInitHook(function() {
+        this.options.zoomControl && (this.zoomControl = new w(), this.addControl(this.zoomControl));
       });
-      var zn = function(e) {
-        return new Ei(e);
-      }, h = Qe.extend({
+      var En = function(e) {
+        return new w(e);
+      }, zi = X.extend({
         // @section
         // @aka Control.Scale options
         options: {
@@ -2575,56 +2575,56 @@ function Aa() {
           // If `true`, the control is updated on [`moveend`](#map-moveend), otherwise it's always up-to-date (updated on [`move`](#map-move)).
         },
         onAdd: function(e) {
-          var t = "leaflet-control-scale", i = se("div", t), o = this.options;
-          return this._addScales(o, t + "-line", i), e.on(o.updateWhenIdle ? "moveend" : "move", this._update, this), e.whenReady(this._update, this), i;
+          var t = "leaflet-control-scale", n = Y("div", t), o = this.options;
+          return this._addScales(o, t + "-line", n), e.on(o.updateWhenIdle ? "moveend" : "move", this._update, this), e.whenReady(this._update, this), n;
         },
         onRemove: function(e) {
           e.off(this.options.updateWhenIdle ? "moveend" : "move", this._update, this);
         },
-        _addScales: function(e, t, i) {
-          e.metric && (this._mScale = se("div", t, i)), e.imperial && (this._iScale = se("div", t, i));
+        _addScales: function(e, t, n) {
+          e.metric && (this._mScale = Y("div", t, n)), e.imperial && (this._iScale = Y("div", t, n));
         },
         _update: function() {
-          var e = this._map, t = e.getSize().y / 2, i = e.distance(
+          var e = this._map, t = e.getSize().y / 2, n = e.distance(
             e.containerPointToLatLng([0, t]),
             e.containerPointToLatLng([this.options.maxWidth, t])
           );
-          this._updateScales(i);
+          this._updateScales(n);
         },
         _updateScales: function(e) {
           this.options.metric && e && this._updateMetric(e), this.options.imperial && e && this._updateImperial(e);
         },
         _updateMetric: function(e) {
-          var t = this._getRoundNum(e), i = t < 1e3 ? t + " m" : t / 1e3 + " km";
-          this._updateScale(this._mScale, i, t / e);
+          var t = this._getRoundNum(e), n = t < 1e3 ? t + " m" : t / 1e3 + " km";
+          this._updateScale(this._mScale, n, t / e);
         },
         _updateImperial: function(e) {
-          var t = e * 3.2808399, i, o, s;
-          t > 5280 ? (i = t / 5280, o = this._getRoundNum(i), this._updateScale(this._iScale, o + " mi", o / i)) : (s = this._getRoundNum(t), this._updateScale(this._iScale, s + " ft", s / t));
+          var t = e * 3.2808399, n, o, s;
+          t > 5280 ? (n = t / 5280, o = this._getRoundNum(n), this._updateScale(this._iScale, o + " mi", o / n)) : (s = this._getRoundNum(t), this._updateScale(this._iScale, s + " ft", s / t));
         },
-        _updateScale: function(e, t, i) {
-          e.style.width = Math.round(this.options.maxWidth * i) + "px", e.innerHTML = t;
+        _updateScale: function(e, t, n) {
+          e.style.width = Math.round(this.options.maxWidth * n) + "px", e.innerHTML = t;
         },
         _getRoundNum: function(e) {
-          var t = Math.pow(10, (Math.floor(e) + "").length - 1), i = e / t;
-          return i = i >= 10 ? 10 : i >= 5 ? 5 : i >= 3 ? 3 : i >= 2 ? 2 : 1, t * i;
+          var t = Math.pow(10, (Math.floor(e) + "").length - 1), n = e / t;
+          return n = n >= 10 ? 10 : n >= 5 ? 5 : n >= 3 ? 3 : n >= 2 ? 2 : 1, t * n;
         }
-      }), u = function(e) {
-        return new h(e);
-      }, l = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8" class="leaflet-attribution-flag"><path fill="#4C7BE1" d="M0 0h12v4H0z"/><path fill="#FFD500" d="M0 4h12v3H0z"/><path fill="#E0BC00" d="M0 7h12v1H0z"/></svg>', O = Qe.extend({
+      }), io = function(e) {
+        return new zi(e);
+      }, Ei = '<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8" class="leaflet-attribution-flag"><path fill="#4C7BE1" d="M0 0h12v4H0z"/><path fill="#FFD500" d="M0 4h12v3H0z"/><path fill="#E0BC00" d="M0 7h12v1H0z"/></svg>', ei = X.extend({
         // @section
         // @aka Control.Attribution options
         options: {
           position: "bottomright",
           // @option prefix: String|false = 'Leaflet'
           // The HTML text shown before the attributions. Pass `false` to disable.
-          prefix: '<a href="https://leafletjs.com" title="A JavaScript library for interactive maps">' + (I.inlineSvg ? l + " " : "") + "Leaflet</a>"
+          prefix: '<a href="https://leafletjs.com" title="A JavaScript library for interactive maps">' + (Z.inlineSvg ? Ei + " " : "") + "Leaflet</a>"
         },
         initialize: function(e) {
-          he(this, e), this._attributions = {};
+          ee(this, e), this._attributions = {};
         },
         onAdd: function(e) {
-          e.attributionControl = this, this._container = se("div", "leaflet-control-attribution"), bt(this._container);
+          e.attributionControl = this, this._container = Y("div", "leaflet-control-attribution"), dn(this._container);
           for (var t in e._layers)
             e._layers[t].getAttribution && this.addAttribution(e._layers[t].getAttribution());
           return this._update(), e.on("layeradd", this._addAttribution, this), this._container;
@@ -2657,21 +2657,21 @@ function Aa() {
             var e = [];
             for (var t in this._attributions)
               this._attributions[t] && e.push(t);
-            var i = [];
-            this.options.prefix && i.push(this.options.prefix), e.length && i.push(e.join(", ")), this._container.innerHTML = i.join(' <span aria-hidden="true">|</span> ');
+            var n = [];
+            this.options.prefix && n.push(this.options.prefix), e.length && n.push(e.join(", ")), this._container.innerHTML = n.join(' <span aria-hidden="true">|</span> ');
           }
         }
       });
-      oe.mergeOptions({
+      te.mergeOptions({
         attributionControl: !0
-      }), oe.addInitHook(function() {
-        this.options.attributionControl && new O().addTo(this);
+      }), te.addInitHook(function() {
+        this.options.attributionControl && new ei().addTo(this);
       });
-      var z = function(e) {
-        return new O(e);
+      var oo = function(e) {
+        return new ei(e);
       };
-      Qe.Layers = zi, Qe.Zoom = Ei, Qe.Scale = h, Qe.Attribution = O, ri.layers = en, ri.zoom = zn, ri.scale = u, ri.attribution = z;
-      var W = je.extend({
+      X.Layers = Qn, X.Zoom = w, X.Scale = zi, X.Attribution = ei, Et.layers = Mi, Et.zoom = En, Et.scale = io, Et.attribution = oo;
+      var dt = Qe.extend({
         initialize: function(e) {
           this._map = e;
         },
@@ -2697,10 +2697,10 @@ function Aa() {
         // @method removeHooks()
         // Called when the handler is disabled, should remove the event hooks added previously.
       });
-      W.addTo = function(e, t) {
+      dt.addTo = function(e, t) {
         return e.addHandler(t, this), this;
       };
-      var ue = { Events: Ue }, ke = I.touch ? "touchstart mousedown" : "mousedown", ft = xt.extend({
+      var ti = { Events: We }, On = Z.touch ? "touchstart mousedown" : "mousedown", _t = Pt.extend({
         options: {
           // @section
           // @aka Draggable options
@@ -2711,31 +2711,31 @@ function Aa() {
         },
         // @constructor L.Draggable(el: HTMLElement, dragHandle?: HTMLElement, preventOutline?: Boolean, options?: Draggable options)
         // Creates a `Draggable` object for moving `el` when you start dragging the `dragHandle` element (equals `el` itself by default).
-        initialize: function(e, t, i, o) {
-          he(this, o), this._element = e, this._dragStartTarget = t || e, this._preventOutline = i;
+        initialize: function(e, t, n, o) {
+          ee(this, o), this._element = e, this._dragStartTarget = t || e, this._preventOutline = n;
         },
         // @method enable()
         // Enables the dragging ability
         enable: function() {
-          this._enabled || (H(this._dragStartTarget, ke, this._onDown, this), this._enabled = !0);
+          this._enabled || (j(this._dragStartTarget, On, this._onDown, this), this._enabled = !0);
         },
         // @method disable()
         // Disables the dragging ability
         disable: function() {
-          this._enabled && (ft._dragging === this && this.finishDrag(!0), pe(this._dragStartTarget, ke, this._onDown, this), this._enabled = !1, this._moved = !1);
+          this._enabled && (_t._dragging === this && this.finishDrag(!0), ue(this._dragStartTarget, On, this._onDown, this), this._enabled = !1, this._moved = !1);
         },
         _onDown: function(e) {
-          if (this._enabled && (this._moved = !1, !$t(this._element, "leaflet-zoom-anim"))) {
+          if (this._enabled && (this._moved = !1, !Tn(this._element, "leaflet-zoom-anim"))) {
             if (e.touches && e.touches.length !== 1) {
-              ft._dragging === this && this.finishDrag();
+              _t._dragging === this && this.finishDrag();
               return;
             }
-            if (!(ft._dragging || e.shiftKey || e.which !== 1 && e.button !== 1 && !e.touches) && (ft._dragging = this, this._preventOutline && Ti(this._element), Ne(), Ke(), !this._moving)) {
+            if (!(_t._dragging || e.shiftKey || e.which !== 1 && e.button !== 1 && !e.touches) && (_t._dragging = this, this._preventOutline && Ye(this._element), Yn(), rt(), !this._moving)) {
               this.fire("down");
-              var t = e.touches ? e.touches[0] : e, i = Ci(this._element);
-              this._startPoint = new M(t.clientX, t.clientY), this._startPos = pt(this._element), this._parentScale = Ki(i);
+              var t = e.touches ? e.touches[0] : e, n = Li(this._element);
+              this._startPoint = new W(t.clientX, t.clientY), this._startPos = it(this._element), this._parentScale = Cn(n);
               var o = e.type === "mousedown";
-              H(document, o ? "mousemove" : "touchmove", this._onMove, this), H(document, o ? "mouseup" : "touchend touchcancel", this._onUp, this);
+              j(document, o ? "mousemove" : "touchmove", this._onMove, this), j(document, o ? "mouseup" : "touchend touchcancel", this._onUp, this);
             }
           }
         },
@@ -2745,212 +2745,212 @@ function Aa() {
               this._moved = !0;
               return;
             }
-            var t = e.touches && e.touches.length === 1 ? e.touches[0] : e, i = new M(t.clientX, t.clientY)._subtract(this._startPoint);
-            !i.x && !i.y || Math.abs(i.x) + Math.abs(i.y) < this.options.clickTolerance || (i.x /= this._parentScale.x, i.y /= this._parentScale.y, Ze(e), this._moved || (this.fire("dragstart"), this._moved = !0, j(document.body, "leaflet-dragging"), this._lastTarget = e.target || e.srcElement, window.SVGElementInstance && this._lastTarget instanceof window.SVGElementInstance && (this._lastTarget = this._lastTarget.correspondingUseElement), j(this._lastTarget, "leaflet-drag-target")), this._newPos = this._startPos.add(i), this._moving = !0, this._lastEvent = e, this._updatePosition());
+            var t = e.touches && e.touches.length === 1 ? e.touches[0] : e, n = new W(t.clientX, t.clientY)._subtract(this._startPoint);
+            !n.x && !n.y || Math.abs(n.x) + Math.abs(n.y) < this.options.clickTolerance || (n.x /= this._parentScale.x, n.y /= this._parentScale.y, Me(e), this._moved || (this.fire("dragstart"), this._moved = !0, J(document.body, "leaflet-dragging"), this._lastTarget = e.target || e.srcElement, window.SVGElementInstance && this._lastTarget instanceof window.SVGElementInstance && (this._lastTarget = this._lastTarget.correspondingUseElement), J(this._lastTarget, "leaflet-drag-target")), this._newPos = this._startPos.add(n), this._moving = !0, this._lastEvent = e, this._updatePosition());
           }
         },
         _updatePosition: function() {
           var e = { originalEvent: this._lastEvent };
-          this.fire("predrag", e), _e(this._element, this._newPos), this.fire("drag", e);
+          this.fire("predrag", e), Pe(this._element, this._newPos), this.fire("drag", e);
         },
         _onUp: function() {
           this._enabled && this.finishDrag();
         },
         finishDrag: function(e) {
-          q(document.body, "leaflet-dragging"), this._lastTarget && (q(this._lastTarget, "leaflet-drag-target"), this._lastTarget = null), pe(document, "mousemove touchmove", this._onMove, this), pe(document, "mouseup touchend touchcancel", this._onUp, this), Ye(), si();
+          re(document.body, "leaflet-dragging"), this._lastTarget && (re(this._lastTarget, "leaflet-drag-target"), this._lastTarget = null), ue(document, "mousemove touchmove", this._onMove, this), ue(document, "mouseup touchend touchcancel", this._onUp, this), Jn(), lt();
           var t = this._moved && this._moving;
-          this._moving = !1, ft._dragging = !1, t && this.fire("dragend", {
+          this._moving = !1, _t._dragging = !1, t && this.fire("dragend", {
             noInertia: e,
             distance: this._newPos.distanceTo(this._startPos)
           });
         }
       });
-      function tn(e, t, i) {
-        var o, s = [1, 4, 2, 8], c, d, p, f, x, S, U, ne;
+      function ni(e, t, n) {
+        var o, s = [1, 4, 2, 8], c, h, p, f, k, S, H, se;
         for (c = 0, S = e.length; c < S; c++)
-          e[c]._code = li(e[c], t);
+          e[c]._code = ae(e[c], t);
         for (p = 0; p < 4; p++) {
-          for (U = s[p], o = [], c = 0, S = e.length, d = S - 1; c < S; d = c++)
-            f = e[c], x = e[d], f._code & U ? x._code & U || (ne = En(x, f, U, t, i), ne._code = li(ne, t), o.push(ne)) : (x._code & U && (ne = En(x, f, U, t, i), ne._code = li(ne, t), o.push(ne)), o.push(f));
+          for (H = s[p], o = [], c = 0, S = e.length, h = S - 1; c < S; h = c++)
+            f = e[c], k = e[h], f._code & H ? k._code & H || (se = x(k, f, H, t, n), se._code = ae(se, t), o.push(se)) : (k._code & H && (se = x(k, f, H, t, n), se._code = ae(se, t), o.push(se)), o.push(f));
           e = o;
         }
         return e;
       }
-      function nn(e, t) {
-        var i, o, s, c, d, p, f, x, S;
+      function d(e, t) {
+        var n, o, s, c, h, p, f, k, S;
         if (!e || e.length === 0)
           throw new Error("latlngs not passed");
-        rt(e) || (console.warn("latlngs are not flat! Only the first ring will be used"), e = e[0]);
-        var U = $([0, 0]), ne = ee(e), Ge = ne.getNorthWest().distanceTo(ne.getSouthWest()) * ne.getNorthEast().distanceTo(ne.getNorthWest());
-        Ge < 1700 && (U = k(e));
-        var Re = e.length, lt = [];
-        for (i = 0; i < Re; i++) {
-          var Je = $(e[i]);
-          lt.push(t.project($([Je.lat - U.lat, Je.lng - U.lng])));
+        fe(e) || (console.warn("latlngs are not flat! Only the first ring will be used"), e = e[0]);
+        var H = ie([0, 0]), se = G(e), Ge = se.getNorthWest().distanceTo(se.getSouthWest()) * se.getNorthEast().distanceTo(se.getNorthWest());
+        Ge < 1700 && (H = u(e));
+        var Ve = e.length, ht = [];
+        for (n = 0; n < Ve; n++) {
+          var Je = ie(e[n]);
+          ht.push(t.project(ie([Je.lat - H.lat, Je.lng - H.lng])));
         }
-        for (p = f = x = 0, i = 0, o = Re - 1; i < Re; o = i++)
-          s = lt[i], c = lt[o], d = s.y * c.x - c.y * s.x, f += (s.x + c.x) * d, x += (s.y + c.y) * d, p += d * 3;
-        p === 0 ? S = lt[0] : S = [f / p, x / p];
-        var Ni = t.unproject(V(S));
-        return $([Ni.lat + U.lat, Ni.lng + U.lng]);
+        for (p = f = k = 0, n = 0, o = Ve - 1; n < Ve; o = n++)
+          s = ht[n], c = ht[o], h = s.y * c.x - c.y * s.x, f += (s.x + c.x) * h, k += (s.y + c.y) * h, p += h * 3;
+        p === 0 ? S = ht[0] : S = [f / p, k / p];
+        var Rn = t.unproject($(S));
+        return ie([Rn.lat + H.lat, Rn.lng + H.lng]);
       }
-      function k(e) {
-        for (var t = 0, i = 0, o = 0, s = 0; s < e.length; s++) {
-          var c = $(e[s]);
-          t += c.lat, i += c.lng, o++;
+      function u(e) {
+        for (var t = 0, n = 0, o = 0, s = 0; s < e.length; s++) {
+          var c = ie(e[s]);
+          t += c.lat, n += c.lng, o++;
         }
-        return $([t / o, i / o]);
+        return ie([t / o, n / o]);
       }
-      var ce = {
+      var l = {
         __proto__: null,
-        clipPolygon: tn,
-        polygonCenter: nn,
-        centroid: k
+        clipPolygon: ni,
+        polygonCenter: d,
+        centroid: u
       };
-      function ve(e, t) {
+      function B(e, t) {
         if (!t || !e.length)
           return e.slice();
-        var i = t * t;
-        return e = jo(e, i), e = Ee(e, i), e;
+        var n = t * t;
+        return e = Oi(e, n), e = pe(e, n), e;
       }
-      function Me(e, t, i) {
-        return Math.sqrt(on(e, t, i, !0));
+      function C(e, t, n) {
+        return Math.sqrt(xe(e, t, n, !0));
       }
-      function ze(e, t, i) {
-        return on(e, t, i);
+      function oe(e, t, n) {
+        return xe(e, t, n);
       }
-      function Ee(e, t) {
-        var i = e.length, o = typeof Uint8Array < "u" ? Uint8Array : Array, s = new o(i);
-        s[0] = s[i - 1] = 1, Qn(e, s, t, 0, i - 1);
-        var c, d = [];
-        for (c = 0; c < i; c++)
-          s[c] && d.push(e[c]);
-        return d;
+      function pe(e, t) {
+        var n = e.length, o = typeof Uint8Array < "u" ? Uint8Array : Array, s = new o(n);
+        s[0] = s[n - 1] = 1, we(e, s, t, 0, n - 1);
+        var c, h = [];
+        for (c = 0; c < n; c++)
+          s[c] && h.push(e[c]);
+        return h;
       }
-      function Qn(e, t, i, o, s) {
-        var c = 0, d, p, f;
+      function we(e, t, n, o, s) {
+        var c = 0, h, p, f;
         for (p = o + 1; p <= s - 1; p++)
-          f = on(e[p], e[o], e[s], !0), f > c && (d = p, c = f);
-        c > i && (t[d] = 1, Qn(e, t, i, o, d), Qn(e, t, i, d, s));
+          f = xe(e[p], e[o], e[s], !0), f > c && (h = p, c = f);
+        c > n && (t[h] = 1, we(e, t, n, o, h), we(e, t, n, h, s));
       }
-      function jo(e, t) {
-        for (var i = [e[0]], o = 1, s = 0, c = e.length; o < c; o++)
-          qo(e[o], e[s]) > t && (i.push(e[o]), s = o);
-        return s < c - 1 && i.push(e[c - 1]), i;
+      function Oi(e, t) {
+        for (var n = [e[0]], o = 1, s = 0, c = e.length; o < c; o++)
+          ve(e[o], e[s]) > t && (n.push(e[o]), s = o);
+        return s < c - 1 && n.push(e[c - 1]), n;
       }
-      var ro;
-      function lo(e, t, i, o, s) {
-        var c = o ? ro : li(e, i), d = li(t, i), p, f, x;
-        for (ro = d; ; ) {
-          if (!(c | d))
+      var ii;
+      function oi(e, t, n, o, s) {
+        var c = o ? ii : ae(e, n), h = ae(t, n), p, f, k;
+        for (ii = h; ; ) {
+          if (!(c | h))
             return [e, t];
-          if (c & d)
+          if (c & h)
             return !1;
-          p = c || d, f = En(e, t, p, i, s), x = li(f, i), p === c ? (e = f, c = x) : (t = f, d = x);
+          p = c || h, f = x(e, t, p, n, s), k = ae(f, n), p === c ? (e = f, c = k) : (t = f, h = k);
         }
       }
-      function En(e, t, i, o, s) {
-        var c = t.x - e.x, d = t.y - e.y, p = o.min, f = o.max, x, S;
-        return i & 8 ? (x = e.x + c * (f.y - e.y) / d, S = f.y) : i & 4 ? (x = e.x + c * (p.y - e.y) / d, S = p.y) : i & 2 ? (x = f.x, S = e.y + d * (f.x - e.x) / c) : i & 1 && (x = p.x, S = e.y + d * (p.x - e.x) / c), new M(x, S, s);
+      function x(e, t, n, o, s) {
+        var c = t.x - e.x, h = t.y - e.y, p = o.min, f = o.max, k, S;
+        return n & 8 ? (k = e.x + c * (f.y - e.y) / h, S = f.y) : n & 4 ? (k = e.x + c * (p.y - e.y) / h, S = p.y) : n & 2 ? (k = f.x, S = e.y + h * (f.x - e.x) / c) : n & 1 && (k = p.x, S = e.y + h * (p.x - e.x) / c), new W(k, S, s);
       }
-      function li(e, t) {
-        var i = 0;
-        return e.x < t.min.x ? i |= 1 : e.x > t.max.x && (i |= 2), e.y < t.min.y ? i |= 4 : e.y > t.max.y && (i |= 8), i;
+      function ae(e, t) {
+        var n = 0;
+        return e.x < t.min.x ? n |= 1 : e.x > t.max.x && (n |= 2), e.y < t.min.y ? n |= 4 : e.y > t.max.y && (n |= 8), n;
       }
-      function qo(e, t) {
-        var i = t.x - e.x, o = t.y - e.y;
-        return i * i + o * o;
+      function ve(e, t) {
+        var n = t.x - e.x, o = t.y - e.y;
+        return n * n + o * o;
       }
-      function on(e, t, i, o) {
-        var s = t.x, c = t.y, d = i.x - s, p = i.y - c, f = d * d + p * p, x;
-        return f > 0 && (x = ((e.x - s) * d + (e.y - c) * p) / f, x > 1 ? (s = i.x, c = i.y) : x > 0 && (s += d * x, c += p * x)), d = e.x - s, p = e.y - c, o ? d * d + p * p : new M(s, c);
+      function xe(e, t, n, o) {
+        var s = t.x, c = t.y, h = n.x - s, p = n.y - c, f = h * h + p * p, k;
+        return f > 0 && (k = ((e.x - s) * h + (e.y - c) * p) / f, k > 1 ? (s = n.x, c = n.y) : k > 0 && (s += h * k, c += p * k)), h = e.x - s, p = e.y - c, o ? h * h + p * p : new W(s, c);
       }
-      function rt(e) {
-        return !He(e[0]) || typeof e[0][0] != "object" && typeof e[0][0] < "u";
+      function fe(e) {
+        return !Ne(e[0]) || typeof e[0][0] != "object" && typeof e[0][0] < "u";
       }
-      function uo(e) {
-        return console.warn("Deprecated use of _flat, please use L.LineUtil.isFlat instead."), rt(e);
+      function ze(e) {
+        return console.warn("Deprecated use of _flat, please use L.LineUtil.isFlat instead."), fe(e);
       }
-      function co(e, t) {
-        var i, o, s, c, d, p, f, x;
+      function fo(e, t) {
+        var n, o, s, c, h, p, f, k;
         if (!e || e.length === 0)
           throw new Error("latlngs not passed");
-        rt(e) || (console.warn("latlngs are not flat! Only the first ring will be used"), e = e[0]);
-        var S = $([0, 0]), U = ee(e), ne = U.getNorthWest().distanceTo(U.getSouthWest()) * U.getNorthEast().distanceTo(U.getNorthWest());
-        ne < 1700 && (S = k(e));
-        var Ge = e.length, Re = [];
-        for (i = 0; i < Ge; i++) {
-          var lt = $(e[i]);
-          Re.push(t.project($([lt.lat - S.lat, lt.lng - S.lng])));
+        fe(e) || (console.warn("latlngs are not flat! Only the first ring will be used"), e = e[0]);
+        var S = ie([0, 0]), H = G(e), se = H.getNorthWest().distanceTo(H.getSouthWest()) * H.getNorthEast().distanceTo(H.getNorthWest());
+        se < 1700 && (S = u(e));
+        var Ge = e.length, Ve = [];
+        for (n = 0; n < Ge; n++) {
+          var ht = ie(e[n]);
+          Ve.push(t.project(ie([ht.lat - S.lat, ht.lng - S.lng])));
         }
-        for (i = 0, o = 0; i < Ge - 1; i++)
-          o += Re[i].distanceTo(Re[i + 1]) / 2;
+        for (n = 0, o = 0; n < Ge - 1; n++)
+          o += Ve[n].distanceTo(Ve[n + 1]) / 2;
         if (o === 0)
-          x = Re[0];
+          k = Ve[0];
         else
-          for (i = 0, c = 0; i < Ge - 1; i++)
-            if (d = Re[i], p = Re[i + 1], s = d.distanceTo(p), c += s, c > o) {
-              f = (c - o) / s, x = [
-                p.x - f * (p.x - d.x),
-                p.y - f * (p.y - d.y)
+          for (n = 0, c = 0; n < Ge - 1; n++)
+            if (h = Ve[n], p = Ve[n + 1], s = h.distanceTo(p), c += s, c > o) {
+              f = (c - o) / s, k = [
+                p.x - f * (p.x - h.x),
+                p.y - f * (p.y - h.y)
               ];
               break;
             }
-        var Je = t.unproject(V(x));
-        return $([Je.lat + S.lat, Je.lng + S.lng]);
+        var Je = t.unproject($(k));
+        return ie([Je.lat + S.lat, Je.lng + S.lng]);
       }
       var Ko = {
         __proto__: null,
-        simplify: ve,
-        pointToSegmentDistance: Me,
-        closestPointOnSegment: ze,
-        clipSegment: lo,
-        _getEdgeIntersection: En,
-        _getBitCode: li,
-        _sqClosestPointOnSegment: on,
-        isFlat: rt,
-        _flat: uo,
-        polylineCenter: co
-      }, eo = {
+        simplify: B,
+        pointToSegmentDistance: C,
+        closestPointOnSegment: oe,
+        clipSegment: oi,
+        _getEdgeIntersection: x,
+        _getBitCode: ae,
+        _sqClosestPointOnSegment: xe,
+        isFlat: fe,
+        _flat: ze,
+        polylineCenter: fo
+      }, ao = {
         project: function(e) {
-          return new M(e.lng, e.lat);
+          return new W(e.lng, e.lat);
         },
         unproject: function(e) {
-          return new X(e.y, e.x);
+          return new ne(e.y, e.x);
         },
         bounds: new m([-180, -90], [180, 90])
-      }, to = {
+      }, so = {
         R: 6378137,
         R_MINOR: 6356752314245179e-9,
         bounds: new m([-2003750834279e-5, -1549657073972e-5], [2003750834279e-5, 1876465623138e-5]),
         project: function(e) {
-          var t = Math.PI / 180, i = this.R, o = e.lat * t, s = this.R_MINOR / i, c = Math.sqrt(1 - s * s), d = c * Math.sin(o), p = Math.tan(Math.PI / 4 - o / 2) / Math.pow((1 - d) / (1 + d), c / 2);
-          return o = -i * Math.log(Math.max(p, 1e-10)), new M(e.lng * t * i, o);
+          var t = Math.PI / 180, n = this.R, o = e.lat * t, s = this.R_MINOR / n, c = Math.sqrt(1 - s * s), h = c * Math.sin(o), p = Math.tan(Math.PI / 4 - o / 2) / Math.pow((1 - h) / (1 + h), c / 2);
+          return o = -n * Math.log(Math.max(p, 1e-10)), new W(e.lng * t * n, o);
         },
         unproject: function(e) {
-          for (var t = 180 / Math.PI, i = this.R, o = this.R_MINOR / i, s = Math.sqrt(1 - o * o), c = Math.exp(-e.y / i), d = Math.PI / 2 - 2 * Math.atan(c), p = 0, f = 0.1, x; p < 15 && Math.abs(f) > 1e-7; p++)
-            x = s * Math.sin(d), x = Math.pow((1 - x) / (1 + x), s / 2), f = Math.PI / 2 - 2 * Math.atan(c * x) - d, d += f;
-          return new X(d * t, e.x * t / i);
+          for (var t = 180 / Math.PI, n = this.R, o = this.R_MINOR / n, s = Math.sqrt(1 - o * o), c = Math.exp(-e.y / n), h = Math.PI / 2 - 2 * Math.atan(c), p = 0, f = 0.1, k; p < 15 && Math.abs(f) > 1e-7; p++)
+            k = s * Math.sin(h), k = Math.pow((1 - k) / (1 + k), s / 2), f = Math.PI / 2 - 2 * Math.atan(c * k) - h, h += f;
+          return new ne(h * t, e.x * t / n);
         }
       }, Yo = {
         __proto__: null,
-        LonLat: eo,
-        Mercator: to,
-        SphericalMercator: Ri
-      }, Jo = Z({}, Be, {
+        LonLat: ao,
+        Mercator: so,
+        SphericalMercator: Ae
+      }, Jo = O({}, je, {
         code: "EPSG:3395",
-        projection: to,
+        projection: so,
         transformation: (function() {
-          var e = 0.5 / (Math.PI * to.R);
-          return Zt(e, 0.5, -e, 0.5);
+          var e = 0.5 / (Math.PI * so.R);
+          return V(e, 0.5, -e, 0.5);
         })()
-      }), ho = Z({}, Be, {
+      }), mo = O({}, je, {
         code: "EPSG:4326",
-        projection: eo,
-        transformation: Zt(1 / 180, 1, -1 / 180, 0.5)
-      }), Xo = Z({}, ge, {
-        projection: eo,
-        transformation: Zt(1, 0, -1, 0),
+        projection: ao,
+        transformation: V(1 / 180, 1, -1 / 180, 0.5)
+      }), Xo = O({}, et, {
+        projection: ao,
+        transformation: V(1, 0, -1, 0),
         scale: function(e) {
           return Math.pow(2, e);
         },
@@ -2958,13 +2958,13 @@ function Aa() {
           return Math.log(e) / Math.LN2;
         },
         distance: function(e, t) {
-          var i = t.lng - e.lng, o = t.lat - e.lat;
-          return Math.sqrt(i * i + o * o);
+          var n = t.lng - e.lng, o = t.lat - e.lat;
+          return Math.sqrt(n * n + o * o);
         },
         infinite: !0
       });
-      ge.Earth = Be, ge.EPSG3395 = Jo, ge.EPSG3857 = hi, ge.EPSG900913 = dn, ge.EPSG4326 = ho, ge.Simple = Xo;
-      var mt = xt.extend({
+      et.Earth = je, et.EPSG3395 = Jo, et.EPSG3857 = Dn, et.EPSG900913 = Gi, et.EPSG4326 = mo, et.Simple = Xo;
+      var vt = Pt.extend({
         // Classes extending `L.Layer` will inherit the following options:
         options: {
           // @option pane: String = 'overlayPane'
@@ -3018,16 +3018,16 @@ function Aa() {
           var t = e.target;
           if (t.hasLayer(this)) {
             if (this._map = t, this._zoomAnimated = t._zoomAnimated, this.getEvents) {
-              var i = this.getEvents();
-              t.on(i, this), this.once("remove", function() {
-                t.off(i, this);
+              var n = this.getEvents();
+              t.on(n, this), this.once("remove", function() {
+                t.off(n, this);
               }, this);
             }
             this.onAdd(t), this.fire("add"), t.fire("layeradd", { layer: this });
           }
         }
       });
-      oe.include({
+      te.include({
         // @method addLayer(layer: Layer): this
         // Adds the given layer to the map
         addLayer: function(e) {
@@ -3056,13 +3056,13 @@ function Aa() {
          * ```
          */
         eachLayer: function(e, t) {
-          for (var i in this._layers)
-            e.call(t, this._layers[i]);
+          for (var n in this._layers)
+            e.call(t, this._layers[n]);
           return this;
         },
         _addLayers: function(e) {
-          e = e ? He(e) ? e : [e] : [];
-          for (var t = 0, i = e.length; t < i; t++)
+          e = e ? Ne(e) ? e : [e] : [];
+          for (var t = 0, n = e.length; t < n; t++)
             this.addLayer(e[t]);
         },
         _addZoomLimit: function(e) {
@@ -3073,21 +3073,21 @@ function Aa() {
           this._zoomBoundLayers[t] && (delete this._zoomBoundLayers[t], this._updateZoomLevels());
         },
         _updateZoomLevels: function() {
-          var e = 1 / 0, t = -1 / 0, i = this._getZoomSpan();
+          var e = 1 / 0, t = -1 / 0, n = this._getZoomSpan();
           for (var o in this._zoomBoundLayers) {
             var s = this._zoomBoundLayers[o].options;
             e = s.minZoom === void 0 ? e : Math.min(e, s.minZoom), t = s.maxZoom === void 0 ? t : Math.max(t, s.maxZoom);
           }
-          this._layersMaxZoom = t === -1 / 0 ? void 0 : t, this._layersMinZoom = e === 1 / 0 ? void 0 : e, i !== this._getZoomSpan() && this.fire("zoomlevelschange"), this.options.maxZoom === void 0 && this._layersMaxZoom && this.getZoom() > this._layersMaxZoom && this.setZoom(this._layersMaxZoom), this.options.minZoom === void 0 && this._layersMinZoom && this.getZoom() < this._layersMinZoom && this.setZoom(this._layersMinZoom);
+          this._layersMaxZoom = t === -1 / 0 ? void 0 : t, this._layersMinZoom = e === 1 / 0 ? void 0 : e, n !== this._getZoomSpan() && this.fire("zoomlevelschange"), this.options.maxZoom === void 0 && this._layersMaxZoom && this.getZoom() > this._layersMaxZoom && this.setZoom(this._layersMaxZoom), this.options.minZoom === void 0 && this._layersMinZoom && this.getZoom() < this._layersMinZoom && this.setZoom(this._layersMinZoom);
         }
       });
-      var Oi = mt.extend({
+      var An = vt.extend({
         initialize: function(e, t) {
-          he(this, t), this._layers = {};
-          var i, o;
+          ee(this, t), this._layers = {};
+          var n, o;
           if (e)
-            for (i = 0, o = e.length; i < o; i++)
-              this.addLayer(e[i]);
+            for (n = 0, o = e.length; n < o; n++)
+              this.addLayer(e[n]);
         },
         // @method addLayer(layer: Layer): this
         // Adds the given layer to the group.
@@ -3123,9 +3123,9 @@ function Aa() {
         // additional parameters. Has no effect if the layers contained do not
         // implement `methodName`.
         invoke: function(e) {
-          var t = Array.prototype.slice.call(arguments, 1), i, o;
-          for (i in this._layers)
-            o = this._layers[i], o[e] && o[e].apply(o, t);
+          var t = Array.prototype.slice.call(arguments, 1), n, o;
+          for (n in this._layers)
+            o = this._layers[n], o[e] && o[e].apply(o, t);
           return this;
         },
         onAdd: function(e) {
@@ -3142,8 +3142,8 @@ function Aa() {
         // });
         // ```
         eachLayer: function(e, t) {
-          for (var i in this._layers)
-            e.call(t, this._layers[i]);
+          for (var n in this._layers)
+            e.call(t, this._layers[n]);
           return this;
         },
         // @method getLayer(id: Number): Layer
@@ -3168,13 +3168,13 @@ function Aa() {
           return K(e);
         }
       }), Qo = function(e, t) {
-        return new Oi(e, t);
-      }, St = Oi.extend({
+        return new An(e, t);
+      }, Ot = An.extend({
         addLayer: function(e) {
-          return this.hasLayer(e) ? this : (e.addEventParent(this), Oi.prototype.addLayer.call(this, e), this.fire("layeradd", { layer: e }));
+          return this.hasLayer(e) ? this : (e.addEventParent(this), An.prototype.addLayer.call(this, e), this.fire("layeradd", { layer: e }));
         },
         removeLayer: function(e) {
-          return this.hasLayer(e) ? (e in this._layers && (e = this._layers[e]), e.removeEventParent(this), Oi.prototype.removeLayer.call(this, e), this.fire("layerremove", { layer: e })) : this;
+          return this.hasLayer(e) ? (e in this._layers && (e = this._layers[e]), e.removeEventParent(this), An.prototype.removeLayer.call(this, e), this.fire("layerremove", { layer: e })) : this;
         },
         // @method setStyle(style: Path options): this
         // Sets the given path options to each layer of the group that has a `setStyle` method.
@@ -3194,16 +3194,16 @@ function Aa() {
         // @method getBounds(): LatLngBounds
         // Returns the LatLngBounds of the Feature Group (created from bounds and coordinates of its children).
         getBounds: function() {
-          var e = new y();
+          var e = new b();
           for (var t in this._layers) {
-            var i = this._layers[t];
-            e.extend(i.getBounds ? i.getBounds() : i.getLatLng());
+            var n = this._layers[t];
+            e.extend(n.getBounds ? n.getBounds() : n.getLatLng());
           }
           return e;
         }
       }), ea = function(e, t) {
-        return new St(e, t);
-      }, Ai = je.extend({
+        return new Ot(e, t);
+      }, In = Qe.extend({
         /* @section
          * @aka Icon options
          *
@@ -3253,7 +3253,7 @@ function Aa() {
           crossOrigin: !1
         },
         initialize: function(e) {
-          he(this, e);
+          ee(this, e);
         },
         // @method createIcon(oldIcon?: HTMLElement): HTMLElement
         // Called internally when the icon has to be shown, returns a `<img>` HTML element
@@ -3267,32 +3267,32 @@ function Aa() {
           return this._createIcon("shadow", e);
         },
         _createIcon: function(e, t) {
-          var i = this._getIconUrl(e);
-          if (!i) {
+          var n = this._getIconUrl(e);
+          if (!n) {
             if (e === "icon")
               throw new Error("iconUrl not set in Icon options (see the docs).");
             return null;
           }
-          var o = this._createImg(i, t && t.tagName === "IMG" ? t : null);
+          var o = this._createImg(n, t && t.tagName === "IMG" ? t : null);
           return this._setIconStyles(o, e), (this.options.crossOrigin || this.options.crossOrigin === "") && (o.crossOrigin = this.options.crossOrigin === !0 ? "" : this.options.crossOrigin), o;
         },
         _setIconStyles: function(e, t) {
-          var i = this.options, o = i[t + "Size"];
+          var n = this.options, o = n[t + "Size"];
           typeof o == "number" && (o = [o, o]);
-          var s = V(o), c = V(t === "shadow" && i.shadowAnchor || i.iconAnchor || s && s.divideBy(2, !0));
-          e.className = "leaflet-marker-" + t + " " + (i.className || ""), c && (e.style.marginLeft = -c.x + "px", e.style.marginTop = -c.y + "px"), s && (e.style.width = s.x + "px", e.style.height = s.y + "px");
+          var s = $(o), c = $(t === "shadow" && n.shadowAnchor || n.iconAnchor || s && s.divideBy(2, !0));
+          e.className = "leaflet-marker-" + t + " " + (n.className || ""), c && (e.style.marginLeft = -c.x + "px", e.style.marginTop = -c.y + "px"), s && (e.style.width = s.x + "px", e.style.height = s.y + "px");
         },
         _createImg: function(e, t) {
           return t = t || document.createElement("img"), t.src = e, t;
         },
         _getIconUrl: function(e) {
-          return I.retina && this.options[e + "RetinaUrl"] || this.options[e + "Url"];
+          return Z.retina && this.options[e + "RetinaUrl"] || this.options[e + "Url"];
         }
       });
       function ta(e) {
-        return new Ai(e);
+        return new In(e);
       }
-      var an = Ai.extend({
+      var ai = In.extend({
         options: {
           iconUrl: "marker-icon.png",
           iconRetinaUrl: "marker-icon-2x.png",
@@ -3304,34 +3304,34 @@ function Aa() {
           shadowSize: [41, 41]
         },
         _getIconUrl: function(e) {
-          return typeof an.imagePath != "string" && (an.imagePath = this._detectIconPath()), (this.options.imagePath || an.imagePath) + Ai.prototype._getIconUrl.call(this, e);
+          return typeof ai.imagePath != "string" && (ai.imagePath = this._detectIconPath()), (this.options.imagePath || ai.imagePath) + In.prototype._getIconUrl.call(this, e);
         },
         _stripUrl: function(e) {
-          var t = function(i, o, s) {
-            var c = o.exec(i);
+          var t = function(n, o, s) {
+            var c = o.exec(n);
             return c && c[s];
           };
           return e = t(e, /^url\((['"])?(.+)\1\)$/, 2), e && t(e, /^(.*)marker-icon\.png$/, 1);
         },
         _detectIconPath: function() {
-          var e = se("div", "leaflet-default-icon-path", document.body), t = oi(e, "background-image") || oi(e, "backgroundImage");
+          var e = Y("div", "leaflet-default-icon-path", document.body), t = un(e, "background-image") || un(e, "backgroundImage");
           if (document.body.removeChild(e), t = this._stripUrl(t), t)
             return t;
-          var i = document.querySelector('link[href$="leaflet.css"]');
-          return i ? i.href.substring(0, i.href.length - 11 - 1) : "";
+          var n = document.querySelector('link[href$="leaflet.css"]');
+          return n ? n.href.substring(0, n.href.length - 11 - 1) : "";
         }
-      }), po = W.extend({
+      }), _o = dt.extend({
         initialize: function(e) {
           this._marker = e;
         },
         addHooks: function() {
           var e = this._marker._icon;
-          this._draggable || (this._draggable = new ft(e, e, !0)), this._draggable.on({
+          this._draggable || (this._draggable = new _t(e, e, !0)), this._draggable.on({
             dragstart: this._onDragStart,
             predrag: this._onPreDrag,
             drag: this._onDrag,
             dragend: this._onDragEnd
-          }, this).enable(), j(e, "leaflet-marker-draggable");
+          }, this).enable(), J(e, "leaflet-marker-draggable");
         },
         removeHooks: function() {
           this._draggable.off({
@@ -3339,38 +3339,38 @@ function Aa() {
             predrag: this._onPreDrag,
             drag: this._onDrag,
             dragend: this._onDragEnd
-          }, this).disable(), this._marker._icon && q(this._marker._icon, "leaflet-marker-draggable");
+          }, this).disable(), this._marker._icon && re(this._marker._icon, "leaflet-marker-draggable");
         },
         moved: function() {
           return this._draggable && this._draggable._moved;
         },
         _adjustPan: function(e) {
-          var t = this._marker, i = t._map, o = this._marker.options.autoPanSpeed, s = this._marker.options.autoPanPadding, c = pt(t._icon), d = i.getPixelBounds(), p = i.getPixelOrigin(), f = T(
-            d.min._subtract(p).add(s),
-            d.max._subtract(p).subtract(s)
+          var t = this._marker, n = t._map, o = this._marker.options.autoPanSpeed, s = this._marker.options.autoPanPadding, c = it(t._icon), h = n.getPixelBounds(), p = n.getPixelOrigin(), f = T(
+            h.min._subtract(p).add(s),
+            h.max._subtract(p).subtract(s)
           );
           if (!f.contains(c)) {
-            var x = V(
-              (Math.max(f.max.x, c.x) - f.max.x) / (d.max.x - f.max.x) - (Math.min(f.min.x, c.x) - f.min.x) / (d.min.x - f.min.x),
-              (Math.max(f.max.y, c.y) - f.max.y) / (d.max.y - f.max.y) - (Math.min(f.min.y, c.y) - f.min.y) / (d.min.y - f.min.y)
+            var k = $(
+              (Math.max(f.max.x, c.x) - f.max.x) / (h.max.x - f.max.x) - (Math.min(f.min.x, c.x) - f.min.x) / (h.min.x - f.min.x),
+              (Math.max(f.max.y, c.y) - f.max.y) / (h.max.y - f.max.y) - (Math.min(f.min.y, c.y) - f.min.y) / (h.min.y - f.min.y)
             ).multiplyBy(o);
-            i.panBy(x, { animate: !1 }), this._draggable._newPos._add(x), this._draggable._startPos._add(x), _e(t._icon, this._draggable._newPos), this._onDrag(e), this._panRequest = Se(this._adjustPan.bind(this, e));
+            n.panBy(k, { animate: !1 }), this._draggable._newPos._add(k), this._draggable._startPos._add(k), Pe(t._icon, this._draggable._newPos), this._onDrag(e), this._panRequest = Se(this._adjustPan.bind(this, e));
           }
         },
         _onDragStart: function() {
           this._oldLatLng = this._marker.getLatLng(), this._marker.closePopup && this._marker.closePopup(), this._marker.fire("movestart").fire("dragstart");
         },
         _onPreDrag: function(e) {
-          this._marker.options.autoPan && (Pe(this._panRequest), this._panRequest = Se(this._adjustPan.bind(this, e)));
+          this._marker.options.autoPan && (Ce(this._panRequest), this._panRequest = Se(this._adjustPan.bind(this, e)));
         },
         _onDrag: function(e) {
-          var t = this._marker, i = t._shadow, o = pt(t._icon), s = t._map.layerPointToLatLng(o);
-          i && _e(i, o), t._latlng = s, e.latlng = s, e.oldLatLng = this._oldLatLng, t.fire("move", e).fire("drag", e);
+          var t = this._marker, n = t._shadow, o = it(t._icon), s = t._map.layerPointToLatLng(o);
+          n && Pe(n, o), t._latlng = s, e.latlng = s, e.oldLatLng = this._oldLatLng, t.fire("move", e).fire("drag", e);
         },
         _onDragEnd: function(e) {
-          Pe(this._panRequest), delete this._oldLatLng, this._marker.fire("moveend").fire("dragend", e);
+          Ce(this._panRequest), delete this._oldLatLng, this._marker.fire("moveend").fire("dragend", e);
         }
-      }), On = mt.extend({
+      }), Ai = vt.extend({
         // @section
         // @aka Marker options
         options: {
@@ -3378,7 +3378,7 @@ function Aa() {
           // Icon instance to use for rendering the marker.
           // See [Icon documentation](#L.Icon) for details on how to customize the marker icon.
           // If not specified, a common instance of `L.Icon.Default` is used.
-          icon: new an(),
+          icon: new ai(),
           // Option inherited from "Interactive layer" abstract class
           interactive: !0,
           // @option keyboard: Boolean = true
@@ -3439,7 +3439,7 @@ function Aa() {
          * In addition to [shared layer methods](#Layer) like `addTo()` and `remove()` and [popup methods](#Popup) like bindPopup() you can also use the following methods:
          */
         initialize: function(e, t) {
-          he(this, t), this._latlng = $(e);
+          ee(this, t), this._latlng = ie(e);
         },
         onAdd: function(e) {
           this._zoomAnimated = this._zoomAnimated && e.options.markerZoomAnimation, this._zoomAnimated && e.on("zoomanim", this._animateZoom, this), this._initIcon(), this.update();
@@ -3462,7 +3462,7 @@ function Aa() {
         // Changes the marker position to the given point.
         setLatLng: function(e) {
           var t = this._latlng;
-          return this._latlng = $(e), this.update(), this.fire("move", { oldLatLng: t, latlng: this._latlng });
+          return this._latlng = ie(e), this.update(), this.fire("move", { oldLatLng: t, latlng: this._latlng });
         },
         // @method setZIndexOffset(offset: Number): this
         // Changes the [zIndex offset](#marker-zindexoffset) of the marker.
@@ -3490,25 +3490,25 @@ function Aa() {
           return this;
         },
         _initIcon: function() {
-          var e = this.options, t = "leaflet-zoom-" + (this._zoomAnimated ? "animated" : "hide"), i = e.icon.createIcon(this._icon), o = !1;
-          i !== this._icon && (this._icon && this._removeIcon(), o = !0, e.title && (i.title = e.title), i.tagName === "IMG" && (i.alt = e.alt || "")), j(i, t), e.keyboard && (i.tabIndex = "0", i.setAttribute("role", "button")), this._icon = i, e.riseOnHover && this.on({
+          var e = this.options, t = "leaflet-zoom-" + (this._zoomAnimated ? "animated" : "hide"), n = e.icon.createIcon(this._icon), o = !1;
+          n !== this._icon && (this._icon && this._removeIcon(), o = !0, e.title && (n.title = e.title), n.tagName === "IMG" && (n.alt = e.alt || "")), J(n, t), e.keyboard && (n.tabIndex = "0", n.setAttribute("role", "button")), this._icon = n, e.riseOnHover && this.on({
             mouseover: this._bringToFront,
             mouseout: this._resetZIndex
-          }), this.options.autoPanOnFocus && H(i, "focus", this._panOnFocus, this);
+          }), this.options.autoPanOnFocus && j(n, "focus", this._panOnFocus, this);
           var s = e.icon.createShadow(this._shadow), c = !1;
-          s !== this._shadow && (this._removeShadow(), c = !0), s && (j(s, t), s.alt = ""), this._shadow = s, e.opacity < 1 && this._updateOpacity(), o && this.getPane().appendChild(this._icon), this._initInteraction(), s && c && this.getPane(e.shadowPane).appendChild(this._shadow);
+          s !== this._shadow && (this._removeShadow(), c = !0), s && (J(s, t), s.alt = ""), this._shadow = s, e.opacity < 1 && this._updateOpacity(), o && this.getPane().appendChild(this._icon), this._initInteraction(), s && c && this.getPane(e.shadowPane).appendChild(this._shadow);
         },
         _removeIcon: function() {
           this.options.riseOnHover && this.off({
             mouseover: this._bringToFront,
             mouseout: this._resetZIndex
-          }), this.options.autoPanOnFocus && pe(this._icon, "focus", this._panOnFocus, this), be(this._icon), this.removeInteractiveTarget(this._icon), this._icon = null;
+          }), this.options.autoPanOnFocus && ue(this._icon, "focus", this._panOnFocus, this), I(this._icon), this.removeInteractiveTarget(this._icon), this._icon = null;
         },
         _removeShadow: function() {
-          this._shadow && be(this._shadow), this._shadow = null;
+          this._shadow && I(this._shadow), this._shadow = null;
         },
         _setPos: function(e) {
-          this._icon && _e(this._icon, e), this._shadow && _e(this._shadow, e), this._zIndex = e.y + this.options.zIndexOffset, this._resetZIndex();
+          this._icon && Pe(this._icon, e), this._shadow && Pe(this._shadow, e), this._zIndex = e.y + this.options.zIndexOffset, this._resetZIndex();
         },
         _updateZIndex: function(e) {
           this._icon && (this._icon.style.zIndex = this._zIndex + e);
@@ -3518,9 +3518,9 @@ function Aa() {
           this._setPos(t);
         },
         _initInteraction: function() {
-          if (this.options.interactive && (j(this._icon, "leaflet-interactive"), this.addInteractiveTarget(this._icon), po)) {
+          if (this.options.interactive && (J(this._icon, "leaflet-interactive"), this.addInteractiveTarget(this._icon), _o)) {
             var e = this.options.draggable;
-            this.dragging && (e = this.dragging.enabled(), this.dragging.disable()), this.dragging = new po(this), e && this.dragging.enable();
+            this.dragging && (e = this.dragging.enabled(), this.dragging.disable()), this.dragging = new _o(this), e && this.dragging.enable();
           }
         },
         // @method setOpacity(opacity: Number): this
@@ -3530,7 +3530,7 @@ function Aa() {
         },
         _updateOpacity: function() {
           var e = this.options.opacity;
-          this._icon && We(this._icon, e), this._shadow && We(this._shadow, e);
+          this._icon && le(this._icon, e), this._shadow && le(this._shadow, e);
         },
         _bringToFront: function() {
           this._updateZIndex(this.options.riseOffset);
@@ -3541,10 +3541,10 @@ function Aa() {
         _panOnFocus: function() {
           var e = this._map;
           if (e) {
-            var t = this.options.icon.options, i = t.iconSize ? V(t.iconSize) : V(0, 0), o = t.iconAnchor ? V(t.iconAnchor) : V(0, 0);
+            var t = this.options.icon.options, n = t.iconSize ? $(t.iconSize) : $(0, 0), o = t.iconAnchor ? $(t.iconAnchor) : $(0, 0);
             e.panInside(this._latlng, {
               paddingTopLeft: o,
-              paddingBottomRight: i.subtract(o)
+              paddingBottomRight: n.subtract(o)
             });
           }
         },
@@ -3555,10 +3555,10 @@ function Aa() {
           return this.options.icon.options.tooltipAnchor;
         }
       });
-      function ia(e, t) {
-        return new On(e, t);
+      function na(e, t) {
+        return new Ai(e, t);
       }
-      var Wt = mt.extend({
+      var qt = vt.extend({
         // @section
         // @aka Path options
         options: {
@@ -3623,7 +3623,7 @@ function Aa() {
         // @method setStyle(style: Path options): this
         // Changes the appearance of a Path based on the options in the `Path options` object.
         setStyle: function(e) {
-          return he(this, e), this._renderer && (this._renderer._updateStyle(this), this.options.stroke && e && Object.prototype.hasOwnProperty.call(e, "weight") && this._updateBounds()), this;
+          return ee(this, e), this._renderer && (this._renderer._updateStyle(this), this.options.stroke && e && Object.prototype.hasOwnProperty.call(e, "weight") && this._updateBounds()), this;
         },
         // @method bringToFront(): this
         // Brings the layer to the top of all path layers.
@@ -3644,7 +3644,7 @@ function Aa() {
         _clickTolerance: function() {
           return (this.options.stroke ? this.options.weight / 2 : 0) + (this._renderer.options.tolerance || 0);
         }
-      }), An = Wt.extend({
+      }), Ii = qt.extend({
         // @section
         // @aka CircleMarker options
         options: {
@@ -3654,13 +3654,13 @@ function Aa() {
           radius: 10
         },
         initialize: function(e, t) {
-          he(this, t), this._latlng = $(e), this._radius = this.options.radius;
+          ee(this, t), this._latlng = ie(e), this._radius = this.options.radius;
         },
         // @method setLatLng(latLng: LatLng): this
         // Sets the position of a circle marker to a new location.
         setLatLng: function(e) {
           var t = this._latlng;
-          return this._latlng = $(e), this.redraw(), this.fire("move", { oldLatLng: t, latlng: this._latlng });
+          return this._latlng = ie(e), this.redraw(), this.fire("move", { oldLatLng: t, latlng: this._latlng });
         },
         // @method getLatLng(): LatLng
         // Returns the current geographical position of the circle marker
@@ -3679,13 +3679,13 @@ function Aa() {
         },
         setStyle: function(e) {
           var t = e && e.radius || this._radius;
-          return Wt.prototype.setStyle.call(this, e), this.setRadius(t), this;
+          return qt.prototype.setStyle.call(this, e), this.setRadius(t), this;
         },
         _project: function() {
           this._point = this._map.latLngToLayerPoint(this._latlng), this._updateBounds();
         },
         _updateBounds: function() {
-          var e = this._radius, t = this._radiusY || e, i = this._clickTolerance(), o = [e + i, t + i];
+          var e = this._radius, t = this._radiusY || e, n = this._clickTolerance(), o = [e + n, t + n];
           this._pxBounds = new m(this._point.subtract(o), this._point.add(o));
         },
         _update: function() {
@@ -3702,12 +3702,12 @@ function Aa() {
           return e.distanceTo(this._point) <= this._radius + this._clickTolerance();
         }
       });
-      function na(e, t) {
-        return new An(e, t);
+      function ia(e, t) {
+        return new Ii(e, t);
       }
-      var io = An.extend({
-        initialize: function(e, t, i) {
-          if (typeof t == "number" && (t = Z({}, i, { radius: t })), he(this, t), this._latlng = $(e), isNaN(this.options.radius))
+      var ro = Ii.extend({
+        initialize: function(e, t, n) {
+          if (typeof t == "number" && (t = O({}, n, { radius: t })), ee(this, t), this._latlng = ie(e), isNaN(this.options.radius))
             throw new Error("Circle radius cannot be NaN");
           this._mRadius = this.options.radius;
         },
@@ -3725,28 +3725,28 @@ function Aa() {
         // Returns the `LatLngBounds` of the path.
         getBounds: function() {
           var e = [this._radius, this._radiusY || this._radius];
-          return new y(
+          return new b(
             this._map.layerPointToLatLng(this._point.subtract(e)),
             this._map.layerPointToLatLng(this._point.add(e))
           );
         },
-        setStyle: Wt.prototype.setStyle,
+        setStyle: qt.prototype.setStyle,
         _project: function() {
-          var e = this._latlng.lng, t = this._latlng.lat, i = this._map, o = i.options.crs;
-          if (o.distance === Be.distance) {
-            var s = Math.PI / 180, c = this._mRadius / Be.R / s, d = i.project([t + c, e]), p = i.project([t - c, e]), f = d.add(p).divideBy(2), x = i.unproject(f).lat, S = Math.acos((Math.cos(c * s) - Math.sin(t * s) * Math.sin(x * s)) / (Math.cos(t * s) * Math.cos(x * s))) / s;
-            (isNaN(S) || S === 0) && (S = c / Math.cos(Math.PI / 180 * t)), this._point = f.subtract(i.getPixelOrigin()), this._radius = isNaN(S) ? 0 : f.x - i.project([x, e - S]).x, this._radiusY = f.y - d.y;
+          var e = this._latlng.lng, t = this._latlng.lat, n = this._map, o = n.options.crs;
+          if (o.distance === je.distance) {
+            var s = Math.PI / 180, c = this._mRadius / je.R / s, h = n.project([t + c, e]), p = n.project([t - c, e]), f = h.add(p).divideBy(2), k = n.unproject(f).lat, S = Math.acos((Math.cos(c * s) - Math.sin(t * s) * Math.sin(k * s)) / (Math.cos(t * s) * Math.cos(k * s))) / s;
+            (isNaN(S) || S === 0) && (S = c / Math.cos(Math.PI / 180 * t)), this._point = f.subtract(n.getPixelOrigin()), this._radius = isNaN(S) ? 0 : f.x - n.project([k, e - S]).x, this._radiusY = f.y - h.y;
           } else {
-            var U = o.unproject(o.project(this._latlng).subtract([this._mRadius, 0]));
-            this._point = i.latLngToLayerPoint(this._latlng), this._radius = this._point.x - i.latLngToLayerPoint(U).x;
+            var H = o.unproject(o.project(this._latlng).subtract([this._mRadius, 0]));
+            this._point = n.latLngToLayerPoint(this._latlng), this._radius = this._point.x - n.latLngToLayerPoint(H).x;
           }
           this._updateBounds();
         }
       });
-      function oa(e, t, i) {
-        return new io(e, t, i);
+      function oa(e, t, n) {
+        return new ro(e, t, n);
       }
-      var Ct = Wt.extend({
+      var At = qt.extend({
         // @section
         // @aka Polyline options
         options: {
@@ -3759,7 +3759,7 @@ function Aa() {
           noClip: !1
         },
         initialize: function(e, t) {
-          he(this, t), this._setLatLngs(e);
+          ee(this, t), this._setLatLngs(e);
         },
         // @method getLatLngs(): LatLng[]
         // Returns an array of the points in the path, or nested arrays of points in case of multi-polyline.
@@ -3779,20 +3779,20 @@ function Aa() {
         // @method closestLayerPoint(p: Point): Point
         // Returns the point closest to `p` on the Polyline.
         closestLayerPoint: function(e) {
-          for (var t = 1 / 0, i = null, o = on, s, c, d = 0, p = this._parts.length; d < p; d++)
-            for (var f = this._parts[d], x = 1, S = f.length; x < S; x++) {
-              s = f[x - 1], c = f[x];
-              var U = o(e, s, c, !0);
-              U < t && (t = U, i = o(e, s, c));
+          for (var t = 1 / 0, n = null, o = xe, s, c, h = 0, p = this._parts.length; h < p; h++)
+            for (var f = this._parts[h], k = 1, S = f.length; k < S; k++) {
+              s = f[k - 1], c = f[k];
+              var H = o(e, s, c, !0);
+              H < t && (t = H, n = o(e, s, c));
             }
-          return i && (i.distance = Math.sqrt(t)), i;
+          return n && (n.distance = Math.sqrt(t)), n;
         },
         // @method getCenter(): LatLng
         // Returns the center ([centroid](https://en.wikipedia.org/wiki/Centroid)) of the polyline.
         getCenter: function() {
           if (!this._map)
             throw new Error("Must add layer to map before using getCenter()");
-          return co(this._defaultShape(), this._map.options.crs);
+          return fo(this._defaultShape(), this._map.options.crs);
         },
         // @method getBounds(): LatLngBounds
         // Returns the `LatLngBounds` of the path.
@@ -3804,18 +3804,18 @@ function Aa() {
         // the polyline in case of a multi-polyline, but can be overridden by passing
         // a specific ring as a LatLng array (that you can earlier access with [`getLatLngs`](#polyline-getlatlngs)).
         addLatLng: function(e, t) {
-          return t = t || this._defaultShape(), e = $(e), t.push(e), this._bounds.extend(e), this.redraw();
+          return t = t || this._defaultShape(), e = ie(e), t.push(e), this._bounds.extend(e), this.redraw();
         },
         _setLatLngs: function(e) {
-          this._bounds = new y(), this._latlngs = this._convertLatLngs(e);
+          this._bounds = new b(), this._latlngs = this._convertLatLngs(e);
         },
         _defaultShape: function() {
-          return rt(this._latlngs) ? this._latlngs : this._latlngs[0];
+          return fe(this._latlngs) ? this._latlngs : this._latlngs[0];
         },
         // recursively convert latlngs input into actual LatLng instances; calculate bounds along the way
         _convertLatLngs: function(e) {
-          for (var t = [], i = rt(e), o = 0, s = e.length; o < s; o++)
-            i ? (t[o] = $(e[o]), this._bounds.extend(t[o])) : t[o] = this._convertLatLngs(e[o]);
+          for (var t = [], n = fe(e), o = 0, s = e.length; o < s; o++)
+            n ? (t[o] = ie(e[o]), this._bounds.extend(t[o])) : t[o] = this._convertLatLngs(e[o]);
           return t;
         },
         _project: function() {
@@ -3823,22 +3823,22 @@ function Aa() {
           this._rings = [], this._projectLatlngs(this._latlngs, this._rings, e), this._bounds.isValid() && e.isValid() && (this._rawPxBounds = e, this._updateBounds());
         },
         _updateBounds: function() {
-          var e = this._clickTolerance(), t = new M(e, e);
+          var e = this._clickTolerance(), t = new W(e, e);
           this._rawPxBounds && (this._pxBounds = new m([
             this._rawPxBounds.min.subtract(t),
             this._rawPxBounds.max.add(t)
           ]));
         },
         // recursively turns latlngs into a set of rings with projected coordinates
-        _projectLatlngs: function(e, t, i) {
-          var o = e[0] instanceof X, s = e.length, c, d;
+        _projectLatlngs: function(e, t, n) {
+          var o = e[0] instanceof ne, s = e.length, c, h;
           if (o) {
-            for (d = [], c = 0; c < s; c++)
-              d[c] = this._map.latLngToLayerPoint(e[c]), i.extend(d[c]);
-            t.push(d);
+            for (h = [], c = 0; c < s; c++)
+              h[c] = this._map.latLngToLayerPoint(e[c]), n.extend(h[c]);
+            t.push(h);
           } else
             for (c = 0; c < s; c++)
-              this._projectLatlngs(e[c], t, i);
+              this._projectLatlngs(e[c], t, n);
         },
         // clip polyline by renderer bounds so that we have less to render for performance
         _clipPoints: function() {
@@ -3848,16 +3848,16 @@ function Aa() {
               this._parts = this._rings;
               return;
             }
-            var t = this._parts, i, o, s, c, d, p, f;
-            for (i = 0, s = 0, c = this._rings.length; i < c; i++)
-              for (f = this._rings[i], o = 0, d = f.length; o < d - 1; o++)
-                p = lo(f[o], f[o + 1], e, o, !0), p && (t[s] = t[s] || [], t[s].push(p[0]), (p[1] !== f[o + 1] || o === d - 2) && (t[s].push(p[1]), s++));
+            var t = this._parts, n, o, s, c, h, p, f;
+            for (n = 0, s = 0, c = this._rings.length; n < c; n++)
+              for (f = this._rings[n], o = 0, h = f.length; o < h - 1; o++)
+                p = oi(f[o], f[o + 1], e, o, !0), p && (t[s] = t[s] || [], t[s].push(p[0]), (p[1] !== f[o + 1] || o === h - 2) && (t[s].push(p[1]), s++));
           }
         },
         // simplify each clipped part of the polyline for performance
         _simplifyPoints: function() {
-          for (var e = this._parts, t = this.options.smoothFactor, i = 0, o = e.length; i < o; i++)
-            e[i] = ve(e[i], t);
+          for (var e = this._parts, t = this.options.smoothFactor, n = 0, o = e.length; n < o; n++)
+            e[n] = B(e[n], t);
         },
         _update: function() {
           this._map && (this._clipPoints(), this._simplifyPoints(), this._updatePath());
@@ -3867,21 +3867,21 @@ function Aa() {
         },
         // Needed by the `Canvas` renderer for interactivity
         _containsPoint: function(e, t) {
-          var i, o, s, c, d, p, f = this._clickTolerance();
+          var n, o, s, c, h, p, f = this._clickTolerance();
           if (!this._pxBounds || !this._pxBounds.contains(e))
             return !1;
-          for (i = 0, c = this._parts.length; i < c; i++)
-            for (p = this._parts[i], o = 0, d = p.length, s = d - 1; o < d; s = o++)
-              if (!(!t && o === 0) && Me(e, p[s], p[o]) <= f)
+          for (n = 0, c = this._parts.length; n < c; n++)
+            for (p = this._parts[n], o = 0, h = p.length, s = h - 1; o < h; s = o++)
+              if (!(!t && o === 0) && C(e, p[s], p[o]) <= f)
                 return !0;
           return !1;
         }
       });
       function aa(e, t) {
-        return new Ct(e, t);
+        return new At(e, t);
       }
-      Ct._flat = uo;
-      var Ii = Ct.extend({
+      At._flat = ze;
+      var Bn = At.extend({
         options: {
           fill: !0
         },
@@ -3893,27 +3893,27 @@ function Aa() {
         getCenter: function() {
           if (!this._map)
             throw new Error("Must add layer to map before using getCenter()");
-          return nn(this._defaultShape(), this._map.options.crs);
+          return d(this._defaultShape(), this._map.options.crs);
         },
         _convertLatLngs: function(e) {
-          var t = Ct.prototype._convertLatLngs.call(this, e), i = t.length;
-          return i >= 2 && t[0] instanceof X && t[0].equals(t[i - 1]) && t.pop(), t;
+          var t = At.prototype._convertLatLngs.call(this, e), n = t.length;
+          return n >= 2 && t[0] instanceof ne && t[0].equals(t[n - 1]) && t.pop(), t;
         },
         _setLatLngs: function(e) {
-          Ct.prototype._setLatLngs.call(this, e), rt(this._latlngs) && (this._latlngs = [this._latlngs]);
+          At.prototype._setLatLngs.call(this, e), fe(this._latlngs) && (this._latlngs = [this._latlngs]);
         },
         _defaultShape: function() {
-          return rt(this._latlngs[0]) ? this._latlngs[0] : this._latlngs[0][0];
+          return fe(this._latlngs[0]) ? this._latlngs[0] : this._latlngs[0][0];
         },
         _clipPoints: function() {
-          var e = this._renderer._bounds, t = this.options.weight, i = new M(t, t);
-          if (e = new m(e.min.subtract(i), e.max.add(i)), this._parts = [], !(!this._pxBounds || !this._pxBounds.intersects(e))) {
+          var e = this._renderer._bounds, t = this.options.weight, n = new W(t, t);
+          if (e = new m(e.min.subtract(n), e.max.add(n)), this._parts = [], !(!this._pxBounds || !this._pxBounds.intersects(e))) {
             if (this.options.noClip) {
               this._parts = this._rings;
               return;
             }
             for (var o = 0, s = this._rings.length, c; o < s; o++)
-              c = tn(this._rings[o], e, !0), c.length && this._parts.push(c);
+              c = ni(this._rings[o], e, !0), c.length && this._parts.push(c);
           }
         },
         _updatePath: function() {
@@ -3921,19 +3921,19 @@ function Aa() {
         },
         // Needed by the `Canvas` renderer for interactivity
         _containsPoint: function(e) {
-          var t = !1, i, o, s, c, d, p, f, x;
+          var t = !1, n, o, s, c, h, p, f, k;
           if (!this._pxBounds || !this._pxBounds.contains(e))
             return !1;
           for (c = 0, f = this._parts.length; c < f; c++)
-            for (i = this._parts[c], d = 0, x = i.length, p = x - 1; d < x; p = d++)
-              o = i[d], s = i[p], o.y > e.y != s.y > e.y && e.x < (s.x - o.x) * (e.y - o.y) / (s.y - o.y) + o.x && (t = !t);
-          return t || Ct.prototype._containsPoint.call(this, e, !0);
+            for (n = this._parts[c], h = 0, k = n.length, p = k - 1; h < k; p = h++)
+              o = n[h], s = n[p], o.y > e.y != s.y > e.y && e.x < (s.x - o.x) * (e.y - o.y) / (s.y - o.y) + o.x && (t = !t);
+          return t || At.prototype._containsPoint.call(this, e, !0);
         }
       });
       function sa(e, t) {
-        return new Ii(e, t);
+        return new Bn(e, t);
       }
-      var Mt = St.extend({
+      var It = Ot.extend({
         /* @section
          * @aka GeoJSON options
          *
@@ -3984,28 +3984,28 @@ function Aa() {
          * Whether default Markers for "Point" type Features inherit from group options.
          */
         initialize: function(e, t) {
-          he(this, t), this._layers = {}, e && this.addData(e);
+          ee(this, t), this._layers = {}, e && this.addData(e);
         },
         // @method addData( <GeoJSON> data ): this
         // Adds a GeoJSON object to the layer.
         addData: function(e) {
-          var t = He(e) ? e : e.features, i, o, s;
+          var t = Ne(e) ? e : e.features, n, o, s;
           if (t) {
-            for (i = 0, o = t.length; i < o; i++)
-              s = t[i], (s.geometries || s.geometry || s.features || s.coordinates) && this.addData(s);
+            for (n = 0, o = t.length; n < o; n++)
+              s = t[n], (s.geometries || s.geometry || s.features || s.coordinates) && this.addData(s);
             return this;
           }
           var c = this.options;
           if (c.filter && !c.filter(e))
             return this;
-          var d = In(e, c);
-          return d ? (d.feature = Nn(e), d.defaultOptions = d.options, this.resetStyle(d), c.onEachFeature && c.onEachFeature(e, d), this.addLayer(d)) : this;
+          var h = Bi(e, c);
+          return h ? (h.feature = Ri(e), h.defaultOptions = h.options, this.resetStyle(h), c.onEachFeature && c.onEachFeature(e, h), this.addLayer(h)) : this;
         },
         // @method resetStyle( <Path> layer? ): this
         // Resets the given vector layer's style to the original GeoJSON style, useful for resetting style after hover events.
         // If `layer` is omitted, the style of all features in the current layer is reset.
         resetStyle: function(e) {
-          return e === void 0 ? this.eachLayer(this.resetStyle, this) : (e.options = Z({}, e.defaultOptions), this._setLayerStyle(e, this.options.style), this);
+          return e === void 0 ? this.eachLayer(this.resetStyle, this) : (e.options = O({}, e.defaultOptions), this._setLayerStyle(e, this.options.style), this);
         },
         // @method setStyle( <Function> style ): this
         // Changes styles of GeoJSON vector layers with the given style function.
@@ -4018,102 +4018,102 @@ function Aa() {
           e.setStyle && (typeof t == "function" && (t = t(e.feature)), e.setStyle(t));
         }
       });
-      function In(e, t) {
-        var i = e.type === "Feature" ? e.geometry : e, o = i ? i.coordinates : null, s = [], c = t && t.pointToLayer, d = t && t.coordsToLatLng || no, p, f, x, S;
-        if (!o && !i)
+      function Bi(e, t) {
+        var n = e.type === "Feature" ? e.geometry : e, o = n ? n.coordinates : null, s = [], c = t && t.pointToLayer, h = t && t.coordsToLatLng || lo, p, f, k, S;
+        if (!o && !n)
           return null;
-        switch (i.type) {
+        switch (n.type) {
           case "Point":
-            return p = d(o), fo(c, e, p, t);
+            return p = h(o), vo(c, e, p, t);
           case "MultiPoint":
-            for (x = 0, S = o.length; x < S; x++)
-              p = d(o[x]), s.push(fo(c, e, p, t));
-            return new St(s);
+            for (k = 0, S = o.length; k < S; k++)
+              p = h(o[k]), s.push(vo(c, e, p, t));
+            return new Ot(s);
           case "LineString":
           case "MultiLineString":
-            return f = Bn(o, i.type === "LineString" ? 0 : 1, d), new Ct(f, t);
+            return f = Zi(o, n.type === "LineString" ? 0 : 1, h), new At(f, t);
           case "Polygon":
           case "MultiPolygon":
-            return f = Bn(o, i.type === "Polygon" ? 1 : 2, d), new Ii(f, t);
+            return f = Zi(o, n.type === "Polygon" ? 1 : 2, h), new Bn(f, t);
           case "GeometryCollection":
-            for (x = 0, S = i.geometries.length; x < S; x++) {
-              var U = In({
-                geometry: i.geometries[x],
+            for (k = 0, S = n.geometries.length; k < S; k++) {
+              var H = Bi({
+                geometry: n.geometries[k],
                 type: "Feature",
                 properties: e.properties
               }, t);
-              U && s.push(U);
+              H && s.push(H);
             }
-            return new St(s);
+            return new Ot(s);
           case "FeatureCollection":
-            for (x = 0, S = i.features.length; x < S; x++) {
-              var ne = In(i.features[x], t);
-              ne && s.push(ne);
+            for (k = 0, S = n.features.length; k < S; k++) {
+              var se = Bi(n.features[k], t);
+              se && s.push(se);
             }
-            return new St(s);
+            return new Ot(s);
           default:
             throw new Error("Invalid GeoJSON object.");
         }
       }
-      function fo(e, t, i, o) {
-        return e ? e(t, i) : new On(i, o && o.markersInheritOptions && o);
+      function vo(e, t, n, o) {
+        return e ? e(t, n) : new Ai(n, o && o.markersInheritOptions && o);
       }
-      function no(e) {
-        return new X(e[1], e[0], e[2]);
+      function lo(e) {
+        return new ne(e[1], e[0], e[2]);
       }
-      function Bn(e, t, i) {
-        for (var o = [], s = 0, c = e.length, d; s < c; s++)
-          d = t ? Bn(e[s], t - 1, i) : (i || no)(e[s]), o.push(d);
+      function Zi(e, t, n) {
+        for (var o = [], s = 0, c = e.length, h; s < c; s++)
+          h = t ? Zi(e[s], t - 1, n) : (n || lo)(e[s]), o.push(h);
         return o;
       }
-      function oo(e, t) {
-        return e = $(e), e.alt !== void 0 ? [B(e.lng, t), B(e.lat, t), B(e.alt, t)] : [B(e.lng, t), B(e.lat, t)];
+      function uo(e, t) {
+        return e = ie(e), e.alt !== void 0 ? [q(e.lng, t), q(e.lat, t), q(e.alt, t)] : [q(e.lng, t), q(e.lat, t)];
       }
-      function Zn(e, t, i, o) {
-        for (var s = [], c = 0, d = e.length; c < d; c++)
-          s.push(t ? Zn(e[c], rt(e[c]) ? 0 : t - 1, i, o) : oo(e[c], o));
-        return !t && i && s.length > 0 && s.push(s[0].slice()), s;
+      function Ni(e, t, n, o) {
+        for (var s = [], c = 0, h = e.length; c < h; c++)
+          s.push(t ? Ni(e[c], fe(e[c]) ? 0 : t - 1, n, o) : uo(e[c], o));
+        return !t && n && s.length > 0 && s.push(s[0].slice()), s;
       }
-      function Bi(e, t) {
-        return e.feature ? Z({}, e.feature, { geometry: t }) : Nn(t);
+      function Zn(e, t) {
+        return e.feature ? O({}, e.feature, { geometry: t }) : Ri(t);
       }
-      function Nn(e) {
+      function Ri(e) {
         return e.type === "Feature" || e.type === "FeatureCollection" ? e : {
           type: "Feature",
           properties: {},
           geometry: e
         };
       }
-      var ao = {
+      var co = {
         toGeoJSON: function(e) {
-          return Bi(this, {
+          return Zn(this, {
             type: "Point",
-            coordinates: oo(this.getLatLng(), e)
+            coordinates: uo(this.getLatLng(), e)
           });
         }
       };
-      On.include(ao), io.include(ao), An.include(ao), Ct.include({
+      Ai.include(co), ro.include(co), Ii.include(co), At.include({
         toGeoJSON: function(e) {
-          var t = !rt(this._latlngs), i = Zn(this._latlngs, t ? 1 : 0, !1, e);
-          return Bi(this, {
+          var t = !fe(this._latlngs), n = Ni(this._latlngs, t ? 1 : 0, !1, e);
+          return Zn(this, {
             type: (t ? "Multi" : "") + "LineString",
-            coordinates: i
+            coordinates: n
           });
         }
-      }), Ii.include({
+      }), Bn.include({
         toGeoJSON: function(e) {
-          var t = !rt(this._latlngs), i = t && !rt(this._latlngs[0]), o = Zn(this._latlngs, i ? 2 : t ? 1 : 0, !0, e);
-          return t || (o = [o]), Bi(this, {
-            type: (i ? "Multi" : "") + "Polygon",
+          var t = !fe(this._latlngs), n = t && !fe(this._latlngs[0]), o = Ni(this._latlngs, n ? 2 : t ? 1 : 0, !0, e);
+          return t || (o = [o]), Zn(this, {
+            type: (n ? "Multi" : "") + "Polygon",
             coordinates: o
           });
         }
-      }), Oi.include({
+      }), An.include({
         toMultiPoint: function(e) {
           var t = [];
-          return this.eachLayer(function(i) {
-            t.push(i.toGeoJSON(e).geometry.coordinates);
-          }), Bi(this, {
+          return this.eachLayer(function(n) {
+            t.push(n.toGeoJSON(e).geometry.coordinates);
+          }), Zn(this, {
             type: "MultiPoint",
             coordinates: t
           });
@@ -4125,18 +4125,18 @@ function Aa() {
           var t = this.feature && this.feature.geometry && this.feature.geometry.type;
           if (t === "MultiPoint")
             return this.toMultiPoint(e);
-          var i = t === "GeometryCollection", o = [];
+          var n = t === "GeometryCollection", o = [];
           return this.eachLayer(function(s) {
             if (s.toGeoJSON) {
               var c = s.toGeoJSON(e);
-              if (i)
+              if (n)
                 o.push(c.geometry);
               else {
-                var d = Nn(c);
-                d.type === "FeatureCollection" ? o.push.apply(o, d.features) : o.push(d);
+                var h = Ri(c);
+                h.type === "FeatureCollection" ? o.push.apply(o, h.features) : o.push(h);
               }
             }
-          }), i ? Bi(this, {
+          }), n ? Zn(this, {
             geometries: o,
             type: "GeometryCollection"
           }) : {
@@ -4145,10 +4145,10 @@ function Aa() {
           };
         }
       });
-      function mo(e, t) {
-        return new Mt(e, t);
+      function go(e, t) {
+        return new It(e, t);
       }
-      var ra = mo, Rn = mt.extend({
+      var ra = go, Di = vt.extend({
         // @section
         // @aka ImageOverlay options
         options: {
@@ -4176,14 +4176,14 @@ function Aa() {
           // A custom class name to assign to the image. Empty by default.
           className: ""
         },
-        initialize: function(e, t, i) {
-          this._url = e, this._bounds = ee(t), he(this, i);
+        initialize: function(e, t, n) {
+          this._url = e, this._bounds = G(t), ee(this, n);
         },
         onAdd: function() {
-          this._image || (this._initImage(), this.options.opacity < 1 && this._updateOpacity()), this.options.interactive && (j(this._image, "leaflet-interactive"), this.addInteractiveTarget(this._image)), this.getPane().appendChild(this._image), this._reset();
+          this._image || (this._initImage(), this.options.opacity < 1 && this._updateOpacity()), this.options.interactive && (J(this._image, "leaflet-interactive"), this.addInteractiveTarget(this._image)), this.getPane().appendChild(this._image), this._reset();
         },
         onRemove: function() {
-          be(this._image), this.options.interactive && this.removeInteractiveTarget(this._image);
+          I(this._image), this.options.interactive && this.removeInteractiveTarget(this._image);
         },
         // @method setOpacity(opacity: Number): this
         // Sets the opacity of the overlay.
@@ -4196,12 +4196,12 @@ function Aa() {
         // @method bringToFront(): this
         // Brings the layer to the top of all overlays.
         bringToFront: function() {
-          return this._map && Dt(this._image), this;
+          return this._map && Ut(this._image), this;
         },
         // @method bringToBack(): this
         // Brings the layer to the bottom of all overlays.
         bringToBack: function() {
-          return this._map && Ce(this._image), this;
+          return this._map && Ht(this._image), this;
         },
         // @method setUrl(url: String): this
         // Changes the URL of the image.
@@ -4211,7 +4211,7 @@ function Aa() {
         // @method setBounds(bounds: LatLngBounds): this
         // Update the bounds that this ImageOverlay covers
         setBounds: function(e) {
-          return this._bounds = ee(e), this._map && this._reset(), this;
+          return this._bounds = G(e), this._map && this._reset(), this;
         },
         getEvents: function() {
           var e = {
@@ -4237,26 +4237,26 @@ function Aa() {
           return this._image;
         },
         _initImage: function() {
-          var e = this._url.tagName === "IMG", t = this._image = e ? this._url : se("img");
-          if (j(t, "leaflet-image-layer"), this._zoomAnimated && j(t, "leaflet-zoom-animated"), this.options.className && j(t, this.options.className), t.onselectstart = de, t.onmousemove = de, t.onload = J(this.fire, this, "load"), t.onerror = J(this._overlayOnError, this, "error"), (this.options.crossOrigin || this.options.crossOrigin === "") && (t.crossOrigin = this.options.crossOrigin === !0 ? "" : this.options.crossOrigin), this.options.zIndex && this._updateZIndex(), e) {
+          var e = this._url.tagName === "IMG", t = this._image = e ? this._url : Y("img");
+          if (J(t, "leaflet-image-layer"), this._zoomAnimated && J(t, "leaflet-zoom-animated"), this.options.className && J(t, this.options.className), t.onselectstart = de, t.onmousemove = de, t.onload = N(this.fire, this, "load"), t.onerror = N(this._overlayOnError, this, "error"), (this.options.crossOrigin || this.options.crossOrigin === "") && (t.crossOrigin = this.options.crossOrigin === !0 ? "" : this.options.crossOrigin), this.options.zIndex && this._updateZIndex(), e) {
             this._url = t.src;
             return;
           }
           t.src = this._url, t.alt = this.options.alt;
         },
         _animateZoom: function(e) {
-          var t = this._map.getZoomScale(e.zoom), i = this._map._latLngBoundsToNewLayerBounds(this._bounds, e.zoom, e.center).min;
-          qe(this._image, i, t);
+          var t = this._map.getZoomScale(e.zoom), n = this._map._latLngBoundsToNewLayerBounds(this._bounds, e.zoom, e.center).min;
+          xt(this._image, n, t);
         },
         _reset: function() {
           var e = this._image, t = new m(
             this._map.latLngToLayerPoint(this._bounds.getNorthWest()),
             this._map.latLngToLayerPoint(this._bounds.getSouthEast())
-          ), i = t.getSize();
-          _e(e, t.min), e.style.width = i.x + "px", e.style.height = i.y + "px";
+          ), n = t.getSize();
+          Pe(e, t.min), e.style.width = n.x + "px", e.style.height = n.y + "px";
         },
         _updateOpacity: function() {
-          We(this._image, this.options.opacity);
+          le(this._image, this.options.opacity);
         },
         _updateZIndex: function() {
           this._image && this.options.zIndex !== void 0 && this.options.zIndex !== null && (this._image.style.zIndex = this.options.zIndex);
@@ -4271,9 +4271,9 @@ function Aa() {
         getCenter: function() {
           return this._bounds.getCenter();
         }
-      }), la = function(e, t, i) {
-        return new Rn(e, t, i);
-      }, _o = Rn.extend({
+      }), la = function(e, t, n) {
+        return new Di(e, t, n);
+      }, yo = Di.extend({
         // @section
         // @aka VideoOverlay options
         options: {
@@ -4296,39 +4296,39 @@ function Aa() {
           playsInline: !0
         },
         _initImage: function() {
-          var e = this._url.tagName === "VIDEO", t = this._image = e ? this._url : se("video");
-          if (j(t, "leaflet-image-layer"), this._zoomAnimated && j(t, "leaflet-zoom-animated"), this.options.className && j(t, this.options.className), t.onselectstart = de, t.onmousemove = de, t.onloadeddata = J(this.fire, this, "load"), e) {
-            for (var i = t.getElementsByTagName("source"), o = [], s = 0; s < i.length; s++)
-              o.push(i[s].src);
-            this._url = i.length > 0 ? o : [t.src];
+          var e = this._url.tagName === "VIDEO", t = this._image = e ? this._url : Y("video");
+          if (J(t, "leaflet-image-layer"), this._zoomAnimated && J(t, "leaflet-zoom-animated"), this.options.className && J(t, this.options.className), t.onselectstart = de, t.onmousemove = de, t.onloadeddata = N(this.fire, this, "load"), e) {
+            for (var n = t.getElementsByTagName("source"), o = [], s = 0; s < n.length; s++)
+              o.push(n[s].src);
+            this._url = n.length > 0 ? o : [t.src];
             return;
           }
-          He(this._url) || (this._url = [this._url]), !this.options.keepAspectRatio && Object.prototype.hasOwnProperty.call(t.style, "objectFit") && (t.style.objectFit = "fill"), t.autoplay = !!this.options.autoplay, t.loop = !!this.options.loop, t.muted = !!this.options.muted, t.playsInline = !!this.options.playsInline;
+          Ne(this._url) || (this._url = [this._url]), !this.options.keepAspectRatio && Object.prototype.hasOwnProperty.call(t.style, "objectFit") && (t.style.objectFit = "fill"), t.autoplay = !!this.options.autoplay, t.loop = !!this.options.loop, t.muted = !!this.options.muted, t.playsInline = !!this.options.playsInline;
           for (var c = 0; c < this._url.length; c++) {
-            var d = se("source");
-            d.src = this._url[c], t.appendChild(d);
+            var h = Y("source");
+            h.src = this._url[c], t.appendChild(h);
           }
         }
         // @method getElement(): HTMLVideoElement
         // Returns the instance of [`HTMLVideoElement`](https://developer.mozilla.org/docs/Web/API/HTMLVideoElement)
         // used by this overlay.
       });
-      function ua(e, t, i) {
-        return new _o(e, t, i);
+      function ua(e, t, n) {
+        return new yo(e, t, n);
       }
-      var vo = Rn.extend({
+      var bo = Di.extend({
         _initImage: function() {
           var e = this._image = this._url;
-          j(e, "leaflet-image-layer"), this._zoomAnimated && j(e, "leaflet-zoom-animated"), this.options.className && j(e, this.options.className), e.onselectstart = de, e.onmousemove = de;
+          J(e, "leaflet-image-layer"), this._zoomAnimated && J(e, "leaflet-zoom-animated"), this.options.className && J(e, this.options.className), e.onselectstart = de, e.onmousemove = de;
         }
         // @method getElement(): SVGElement
         // Returns the instance of [`SVGElement`](https://developer.mozilla.org/docs/Web/API/SVGElement)
         // used by this overlay.
       });
-      function ca(e, t, i) {
-        return new vo(e, t, i);
+      function ca(e, t, n) {
+        return new bo(e, t, n);
       }
-      var wt = mt.extend({
+      var kt = vt.extend({
         // @section
         // @aka DivOverlay options
         options: {
@@ -4350,7 +4350,7 @@ function Aa() {
           content: ""
         },
         initialize: function(e, t) {
-          e && (e instanceof X || He(e)) ? (this._latlng = $(e), he(this, t)) : (he(this, e), this._source = t), this.options.content && (this._content = this.options.content);
+          e && (e instanceof ne || Ne(e)) ? (this._latlng = ie(e), ee(this, t)) : (ee(this, e), this._source = t), this.options.content && (this._content = this.options.content);
         },
         // @method openOn(map: Map): this
         // Adds the overlay to the map.
@@ -4373,10 +4373,10 @@ function Aa() {
           return this._map ? this.close() : (arguments.length ? this._source = e : e = this._source, this._prepareOpen(), this.openOn(e._map)), this;
         },
         onAdd: function(e) {
-          this._zoomAnimated = e._zoomAnimated, this._container || this._initLayout(), e._fadeAnimated && We(this._container, 0), clearTimeout(this._removeTimeout), this.getPane().appendChild(this._container), this.update(), e._fadeAnimated && We(this._container, 1), this.bringToFront(), this.options.interactive && (j(this._container, "leaflet-interactive"), this.addInteractiveTarget(this._container));
+          this._zoomAnimated = e._zoomAnimated, this._container || this._initLayout(), e._fadeAnimated && le(this._container, 0), clearTimeout(this._removeTimeout), this.getPane().appendChild(this._container), this.update(), e._fadeAnimated && le(this._container, 1), this.bringToFront(), this.options.interactive && (J(this._container, "leaflet-interactive"), this.addInteractiveTarget(this._container));
         },
         onRemove: function(e) {
-          e._fadeAnimated ? (We(this._container, 0), this._removeTimeout = setTimeout(J(be, void 0, this._container), 200)) : be(this._container), this.options.interactive && (q(this._container, "leaflet-interactive"), this.removeInteractiveTarget(this._container));
+          e._fadeAnimated ? (le(this._container, 0), this._removeTimeout = setTimeout(N(I, void 0, this._container), 200)) : I(this._container), this.options.interactive && (re(this._container, "leaflet-interactive"), this.removeInteractiveTarget(this._container));
         },
         // @namespace DivOverlay
         // @method getLatLng: LatLng
@@ -4387,7 +4387,7 @@ function Aa() {
         // @method setLatLng(latlng: LatLng): this
         // Sets the geographical point where the overlay will open.
         setLatLng: function(e) {
-          return this._latlng = $(e), this._map && (this._updatePosition(), this._adjustPan()), this;
+          return this._latlng = ie(e), this._map && (this._updatePosition(), this._adjustPan()), this;
         },
         // @method getContent: String|HTMLElement
         // Returns the content of the overlay.
@@ -4425,24 +4425,24 @@ function Aa() {
         // @method bringToFront: this
         // Brings this overlay in front of other overlays (in the same map pane).
         bringToFront: function() {
-          return this._map && Dt(this._container), this;
+          return this._map && Ut(this._container), this;
         },
         // @method bringToBack: this
         // Brings this overlay to the back of other overlays (in the same map pane).
         bringToBack: function() {
-          return this._map && Ce(this._container), this;
+          return this._map && Ht(this._container), this;
         },
         // prepare bound overlay to open: update latlng pos / content source (for FeatureGroup)
         _prepareOpen: function(e) {
           var t = this._source;
           if (!t._map)
             return !1;
-          if (t instanceof St) {
+          if (t instanceof Ot) {
             t = null;
-            var i = this._source._layers;
-            for (var o in i)
-              if (i[o]._map) {
-                t = i[o];
+            var n = this._source._layers;
+            for (var o in n)
+              if (n[o]._map) {
+                t = n[o];
                 break;
               }
             if (!t)
@@ -4475,8 +4475,8 @@ function Aa() {
         },
         _updatePosition: function() {
           if (this._map) {
-            var e = this._map.latLngToLayerPoint(this._latlng), t = V(this.options.offset), i = this._getAnchor();
-            this._zoomAnimated ? _e(this._container, e.add(i)) : t = t.add(e).add(i);
+            var e = this._map.latLngToLayerPoint(this._latlng), t = $(this.options.offset), n = this._getAnchor();
+            this._zoomAnimated ? Pe(this._container, e.add(n)) : t = t.add(e).add(n);
             var o = this._containerBottom = -t.y, s = this._containerLeft = -Math.round(this._containerWidth / 2) + t.x;
             this._container.style.bottom = o + "px", this._container.style.left = s + "px";
           }
@@ -4485,18 +4485,18 @@ function Aa() {
           return [0, 0];
         }
       });
-      oe.include({
-        _initOverlay: function(e, t, i, o) {
+      te.include({
+        _initOverlay: function(e, t, n, o) {
           var s = t;
-          return s instanceof e || (s = new e(o).setContent(t)), i && s.setLatLng(i), s;
+          return s instanceof e || (s = new e(o).setContent(t)), n && s.setLatLng(n), s;
         }
-      }), mt.include({
-        _initOverlay: function(e, t, i, o) {
-          var s = i;
-          return s instanceof e ? (he(s, o), s._source = this) : (s = t && !o ? t : new e(o, this), s.setContent(i)), s;
+      }), vt.include({
+        _initOverlay: function(e, t, n, o) {
+          var s = n;
+          return s instanceof e ? (ee(s, o), s._source = this) : (s = t && !o ? t : new e(o, this), s.setContent(n)), s;
         }
       });
-      var Vn = wt.extend({
+      var Vi = kt.extend({
         // @section
         // @aka Popup options
         options: {
@@ -4560,41 +4560,41 @@ function Aa() {
         // Alternative to `map.openPopup(popup)`.
         // Adds the popup to the map and closes the previous one.
         openOn: function(e) {
-          return e = arguments.length ? e : this._source._map, !e.hasLayer(this) && e._popup && e._popup.options.autoClose && e.removeLayer(e._popup), e._popup = this, wt.prototype.openOn.call(this, e);
+          return e = arguments.length ? e : this._source._map, !e.hasLayer(this) && e._popup && e._popup.options.autoClose && e.removeLayer(e._popup), e._popup = this, kt.prototype.openOn.call(this, e);
         },
         onAdd: function(e) {
-          wt.prototype.onAdd.call(this, e), e.fire("popupopen", { popup: this }), this._source && (this._source.fire("popupopen", { popup: this }, !0), this._source instanceof Wt || this._source.on("preclick", Tt));
+          kt.prototype.onAdd.call(this, e), e.fire("popupopen", { popup: this }), this._source && (this._source.fire("popupopen", { popup: this }, !0), this._source instanceof qt || this._source.on("preclick", ct));
         },
         onRemove: function(e) {
-          wt.prototype.onRemove.call(this, e), e.fire("popupclose", { popup: this }), this._source && (this._source.fire("popupclose", { popup: this }, !0), this._source instanceof Wt || this._source.off("preclick", Tt));
+          kt.prototype.onRemove.call(this, e), e.fire("popupclose", { popup: this }), this._source && (this._source.fire("popupclose", { popup: this }, !0), this._source instanceof qt || this._source.off("preclick", ct));
         },
         getEvents: function() {
-          var e = wt.prototype.getEvents.call(this);
+          var e = kt.prototype.getEvents.call(this);
           return (this.options.closeOnClick !== void 0 ? this.options.closeOnClick : this._map.options.closePopupOnClick) && (e.preclick = this.close), this.options.keepInView && (e.moveend = this._adjustPan), e;
         },
         _initLayout: function() {
-          var e = "leaflet-popup", t = this._container = se(
+          var e = "leaflet-popup", t = this._container = Y(
             "div",
             e + " " + (this.options.className || "") + " leaflet-zoom-animated"
-          ), i = this._wrapper = se("div", e + "-content-wrapper", t);
-          if (this._contentNode = se("div", e + "-content", i), bt(t), Ft(this._contentNode), H(t, "contextmenu", Tt), this._tipContainer = se("div", e + "-tip-container", t), this._tip = se("div", e + "-tip", this._tipContainer), this.options.closeButton) {
-            var o = this._closeButton = se("a", e + "-close-button", t);
-            o.setAttribute("role", "button"), o.setAttribute("aria-label", "Close popup"), o.href = "#close", o.innerHTML = '<span aria-hidden="true">&#215;</span>', H(o, "click", function(s) {
-              Ze(s), this.close();
+          ), n = this._wrapper = Y("div", e + "-content-wrapper", t);
+          if (this._contentNode = Y("div", e + "-content", n), dn(t), be(this._contentNode), j(t, "contextmenu", ct), this._tipContainer = Y("div", e + "-tip-container", t), this._tip = Y("div", e + "-tip", this._tipContainer), this.options.closeButton) {
+            var o = this._closeButton = Y("a", e + "-close-button", t);
+            o.setAttribute("role", "button"), o.setAttribute("aria-label", "Close popup"), o.href = "#close", o.innerHTML = '<span aria-hidden="true">&#215;</span>', j(o, "click", function(s) {
+              Me(s), this.close();
             }, this);
           }
         },
         _updateLayout: function() {
           var e = this._contentNode, t = e.style;
           t.width = "", t.whiteSpace = "nowrap";
-          var i = e.offsetWidth;
-          i = Math.min(i, this.options.maxWidth), i = Math.max(i, this.options.minWidth), t.width = i + 1 + "px", t.whiteSpace = "", t.height = "";
+          var n = e.offsetWidth;
+          n = Math.min(n, this.options.maxWidth), n = Math.max(n, this.options.minWidth), t.width = n + 1 + "px", t.whiteSpace = "", t.height = "";
           var o = e.offsetHeight, s = this.options.maxHeight, c = "leaflet-popup-scrolled";
-          s && o > s ? (t.height = s + "px", j(e, c)) : q(e, c), this._containerWidth = this._container.offsetWidth;
+          s && o > s ? (t.height = s + "px", J(e, c)) : re(e, c), this._containerWidth = this._container.offsetWidth;
         },
         _animateZoom: function(e) {
-          var t = this._map._latLngToNewLayerPoint(this._latlng, e.zoom, e.center), i = this._getAnchor();
-          _e(this._container, t.add(i));
+          var t = this._map._latLngToNewLayerPoint(this._latlng, e.zoom, e.center), n = this._getAnchor();
+          Pe(this._container, t.add(n));
         },
         _adjustPan: function() {
           if (this.options.autoPan) {
@@ -4602,41 +4602,41 @@ function Aa() {
               this._autopanning = !1;
               return;
             }
-            var e = this._map, t = parseInt(oi(this._container, "marginBottom"), 10) || 0, i = this._container.offsetHeight + t, o = this._containerWidth, s = new M(this._containerLeft, -i - this._containerBottom);
-            s._add(pt(this._container));
-            var c = e.layerPointToContainerPoint(s), d = V(this.options.autoPanPadding), p = V(this.options.autoPanPaddingTopLeft || d), f = V(this.options.autoPanPaddingBottomRight || d), x = e.getSize(), S = 0, U = 0;
-            c.x + o + f.x > x.x && (S = c.x + o - x.x + f.x), c.x - S - p.x < 0 && (S = c.x - p.x), c.y + i + f.y > x.y && (U = c.y + i - x.y + f.y), c.y - U - p.y < 0 && (U = c.y - p.y), (S || U) && (this.options.keepInView && (this._autopanning = !0), e.fire("autopanstart").panBy([S, U]));
+            var e = this._map, t = parseInt(un(this._container, "marginBottom"), 10) || 0, n = this._container.offsetHeight + t, o = this._containerWidth, s = new W(this._containerLeft, -n - this._containerBottom);
+            s._add(it(this._container));
+            var c = e.layerPointToContainerPoint(s), h = $(this.options.autoPanPadding), p = $(this.options.autoPanPaddingTopLeft || h), f = $(this.options.autoPanPaddingBottomRight || h), k = e.getSize(), S = 0, H = 0;
+            c.x + o + f.x > k.x && (S = c.x + o - k.x + f.x), c.x - S - p.x < 0 && (S = c.x - p.x), c.y + n + f.y > k.y && (H = c.y + n - k.y + f.y), c.y - H - p.y < 0 && (H = c.y - p.y), (S || H) && (this.options.keepInView && (this._autopanning = !0), e.fire("autopanstart").panBy([S, H]));
           }
         },
         _getAnchor: function() {
-          return V(this._source && this._source._getPopupAnchor ? this._source._getPopupAnchor() : [0, 0]);
+          return $(this._source && this._source._getPopupAnchor ? this._source._getPopupAnchor() : [0, 0]);
         }
       }), da = function(e, t) {
-        return new Vn(e, t);
+        return new Vi(e, t);
       };
-      oe.mergeOptions({
+      te.mergeOptions({
         closePopupOnClick: !0
-      }), oe.include({
+      }), te.include({
         // @method openPopup(popup: Popup): this
         // Opens the specified popup while closing the previously opened (to make sure only one is opened at one time for usability).
         // @alternative
         // @method openPopup(content: String|HTMLElement, latlng: LatLng, options?: Popup options): this
         // Creates a popup with the specified content and options and opens it in the given point on a map.
-        openPopup: function(e, t, i) {
-          return this._initOverlay(Vn, e, t, i).openOn(this), this;
+        openPopup: function(e, t, n) {
+          return this._initOverlay(Vi, e, t, n).openOn(this), this;
         },
         // @method closePopup(popup?: Popup): this
         // Closes the popup previously opened with [openPopup](#map-openpopup) (or the given one).
         closePopup: function(e) {
           return e = arguments.length ? e : this._popup, e && e.close(), this;
         }
-      }), mt.include({
+      }), vt.include({
         // @method bindPopup(content: String|HTMLElement|Function|Popup, options?: Popup options): this
         // Binds a popup to the layer with the passed `content` and sets up the
         // necessary event listeners. If a `Function` is passed it will receive
         // the layer as the first argument and should return a `String` or `HTMLElement`.
         bindPopup: function(e, t) {
-          return this._popup = this._initOverlay(Vn, this._popup, e, t), this._popupHandlersAdded || (this.on({
+          return this._popup = this._initOverlay(Vi, this._popup, e, t), this._popupHandlersAdded || (this.on({
             click: this._openPopup,
             keypress: this._onKeyPress,
             remove: this.closePopup,
@@ -4656,7 +4656,7 @@ function Aa() {
         // @method openPopup(latlng?: LatLng): this
         // Opens the bound popup at the specified `latlng` or at the default popup anchor if no `latlng` is passed.
         openPopup: function(e) {
-          return this._popup && (this instanceof St || (this._popup._source = this), this._popup._prepareOpen(e || this._latlng) && this._popup.openOn(this._map)), this;
+          return this._popup && (this instanceof Ot || (this._popup._source = this), this._popup._prepareOpen(e || this._latlng) && this._popup.openOn(this._map)), this;
         },
         // @method closePopup(): this
         // Closes the popup bound to this layer if it is open.
@@ -4685,9 +4685,9 @@ function Aa() {
         },
         _openPopup: function(e) {
           if (!(!this._popup || !this._map)) {
-            ie(e);
+            zt(e);
             var t = e.layer || e.target;
-            if (this._popup._source === t && !(t instanceof Wt)) {
+            if (this._popup._source === t && !(t instanceof qt)) {
               this._map.hasLayer(this._popup) ? this.closePopup() : this.openPopup(e.latlng);
               return;
             }
@@ -4701,7 +4701,7 @@ function Aa() {
           e.originalEvent.keyCode === 13 && this._openPopup(e);
         }
       });
-      var Dn = wt.extend({
+      var $i = kt.extend({
         // @section
         // @aka Tooltip options
         options: {
@@ -4728,65 +4728,65 @@ function Aa() {
           opacity: 0.9
         },
         onAdd: function(e) {
-          wt.prototype.onAdd.call(this, e), this.setOpacity(this.options.opacity), e.fire("tooltipopen", { tooltip: this }), this._source && (this.addEventParent(this._source), this._source.fire("tooltipopen", { tooltip: this }, !0));
+          kt.prototype.onAdd.call(this, e), this.setOpacity(this.options.opacity), e.fire("tooltipopen", { tooltip: this }), this._source && (this.addEventParent(this._source), this._source.fire("tooltipopen", { tooltip: this }, !0));
         },
         onRemove: function(e) {
-          wt.prototype.onRemove.call(this, e), e.fire("tooltipclose", { tooltip: this }), this._source && (this.removeEventParent(this._source), this._source.fire("tooltipclose", { tooltip: this }, !0));
+          kt.prototype.onRemove.call(this, e), e.fire("tooltipclose", { tooltip: this }), this._source && (this.removeEventParent(this._source), this._source.fire("tooltipclose", { tooltip: this }, !0));
         },
         getEvents: function() {
-          var e = wt.prototype.getEvents.call(this);
+          var e = kt.prototype.getEvents.call(this);
           return this.options.permanent || (e.preclick = this.close), e;
         },
         _initLayout: function() {
           var e = "leaflet-tooltip", t = e + " " + (this.options.className || "") + " leaflet-zoom-" + (this._zoomAnimated ? "animated" : "hide");
-          this._contentNode = this._container = se("div", t), this._container.setAttribute("role", "tooltip"), this._container.setAttribute("id", "leaflet-tooltip-" + K(this));
+          this._contentNode = this._container = Y("div", t), this._container.setAttribute("role", "tooltip"), this._container.setAttribute("id", "leaflet-tooltip-" + K(this));
         },
         _updateLayout: function() {
         },
         _adjustPan: function() {
         },
         _setPosition: function(e) {
-          var t, i, o = this._map, s = this._container, c = o.latLngToContainerPoint(o.getCenter()), d = o.layerPointToContainerPoint(e), p = this.options.direction, f = s.offsetWidth, x = s.offsetHeight, S = V(this.options.offset), U = this._getAnchor();
-          p === "top" ? (t = f / 2, i = x) : p === "bottom" ? (t = f / 2, i = 0) : p === "center" ? (t = f / 2, i = x / 2) : p === "right" ? (t = 0, i = x / 2) : p === "left" ? (t = f, i = x / 2) : d.x < c.x ? (p = "right", t = 0, i = x / 2) : (p = "left", t = f + (S.x + U.x) * 2, i = x / 2), e = e.subtract(V(t, i, !0)).add(S).add(U), q(s, "leaflet-tooltip-right"), q(s, "leaflet-tooltip-left"), q(s, "leaflet-tooltip-top"), q(s, "leaflet-tooltip-bottom"), j(s, "leaflet-tooltip-" + p), _e(s, e);
+          var t, n, o = this._map, s = this._container, c = o.latLngToContainerPoint(o.getCenter()), h = o.layerPointToContainerPoint(e), p = this.options.direction, f = s.offsetWidth, k = s.offsetHeight, S = $(this.options.offset), H = this._getAnchor();
+          p === "top" ? (t = f / 2, n = k) : p === "bottom" ? (t = f / 2, n = 0) : p === "center" ? (t = f / 2, n = k / 2) : p === "right" ? (t = 0, n = k / 2) : p === "left" ? (t = f, n = k / 2) : h.x < c.x ? (p = "right", t = 0, n = k / 2) : (p = "left", t = f + (S.x + H.x) * 2, n = k / 2), e = e.subtract($(t, n, !0)).add(S).add(H), re(s, "leaflet-tooltip-right"), re(s, "leaflet-tooltip-left"), re(s, "leaflet-tooltip-top"), re(s, "leaflet-tooltip-bottom"), J(s, "leaflet-tooltip-" + p), Pe(s, e);
         },
         _updatePosition: function() {
           var e = this._map.latLngToLayerPoint(this._latlng);
           this._setPosition(e);
         },
         setOpacity: function(e) {
-          this.options.opacity = e, this._container && We(this._container, e);
+          this.options.opacity = e, this._container && le(this._container, e);
         },
         _animateZoom: function(e) {
           var t = this._map._latLngToNewLayerPoint(this._latlng, e.zoom, e.center);
           this._setPosition(t);
         },
         _getAnchor: function() {
-          return V(this._source && this._source._getTooltipAnchor && !this.options.sticky ? this._source._getTooltipAnchor() : [0, 0]);
+          return $(this._source && this._source._getTooltipAnchor && !this.options.sticky ? this._source._getTooltipAnchor() : [0, 0]);
         }
       }), ha = function(e, t) {
-        return new Dn(e, t);
+        return new $i(e, t);
       };
-      oe.include({
+      te.include({
         // @method openTooltip(tooltip: Tooltip): this
         // Opens the specified tooltip.
         // @alternative
         // @method openTooltip(content: String|HTMLElement, latlng: LatLng, options?: Tooltip options): this
         // Creates a tooltip with the specified content and options and open it.
-        openTooltip: function(e, t, i) {
-          return this._initOverlay(Dn, e, t, i).openOn(this), this;
+        openTooltip: function(e, t, n) {
+          return this._initOverlay($i, e, t, n).openOn(this), this;
         },
         // @method closeTooltip(tooltip: Tooltip): this
         // Closes the tooltip given as parameter.
         closeTooltip: function(e) {
           return e.close(), this;
         }
-      }), mt.include({
+      }), vt.include({
         // @method bindTooltip(content: String|HTMLElement|Function|Tooltip, options?: Tooltip options): this
         // Binds a tooltip to the layer with the passed `content` and sets up the
         // necessary event listeners. If a `Function` is passed it will receive
         // the layer as the first argument and should return a `String` or `HTMLElement`.
         bindTooltip: function(e, t) {
-          return this._tooltip && this.isTooltipOpen() && this.unbindTooltip(), this._tooltip = this._initOverlay(Dn, this._tooltip, e, t), this._initTooltipInteractions(), this._tooltip.options.permanent && this._map && this._map.hasLayer(this) && this.openTooltip(), this;
+          return this._tooltip && this.isTooltipOpen() && this.unbindTooltip(), this._tooltip = this._initOverlay($i, this._tooltip, e, t), this._initTooltipInteractions(), this._tooltip.options.permanent && this._map && this._map.hasLayer(this) && this.openTooltip(), this;
         },
         // @method unbindTooltip(): this
         // Removes the tooltip previously bound with `bindTooltip`.
@@ -4795,17 +4795,17 @@ function Aa() {
         },
         _initTooltipInteractions: function(e) {
           if (!(!e && this._tooltipHandlersAdded)) {
-            var t = e ? "off" : "on", i = {
+            var t = e ? "off" : "on", n = {
               remove: this.closeTooltip,
               move: this._moveTooltip
             };
-            this._tooltip.options.permanent ? i.add = this._openTooltip : (i.mouseover = this._openTooltip, i.mouseout = this.closeTooltip, i.click = this._openTooltip, this._map ? this._addFocusListeners() : i.add = this._addFocusListeners), this._tooltip.options.sticky && (i.mousemove = this._moveTooltip), this[t](i), this._tooltipHandlersAdded = !e;
+            this._tooltip.options.permanent ? n.add = this._openTooltip : (n.mouseover = this._openTooltip, n.mouseout = this.closeTooltip, n.click = this._openTooltip, this._map ? this._addFocusListeners() : n.add = this._addFocusListeners), this._tooltip.options.sticky && (n.mousemove = this._moveTooltip), this[t](n), this._tooltipHandlersAdded = !e;
           }
         },
         // @method openTooltip(latlng?: LatLng): this
         // Opens the bound tooltip at the specified `latlng` or at the default tooltip anchor if no `latlng` is passed.
         openTooltip: function(e) {
-          return this._tooltip && (this instanceof St || (this._tooltip._source = this), this._tooltip._prepareOpen(e) && (this._tooltip.openOn(this._map), this.getElement ? this._setAriaDescribedByOnLayer(this) : this.eachLayer && this.eachLayer(this._setAriaDescribedByOnLayer, this))), this;
+          return this._tooltip && (this instanceof Ot || (this._tooltip._source = this), this._tooltip._prepareOpen(e) && (this._tooltip.openOn(this._map), this.getElement ? this._setAriaDescribedByOnLayer(this) : this.eachLayer && this.eachLayer(this._setAriaDescribedByOnLayer, this))), this;
         },
         // @method closeTooltip(): this
         // Closes the tooltip bound to this layer if it is open.
@@ -4838,9 +4838,9 @@ function Aa() {
         },
         _addFocusListenersOnLayer: function(e) {
           var t = typeof e.getElement == "function" && e.getElement();
-          t && (H(t, "focus", function() {
+          t && (j(t, "focus", function() {
             this._tooltip._source = e, this.openTooltip();
-          }, this), H(t, "blur", this.closeTooltip, this));
+          }, this), j(t, "blur", this.closeTooltip, this));
         },
         _setAriaDescribedByOnLayer: function(e) {
           var t = typeof e.getElement == "function" && e.getElement();
@@ -4860,11 +4860,11 @@ function Aa() {
           }
         },
         _moveTooltip: function(e) {
-          var t = e.latlng, i, o;
-          this._tooltip.options.sticky && e.originalEvent && (i = this._map.mouseEventToContainerPoint(e.originalEvent), o = this._map.containerPointToLayerPoint(i), t = this._map.layerPointToLatLng(o)), this._tooltip.setLatLng(t);
+          var t = e.latlng, n, o;
+          this._tooltip.options.sticky && e.originalEvent && (n = this._map.mouseEventToContainerPoint(e.originalEvent), o = this._map.containerPointToLayerPoint(n), t = this._map.layerPointToLatLng(o)), this._tooltip.setLatLng(t);
         }
       });
-      var go = Ai.extend({
+      var wo = In.extend({
         options: {
           // @section
           // @aka DivIcon options
@@ -4882,9 +4882,9 @@ function Aa() {
           className: "leaflet-div-icon"
         },
         createIcon: function(e) {
-          var t = e && e.tagName === "DIV" ? e : document.createElement("div"), i = this.options;
-          if (i.html instanceof Element ? (ai(t), t.appendChild(i.html)) : t.innerHTML = i.html !== !1 ? i.html : "", i.bgPos) {
-            var o = V(i.bgPos);
+          var t = e && e.tagName === "DIV" ? e : document.createElement("div"), n = this.options;
+          if (n.html instanceof Element ? (Ln(t), t.appendChild(n.html)) : t.innerHTML = n.html !== !1 ? n.html : "", n.bgPos) {
+            var o = $(n.bgPos);
             t.style.backgroundPosition = -o.x + "px " + -o.y + "px";
           }
           return this._setIconStyles(t, "icon"), t;
@@ -4894,10 +4894,10 @@ function Aa() {
         }
       });
       function pa(e) {
-        return new go(e);
+        return new wo(e);
       }
-      Ai.Default = an;
-      var sn = mt.extend({
+      In.Default = ai;
+      var si = vt.extend({
         // @section
         // @aka GridLayer options
         options: {
@@ -4912,7 +4912,7 @@ function Aa() {
           // `true` by default on mobile browsers, in order to avoid too many requests and keep smooth navigation.
           // `false` otherwise in order to display new tiles _during_ panning, since it is easy to pan outside the
           // [`keepBuffer`](#gridlayer-keepbuffer) option in desktop browsers.
-          updateWhenIdle: I.mobile,
+          updateWhenIdle: Z.mobile,
           // @option updateWhenZooming: Boolean = true
           // By default, a smooth zoom animation (during a [touch zoom](#map-touchzoom) or a [`flyTo()`](#map-flyto)) will update grid layers every integer zoom level. Setting this option to `false` will update the grid layer only when the smooth animation ends.
           updateWhenZooming: !0,
@@ -4959,7 +4959,7 @@ function Aa() {
           keepBuffer: 2
         },
         initialize: function(e) {
-          he(this, e);
+          ee(this, e);
         },
         onAdd: function() {
           this._initContainer(), this._levels = {}, this._tiles = {}, this._resetView();
@@ -4968,17 +4968,17 @@ function Aa() {
           e._addZoomLimit(this);
         },
         onRemove: function(e) {
-          this._removeAllTiles(), be(this._container), e._removeZoomLimit(this), this._container = null, this._tileZoom = void 0;
+          this._removeAllTiles(), I(this._container), e._removeZoomLimit(this), this._container = null, this._tileZoom = void 0;
         },
         // @method bringToFront: this
         // Brings the tile layer to the top of all tile layers.
         bringToFront: function() {
-          return this._map && (Dt(this._container), this._setAutoZIndex(Math.max)), this;
+          return this._map && (Ut(this._container), this._setAutoZIndex(Math.max)), this;
         },
         // @method bringToBack: this
         // Brings the tile layer to the bottom of all tile layers.
         bringToBack: function() {
-          return this._map && (Ce(this._container), this._setAutoZIndex(Math.min)), this;
+          return this._map && (Ht(this._container), this._setAutoZIndex(Math.min)), this;
         },
         // @method getContainer: HTMLElement
         // Returns the HTML element that contains the tiles for this layer.
@@ -5017,7 +5017,7 @@ function Aa() {
             zoom: this._resetView,
             moveend: this._onMoveEnd
           };
-          return this.options.updateWhenIdle || (this._onMove || (this._onMove = Ae(this._onMoveEnd, this.options.updateInterval, this)), e.move = this._onMove), this._zoomAnimated && (e.zoomanim = this._animateZoom), e;
+          return this.options.updateWhenIdle || (this._onMove || (this._onMove = Xe(this._onMoveEnd, this.options.updateInterval, this)), e.move = this._onMove), this._zoomAnimated && (e.zoomanim = this._animateZoom), e;
         },
         // @section Extension methods
         // Layers extending `GridLayer` shall reimplement the following method.
@@ -5033,41 +5033,41 @@ function Aa() {
         // Normalizes the [tileSize option](#gridlayer-tilesize) into a point. Used by the `createTile()` method.
         getTileSize: function() {
           var e = this.options.tileSize;
-          return e instanceof M ? e : new M(e, e);
+          return e instanceof W ? e : new W(e, e);
         },
         _updateZIndex: function() {
           this._container && this.options.zIndex !== void 0 && this.options.zIndex !== null && (this._container.style.zIndex = this.options.zIndex);
         },
         _setAutoZIndex: function(e) {
-          for (var t = this.getPane().children, i = -e(-1 / 0, 1 / 0), o = 0, s = t.length, c; o < s; o++)
-            c = t[o].style.zIndex, t[o] !== this._container && c && (i = e(i, +c));
-          isFinite(i) && (this.options.zIndex = i + e(-1, 1), this._updateZIndex());
+          for (var t = this.getPane().children, n = -e(-1 / 0, 1 / 0), o = 0, s = t.length, c; o < s; o++)
+            c = t[o].style.zIndex, t[o] !== this._container && c && (n = e(n, +c));
+          isFinite(n) && (this.options.zIndex = n + e(-1, 1), this._updateZIndex());
         },
         _updateOpacity: function() {
-          if (this._map && !I.ielt9) {
-            We(this._container, this.options.opacity);
-            var e = +/* @__PURE__ */ new Date(), t = !1, i = !1;
+          if (this._map && !Z.ielt9) {
+            le(this._container, this.options.opacity);
+            var e = +/* @__PURE__ */ new Date(), t = !1, n = !1;
             for (var o in this._tiles) {
               var s = this._tiles[o];
               if (!(!s.current || !s.loaded)) {
                 var c = Math.min(1, (e - s.loaded) / 200);
-                We(s.el, c), c < 1 ? t = !0 : (s.active ? i = !0 : this._onOpaqueTile(s), s.active = !0);
+                le(s.el, c), c < 1 ? t = !0 : (s.active ? n = !0 : this._onOpaqueTile(s), s.active = !0);
               }
             }
-            i && !this._noPrune && this._pruneTiles(), t && (Pe(this._fadeFrame), this._fadeFrame = Se(this._updateOpacity, this));
+            n && !this._noPrune && this._pruneTiles(), t && (Ce(this._fadeFrame), this._fadeFrame = Se(this._updateOpacity, this));
           }
         },
         _onOpaqueTile: de,
         _initContainer: function() {
-          this._container || (this._container = se("div", "leaflet-layer " + (this.options.className || "")), this._updateZIndex(), this.options.opacity < 1 && this._updateOpacity(), this.getPane().appendChild(this._container));
+          this._container || (this._container = Y("div", "leaflet-layer " + (this.options.className || "")), this._updateZIndex(), this.options.opacity < 1 && this._updateOpacity(), this.getPane().appendChild(this._container));
         },
         _updateLevels: function() {
           var e = this._tileZoom, t = this.options.maxZoom;
           if (e !== void 0) {
-            for (var i in this._levels)
-              i = Number(i), this._levels[i].el.children.length || i === e ? (this._levels[i].el.style.zIndex = t - Math.abs(e - i), this._onUpdateLevel(i)) : (be(this._levels[i].el), this._removeTilesAtZoom(i), this._onRemoveLevel(i), delete this._levels[i]);
+            for (var n in this._levels)
+              n = Number(n), this._levels[n].el.children.length || n === e ? (this._levels[n].el.style.zIndex = t - Math.abs(e - n), this._onUpdateLevel(n)) : (I(this._levels[n].el), this._removeTilesAtZoom(n), this._onRemoveLevel(n), delete this._levels[n]);
             var o = this._levels[e], s = this._map;
-            return o || (o = this._levels[e] = {}, o.el = se("div", "leaflet-tile-container leaflet-zoom-animated", this._container), o.el.style.zIndex = t, o.origin = s.project(s.unproject(s.getPixelOrigin()), e).round(), o.zoom = e, this._setZoomTransform(o, s.getCenter(), s.getZoom()), de(o.el.offsetWidth), this._onCreateLevel(o)), this._level = o, o;
+            return o || (o = this._levels[e] = {}, o.el = Y("div", "leaflet-tile-container leaflet-zoom-animated", this._container), o.el.style.zIndex = t, o.origin = s.project(s.unproject(s.getPixelOrigin()), e).round(), o.zoom = e, this._setZoomTransform(o, s.getCenter(), s.getZoom()), de(o.el.offsetWidth), this._onCreateLevel(o)), this._level = o, o;
           }
         },
         _onUpdateLevel: de,
@@ -5075,8 +5075,8 @@ function Aa() {
         _onCreateLevel: de,
         _pruneTiles: function() {
           if (this._map) {
-            var e, t, i = this._map.getZoom();
-            if (i > this.options.maxZoom || i < this.options.minZoom) {
+            var e, t, n = this._map.getZoom();
+            if (n > this.options.maxZoom || n < this.options.minZoom) {
               this._removeAllTiles();
               return;
             }
@@ -5101,26 +5101,26 @@ function Aa() {
         },
         _invalidateAll: function() {
           for (var e in this._levels)
-            be(this._levels[e].el), this._onRemoveLevel(Number(e)), delete this._levels[e];
+            I(this._levels[e].el), this._onRemoveLevel(Number(e)), delete this._levels[e];
           this._removeAllTiles(), this._tileZoom = void 0;
         },
-        _retainParent: function(e, t, i, o) {
-          var s = Math.floor(e / 2), c = Math.floor(t / 2), d = i - 1, p = new M(+s, +c);
-          p.z = +d;
-          var f = this._tileCoordsToKey(p), x = this._tiles[f];
-          return x && x.active ? (x.retain = !0, !0) : (x && x.loaded && (x.retain = !0), d > o ? this._retainParent(s, c, d, o) : !1);
+        _retainParent: function(e, t, n, o) {
+          var s = Math.floor(e / 2), c = Math.floor(t / 2), h = n - 1, p = new W(+s, +c);
+          p.z = +h;
+          var f = this._tileCoordsToKey(p), k = this._tiles[f];
+          return k && k.active ? (k.retain = !0, !0) : (k && k.loaded && (k.retain = !0), h > o ? this._retainParent(s, c, h, o) : !1);
         },
-        _retainChildren: function(e, t, i, o) {
+        _retainChildren: function(e, t, n, o) {
           for (var s = 2 * e; s < 2 * e + 2; s++)
             for (var c = 2 * t; c < 2 * t + 2; c++) {
-              var d = new M(s, c);
-              d.z = i + 1;
-              var p = this._tileCoordsToKey(d), f = this._tiles[p];
+              var h = new W(s, c);
+              h.z = n + 1;
+              var p = this._tileCoordsToKey(h), f = this._tiles[p];
               if (f && f.active) {
                 f.retain = !0;
                 continue;
               } else f && f.loaded && (f.retain = !0);
-              i + 1 < o && this._retainChildren(s, c, i + 1, o);
+              n + 1 < o && this._retainChildren(s, c, n + 1, o);
             }
         },
         _resetView: function(e) {
@@ -5134,73 +5134,73 @@ function Aa() {
           var t = this.options;
           return t.minNativeZoom !== void 0 && e < t.minNativeZoom ? t.minNativeZoom : t.maxNativeZoom !== void 0 && t.maxNativeZoom < e ? t.maxNativeZoom : e;
         },
-        _setView: function(e, t, i, o) {
+        _setView: function(e, t, n, o) {
           var s = Math.round(t);
           this.options.maxZoom !== void 0 && s > this.options.maxZoom || this.options.minZoom !== void 0 && s < this.options.minZoom ? s = void 0 : s = this._clampZoom(s);
           var c = this.options.updateWhenZooming && s !== this._tileZoom;
-          (!o || c) && (this._tileZoom = s, this._abortLoading && this._abortLoading(), this._updateLevels(), this._resetGrid(), s !== void 0 && this._update(e), i || this._pruneTiles(), this._noPrune = !!i), this._setZoomTransforms(e, t);
+          (!o || c) && (this._tileZoom = s, this._abortLoading && this._abortLoading(), this._updateLevels(), this._resetGrid(), s !== void 0 && this._update(e), n || this._pruneTiles(), this._noPrune = !!n), this._setZoomTransforms(e, t);
         },
         _setZoomTransforms: function(e, t) {
-          for (var i in this._levels)
-            this._setZoomTransform(this._levels[i], e, t);
+          for (var n in this._levels)
+            this._setZoomTransform(this._levels[n], e, t);
         },
-        _setZoomTransform: function(e, t, i) {
-          var o = this._map.getZoomScale(i, e.zoom), s = e.origin.multiplyBy(o).subtract(this._map._getNewPixelOrigin(t, i)).round();
-          I.any3d ? qe(e.el, s, o) : _e(e.el, s);
+        _setZoomTransform: function(e, t, n) {
+          var o = this._map.getZoomScale(n, e.zoom), s = e.origin.multiplyBy(o).subtract(this._map._getNewPixelOrigin(t, n)).round();
+          Z.any3d ? xt(e.el, s, o) : Pe(e.el, s);
         },
         _resetGrid: function() {
-          var e = this._map, t = e.options.crs, i = this._tileSize = this.getTileSize(), o = this._tileZoom, s = this._map.getPixelWorldBounds(this._tileZoom);
+          var e = this._map, t = e.options.crs, n = this._tileSize = this.getTileSize(), o = this._tileZoom, s = this._map.getPixelWorldBounds(this._tileZoom);
           s && (this._globalTileRange = this._pxBoundsToTileRange(s)), this._wrapX = t.wrapLng && !this.options.noWrap && [
-            Math.floor(e.project([0, t.wrapLng[0]], o).x / i.x),
-            Math.ceil(e.project([0, t.wrapLng[1]], o).x / i.y)
+            Math.floor(e.project([0, t.wrapLng[0]], o).x / n.x),
+            Math.ceil(e.project([0, t.wrapLng[1]], o).x / n.y)
           ], this._wrapY = t.wrapLat && !this.options.noWrap && [
-            Math.floor(e.project([t.wrapLat[0], 0], o).y / i.x),
-            Math.ceil(e.project([t.wrapLat[1], 0], o).y / i.y)
+            Math.floor(e.project([t.wrapLat[0], 0], o).y / n.x),
+            Math.ceil(e.project([t.wrapLat[1], 0], o).y / n.y)
           ];
         },
         _onMoveEnd: function() {
           !this._map || this._map._animatingZoom || this._update();
         },
         _getTiledPixelBounds: function(e) {
-          var t = this._map, i = t._animatingZoom ? Math.max(t._animateToZoom, t.getZoom()) : t.getZoom(), o = t.getZoomScale(i, this._tileZoom), s = t.project(e, this._tileZoom).floor(), c = t.getSize().divideBy(o * 2);
+          var t = this._map, n = t._animatingZoom ? Math.max(t._animateToZoom, t.getZoom()) : t.getZoom(), o = t.getZoomScale(n, this._tileZoom), s = t.project(e, this._tileZoom).floor(), c = t.getSize().divideBy(o * 2);
           return new m(s.subtract(c), s.add(c));
         },
         // Private method to load tiles in the grid's active zoom level according to map bounds
         _update: function(e) {
           var t = this._map;
           if (t) {
-            var i = this._clampZoom(t.getZoom());
+            var n = this._clampZoom(t.getZoom());
             if (e === void 0 && (e = t.getCenter()), this._tileZoom !== void 0) {
-              var o = this._getTiledPixelBounds(e), s = this._pxBoundsToTileRange(o), c = s.getCenter(), d = [], p = this.options.keepBuffer, f = new m(
+              var o = this._getTiledPixelBounds(e), s = this._pxBoundsToTileRange(o), c = s.getCenter(), h = [], p = this.options.keepBuffer, f = new m(
                 s.getBottomLeft().subtract([p, -p]),
                 s.getTopRight().add([p, -p])
               );
               if (!(isFinite(s.min.x) && isFinite(s.min.y) && isFinite(s.max.x) && isFinite(s.max.y)))
                 throw new Error("Attempted to load an infinite number of tiles");
-              for (var x in this._tiles) {
-                var S = this._tiles[x].coords;
-                (S.z !== this._tileZoom || !f.contains(new M(S.x, S.y))) && (this._tiles[x].current = !1);
+              for (var k in this._tiles) {
+                var S = this._tiles[k].coords;
+                (S.z !== this._tileZoom || !f.contains(new W(S.x, S.y))) && (this._tiles[k].current = !1);
               }
-              if (Math.abs(i - this._tileZoom) > 1) {
-                this._setView(e, i);
+              if (Math.abs(n - this._tileZoom) > 1) {
+                this._setView(e, n);
                 return;
               }
-              for (var U = s.min.y; U <= s.max.y; U++)
-                for (var ne = s.min.x; ne <= s.max.x; ne++) {
-                  var Ge = new M(ne, U);
+              for (var H = s.min.y; H <= s.max.y; H++)
+                for (var se = s.min.x; se <= s.max.x; se++) {
+                  var Ge = new W(se, H);
                   if (Ge.z = this._tileZoom, !!this._isValidTile(Ge)) {
-                    var Re = this._tiles[this._tileCoordsToKey(Ge)];
-                    Re ? Re.current = !0 : d.push(Ge);
+                    var Ve = this._tiles[this._tileCoordsToKey(Ge)];
+                    Ve ? Ve.current = !0 : h.push(Ge);
                   }
                 }
-              if (d.sort(function(Je, Ni) {
-                return Je.distanceTo(c) - Ni.distanceTo(c);
-              }), d.length !== 0) {
+              if (h.sort(function(Je, Rn) {
+                return Je.distanceTo(c) - Rn.distanceTo(c);
+              }), h.length !== 0) {
                 this._loading || (this._loading = !0, this.fire("loading"));
-                var lt = document.createDocumentFragment();
-                for (ne = 0; ne < d.length; ne++)
-                  this._addTile(d[ne], lt);
-                this._level.el.appendChild(lt);
+                var ht = document.createDocumentFragment();
+                for (se = 0; se < h.length; se++)
+                  this._addTile(h[se], ht);
+                this._level.el.appendChild(ht);
               }
             }
           }
@@ -5208,26 +5208,26 @@ function Aa() {
         _isValidTile: function(e) {
           var t = this._map.options.crs;
           if (!t.infinite) {
-            var i = this._globalTileRange;
-            if (!t.wrapLng && (e.x < i.min.x || e.x > i.max.x) || !t.wrapLat && (e.y < i.min.y || e.y > i.max.y))
+            var n = this._globalTileRange;
+            if (!t.wrapLng && (e.x < n.min.x || e.x > n.max.x) || !t.wrapLat && (e.y < n.min.y || e.y > n.max.y))
               return !1;
           }
           if (!this.options.bounds)
             return !0;
           var o = this._tileCoordsToBounds(e);
-          return ee(this.options.bounds).overlaps(o);
+          return G(this.options.bounds).overlaps(o);
         },
         _keyToBounds: function(e) {
           return this._tileCoordsToBounds(this._keyToTileCoords(e));
         },
         _tileCoordsToNwSe: function(e) {
-          var t = this._map, i = this.getTileSize(), o = e.scaleBy(i), s = o.add(i), c = t.unproject(o, e.z), d = t.unproject(s, e.z);
-          return [c, d];
+          var t = this._map, n = this.getTileSize(), o = e.scaleBy(n), s = o.add(n), c = t.unproject(o, e.z), h = t.unproject(s, e.z);
+          return [c, h];
         },
         // converts tile coordinates to its geographical bounds
         _tileCoordsToBounds: function(e) {
-          var t = this._tileCoordsToNwSe(e), i = new y(t[0], t[1]);
-          return this.options.noWrap || (i = this._map.wrapLatLngBounds(i)), i;
+          var t = this._tileCoordsToNwSe(e), n = new b(t[0], t[1]);
+          return this.options.noWrap || (n = this._map.wrapLatLngBounds(n)), n;
         },
         // converts tile coordinates to key for the tile cache
         _tileCoordsToKey: function(e) {
@@ -5235,24 +5235,24 @@ function Aa() {
         },
         // converts tile cache key to coordinates
         _keyToTileCoords: function(e) {
-          var t = e.split(":"), i = new M(+t[0], +t[1]);
-          return i.z = +t[2], i;
+          var t = e.split(":"), n = new W(+t[0], +t[1]);
+          return n.z = +t[2], n;
         },
         _removeTile: function(e) {
           var t = this._tiles[e];
-          t && (be(t.el), delete this._tiles[e], this.fire("tileunload", {
+          t && (I(t.el), delete this._tiles[e], this.fire("tileunload", {
             tile: t.el,
             coords: this._keyToTileCoords(e)
           }));
         },
         _initTile: function(e) {
-          j(e, "leaflet-tile");
+          J(e, "leaflet-tile");
           var t = this.getTileSize();
-          e.style.width = t.x + "px", e.style.height = t.y + "px", e.onselectstart = de, e.onmousemove = de, I.ielt9 && this.options.opacity < 1 && We(e, this.options.opacity);
+          e.style.width = t.x + "px", e.style.height = t.y + "px", e.onselectstart = de, e.onmousemove = de, Z.ielt9 && this.options.opacity < 1 && le(e, this.options.opacity);
         },
         _addTile: function(e, t) {
-          var i = this._getTilePos(e), o = this._tileCoordsToKey(e), s = this.createTile(this._wrapCoords(e), J(this._tileReady, this, e));
-          this._initTile(s), this.createTile.length < 2 && Se(J(this._tileReady, this, e, null, s)), _e(s, i), this._tiles[o] = {
+          var n = this._getTilePos(e), o = this._tileCoordsToKey(e), s = this.createTile(this._wrapCoords(e), N(this._tileReady, this, e));
+          this._initTile(s), this.createTile.length < 2 && Se(N(this._tileReady, this, e, null, s)), Pe(s, n), this._tiles[o] = {
             el: s,
             coords: e,
             current: !0
@@ -5261,25 +5261,25 @@ function Aa() {
             coords: e
           });
         },
-        _tileReady: function(e, t, i) {
+        _tileReady: function(e, t, n) {
           t && this.fire("tileerror", {
             error: t,
-            tile: i,
+            tile: n,
             coords: e
           });
           var o = this._tileCoordsToKey(e);
-          i = this._tiles[o], i && (i.loaded = +/* @__PURE__ */ new Date(), this._map._fadeAnimated ? (We(i.el, 0), Pe(this._fadeFrame), this._fadeFrame = Se(this._updateOpacity, this)) : (i.active = !0, this._pruneTiles()), t || (j(i.el, "leaflet-tile-loaded"), this.fire("tileload", {
-            tile: i.el,
+          n = this._tiles[o], n && (n.loaded = +/* @__PURE__ */ new Date(), this._map._fadeAnimated ? (le(n.el, 0), Ce(this._fadeFrame), this._fadeFrame = Se(this._updateOpacity, this)) : (n.active = !0, this._pruneTiles()), t || (J(n.el, "leaflet-tile-loaded"), this.fire("tileload", {
+            tile: n.el,
             coords: e
-          })), this._noTilesToLoad() && (this._loading = !1, this.fire("load"), I.ielt9 || !this._map._fadeAnimated ? Se(this._pruneTiles, this) : setTimeout(J(this._pruneTiles, this), 250)));
+          })), this._noTilesToLoad() && (this._loading = !1, this.fire("load"), Z.ielt9 || !this._map._fadeAnimated ? Se(this._pruneTiles, this) : setTimeout(N(this._pruneTiles, this), 250)));
         },
         _getTilePos: function(e) {
           return e.scaleBy(this.getTileSize()).subtract(this._level.origin);
         },
         _wrapCoords: function(e) {
-          var t = new M(
-            this._wrapX ? we(e.x, this._wrapX) : e.x,
-            this._wrapY ? we(e.y, this._wrapY) : e.y
+          var t = new W(
+            this._wrapX ? ce(e.x, this._wrapX) : e.x,
+            this._wrapY ? ce(e.y, this._wrapY) : e.y
           );
           return t.z = e.z, t;
         },
@@ -5298,9 +5298,9 @@ function Aa() {
         }
       });
       function fa(e) {
-        return new sn(e);
+        return new si(e);
       }
-      var Zi = sn.extend({
+      var Nn = si.extend({
         // @section
         // @aka TileLayer options
         options: {
@@ -5342,7 +5342,7 @@ function Aa() {
           referrerPolicy: !1
         },
         initialize: function(e, t) {
-          this._url = e, t = he(this, t), t.detectRetina && I.retina && t.maxZoom > 0 ? (t.tileSize = Math.floor(t.tileSize / 2), t.zoomReverse ? (t.zoomOffset--, t.minZoom = Math.min(t.maxZoom, t.minZoom + 1)) : (t.zoomOffset++, t.maxZoom = Math.max(t.minZoom, t.maxZoom - 1)), t.minZoom = Math.max(0, t.minZoom)) : t.zoomReverse ? t.minZoom = Math.min(t.maxZoom, t.minZoom) : t.maxZoom = Math.max(t.minZoom, t.maxZoom), typeof t.subdomains == "string" && (t.subdomains = t.subdomains.split("")), this.on("tileunload", this._onTileRemove);
+          this._url = e, t = ee(this, t), t.detectRetina && Z.retina && t.maxZoom > 0 ? (t.tileSize = Math.floor(t.tileSize / 2), t.zoomReverse ? (t.zoomOffset--, t.minZoom = Math.min(t.maxZoom, t.minZoom + 1)) : (t.zoomOffset++, t.maxZoom = Math.max(t.minZoom, t.maxZoom - 1)), t.minZoom = Math.max(0, t.minZoom)) : t.zoomReverse ? t.minZoom = Math.min(t.maxZoom, t.minZoom) : t.maxZoom = Math.max(t.minZoom, t.maxZoom), typeof t.subdomains == "string" && (t.subdomains = t.subdomains.split("")), this.on("tileunload", this._onTileRemove);
         },
         // @method setUrl(url: String, noRedraw?: Boolean): this
         // Updates the layer's URL template and redraws it (unless `noRedraw` is set to `true`).
@@ -5356,8 +5356,8 @@ function Aa() {
         // to return an `<img>` HTML element with the appropriate image URL given `coords`. The `done`
         // callback is called when the tile has been loaded.
         createTile: function(e, t) {
-          var i = document.createElement("img");
-          return H(i, "load", J(this._tileOnLoad, this, t, i)), H(i, "error", J(this._tileOnError, this, t, i)), (this.options.crossOrigin || this.options.crossOrigin === "") && (i.crossOrigin = this.options.crossOrigin === !0 ? "" : this.options.crossOrigin), typeof this.options.referrerPolicy == "string" && (i.referrerPolicy = this.options.referrerPolicy), i.alt = "", i.src = this.getTileUrl(e), i;
+          var n = document.createElement("img");
+          return j(n, "load", N(this._tileOnLoad, this, t, n)), j(n, "error", N(this._tileOnError, this, t, n)), (this.options.crossOrigin || this.options.crossOrigin === "") && (n.crossOrigin = this.options.crossOrigin === !0 ? "" : this.options.crossOrigin), typeof this.options.referrerPolicy == "string" && (n.referrerPolicy = this.options.referrerPolicy), n.alt = "", n.src = this.getTileUrl(e), n;
         },
         // @section Extension methods
         // @uninheritable
@@ -5367,31 +5367,31 @@ function Aa() {
         // Classes extending `TileLayer` can override this function to provide custom tile URL naming schemes.
         getTileUrl: function(e) {
           var t = {
-            r: I.retina ? "@2x" : "",
+            r: Z.retina ? "@2x" : "",
             s: this._getSubdomain(e),
             x: e.x,
             y: e.y,
             z: this._getZoomForUrl()
           };
           if (this._map && !this._map.options.crs.infinite) {
-            var i = this._globalTileRange.max.y - e.y;
-            this.options.tms && (t.y = i), t["-y"] = i;
+            var n = this._globalTileRange.max.y - e.y;
+            this.options.tms && (t.y = n), t["-y"] = n;
           }
-          return ut(this._url, Z(t, this.options));
+          return ge(this._url, O(t, this.options));
         },
         _tileOnLoad: function(e, t) {
-          I.ielt9 ? setTimeout(J(e, this, null, t), 0) : e(null, t);
+          Z.ielt9 ? setTimeout(N(e, this, null, t), 0) : e(null, t);
         },
-        _tileOnError: function(e, t, i) {
+        _tileOnError: function(e, t, n) {
           var o = this.options.errorTileUrl;
-          o && t.getAttribute("src") !== o && (t.src = o), e(i, t);
+          o && t.getAttribute("src") !== o && (t.src = o), e(n, t);
         },
         _onTileRemove: function(e) {
           e.tile.onload = null;
         },
         _getZoomForUrl: function() {
-          var e = this._tileZoom, t = this.options.maxZoom, i = this.options.zoomReverse, o = this.options.zoomOffset;
-          return i && (e = t - e), e + o;
+          var e = this._tileZoom, t = this.options.maxZoom, n = this.options.zoomReverse, o = this.options.zoomOffset;
+          return n && (e = t - e), e + o;
         },
         _getSubdomain: function(e) {
           var t = Math.abs(e.x + e.y) % this.options.subdomains.length;
@@ -5402,28 +5402,28 @@ function Aa() {
           var e, t;
           for (e in this._tiles)
             if (this._tiles[e].coords.z !== this._tileZoom && (t = this._tiles[e].el, t.onload = de, t.onerror = de, !t.complete)) {
-              t.src = At;
-              var i = this._tiles[e].coords;
-              be(t), delete this._tiles[e], this.fire("tileabort", {
+              t.src = Rt;
+              var n = this._tiles[e].coords;
+              I(t), delete this._tiles[e], this.fire("tileabort", {
                 tile: t,
-                coords: i
+                coords: n
               });
             }
         },
         _removeTile: function(e) {
           var t = this._tiles[e];
           if (t)
-            return t.el.setAttribute("src", At), sn.prototype._removeTile.call(this, e);
+            return t.el.setAttribute("src", Rt), si.prototype._removeTile.call(this, e);
         },
-        _tileReady: function(e, t, i) {
-          if (!(!this._map || i && i.getAttribute("src") === At))
-            return sn.prototype._tileReady.call(this, e, t, i);
+        _tileReady: function(e, t, n) {
+          if (!(!this._map || n && n.getAttribute("src") === Rt))
+            return si.prototype._tileReady.call(this, e, t, n);
         }
       });
-      function yo(e, t) {
-        return new Zi(e, t);
+      function xo(e, t) {
+        return new Nn(e, t);
       }
-      var bo = Zi.extend({
+      var ko = Nn.extend({
         // @section
         // @aka TileLayer.WMS options
         // If any custom options not documented here are used, they will be sent to the
@@ -5459,33 +5459,33 @@ function Aa() {
         },
         initialize: function(e, t) {
           this._url = e;
-          var i = Z({}, this.defaultWmsParams);
+          var n = O({}, this.defaultWmsParams);
           for (var o in t)
-            o in this.options || (i[o] = t[o]);
-          t = he(this, t);
-          var s = t.detectRetina && I.retina ? 2 : 1, c = this.getTileSize();
-          i.width = c.x * s, i.height = c.y * s, this.wmsParams = i;
+            o in this.options || (n[o] = t[o]);
+          t = ee(this, t);
+          var s = t.detectRetina && Z.retina ? 2 : 1, c = this.getTileSize();
+          n.width = c.x * s, n.height = c.y * s, this.wmsParams = n;
         },
         onAdd: function(e) {
           this._crs = this.options.crs || e.options.crs, this._wmsVersion = parseFloat(this.wmsParams.version);
           var t = this._wmsVersion >= 1.3 ? "crs" : "srs";
-          this.wmsParams[t] = this._crs.code, Zi.prototype.onAdd.call(this, e);
+          this.wmsParams[t] = this._crs.code, Nn.prototype.onAdd.call(this, e);
         },
         getTileUrl: function(e) {
-          var t = this._tileCoordsToNwSe(e), i = this._crs, o = T(i.project(t[0]), i.project(t[1])), s = o.min, c = o.max, d = (this._wmsVersion >= 1.3 && this._crs === ho ? [s.y, s.x, c.y, c.x] : [s.x, s.y, c.x, c.y]).join(","), p = Zi.prototype.getTileUrl.call(this, e);
-          return p + jt(this.wmsParams, p, this.options.uppercase) + (this.options.uppercase ? "&BBOX=" : "&bbox=") + d;
+          var t = this._tileCoordsToNwSe(e), n = this._crs, o = T(n.project(t[0]), n.project(t[1])), s = o.min, c = o.max, h = (this._wmsVersion >= 1.3 && this._crs === mo ? [s.y, s.x, c.y, c.x] : [s.x, s.y, c.x, c.y]).join(","), p = Nn.prototype.getTileUrl.call(this, e);
+          return p + Yt(this.wmsParams, p, this.options.uppercase) + (this.options.uppercase ? "&BBOX=" : "&bbox=") + h;
         },
         // @method setParams(params: Object, noRedraw?: Boolean): this
         // Merges an object with the new parameters and re-requests tiles on the current screen (unless `noRedraw` was set to true).
         setParams: function(e, t) {
-          return Z(this.wmsParams, e), t || this.redraw(), this;
+          return O(this.wmsParams, e), t || this.redraw(), this;
         }
       });
       function ma(e, t) {
-        return new bo(e, t);
+        return new ko(e, t);
       }
-      Zi.WMS = bo, yo.wms = ma;
-      var zt = mt.extend({
+      Nn.WMS = ko, xo.wms = ma;
+      var Bt = vt.extend({
         // @section
         // @aka Renderer options
         options: {
@@ -5495,10 +5495,10 @@ function Aa() {
           padding: 0.1
         },
         initialize: function(e) {
-          he(this, e), K(this), this._layers = this._layers || {};
+          ee(this, e), K(this), this._layers = this._layers || {};
         },
         onAdd: function() {
-          this._container || (this._initContainer(), j(this._container, "leaflet-zoom-animated")), this.getPane().appendChild(this._container), this._update(), this.on("update", this._updatePaths, this);
+          this._container || (this._initContainer(), J(this._container, "leaflet-zoom-animated")), this.getPane().appendChild(this._container), this._update(), this.on("update", this._updatePaths, this);
         },
         onRemove: function() {
           this.off("update", this._updatePaths, this), this._destroyContainer();
@@ -5519,8 +5519,8 @@ function Aa() {
           this._updateTransform(this._map.getCenter(), this._map.getZoom());
         },
         _updateTransform: function(e, t) {
-          var i = this._map.getZoomScale(t, this._zoom), o = this._map.getSize().multiplyBy(0.5 + this.options.padding), s = this._map.project(this._center, t), c = o.multiplyBy(-i).add(s).subtract(this._map._getNewPixelOrigin(e, t));
-          I.any3d ? qe(this._container, c, i) : _e(this._container, c);
+          var n = this._map.getZoomScale(t, this._zoom), o = this._map.getSize().multiplyBy(0.5 + this.options.padding), s = this._map.project(this._center, t), c = o.multiplyBy(-n).add(s).subtract(this._map._getNewPixelOrigin(e, t));
+          Z.any3d ? xt(this._container, c, n) : Pe(this._container, c);
         },
         _reset: function() {
           this._update(), this._updateTransform(this._center, this._zoom);
@@ -5536,10 +5536,10 @@ function Aa() {
             this._layers[e]._update();
         },
         _update: function() {
-          var e = this.options.padding, t = this._map.getSize(), i = this._map.containerPointToLayerPoint(t.multiplyBy(-e)).round();
-          this._bounds = new m(i, i.add(t.multiplyBy(1 + e * 2)).round()), this._center = this._map.getCenter(), this._zoom = this._map.getZoom();
+          var e = this.options.padding, t = this._map.getSize(), n = this._map.containerPointToLayerPoint(t.multiplyBy(-e)).round();
+          this._bounds = new m(n, n.add(t.multiplyBy(1 + e * 2)).round()), this._center = this._map.getCenter(), this._zoom = this._map.getZoom();
         }
-      }), wo = zt.extend({
+      }), Po = Bt.extend({
         // @section
         // @aka Canvas options
         options: {
@@ -5548,21 +5548,21 @@ function Aa() {
           tolerance: 0
         },
         getEvents: function() {
-          var e = zt.prototype.getEvents.call(this);
+          var e = Bt.prototype.getEvents.call(this);
           return e.viewprereset = this._onViewPreReset, e;
         },
         _onViewPreReset: function() {
           this._postponeUpdatePaths = !0;
         },
         onAdd: function() {
-          zt.prototype.onAdd.call(this), this._draw();
+          Bt.prototype.onAdd.call(this), this._draw();
         },
         _initContainer: function() {
           var e = this._container = document.createElement("canvas");
-          H(e, "mousemove", this._onMouseMove, this), H(e, "click dblclick mousedown mouseup contextmenu", this._onClick, this), H(e, "mouseout", this._handleMouseOut, this), e._leaflet_disable_events = !0, this._ctx = e.getContext("2d");
+          j(e, "mousemove", this._onMouseMove, this), j(e, "click dblclick mousedown mouseup contextmenu", this._onClick, this), j(e, "mouseout", this._handleMouseOut, this), e._leaflet_disable_events = !0, this._ctx = e.getContext("2d");
         },
         _destroyContainer: function() {
-          Pe(this._redrawRequest), delete this._ctx, be(this._container), pe(this._container), delete this._container;
+          Ce(this._redrawRequest), delete this._ctx, I(this._container), ue(this._container), delete this._container;
         },
         _updatePaths: function() {
           if (!this._postponeUpdatePaths) {
@@ -5575,13 +5575,13 @@ function Aa() {
         },
         _update: function() {
           if (!(this._map._animatingZoom && this._bounds)) {
-            zt.prototype._update.call(this);
-            var e = this._bounds, t = this._container, i = e.getSize(), o = I.retina ? 2 : 1;
-            _e(t, e.min), t.width = o * i.x, t.height = o * i.y, t.style.width = i.x + "px", t.style.height = i.y + "px", I.retina && this._ctx.scale(2, 2), this._ctx.translate(-e.min.x, -e.min.y), this.fire("update");
+            Bt.prototype._update.call(this);
+            var e = this._bounds, t = this._container, n = e.getSize(), o = Z.retina ? 2 : 1;
+            Pe(t, e.min), t.width = o * n.x, t.height = o * n.y, t.style.width = n.x + "px", t.style.height = n.y + "px", Z.retina && this._ctx.scale(2, 2), this._ctx.translate(-e.min.x, -e.min.y), this.fire("update");
           }
         },
         _reset: function() {
-          zt.prototype._reset.call(this), this._postponeUpdatePaths && (this._postponeUpdatePaths = !1, this._updatePaths());
+          Bt.prototype._reset.call(this), this._postponeUpdatePaths && (this._postponeUpdatePaths = !1, this._updatePaths());
         },
         _initPath: function(e) {
           this._updateDashArray(e), this._layers[K(e)] = e;
@@ -5596,8 +5596,8 @@ function Aa() {
           this._requestRedraw(e);
         },
         _removePath: function(e) {
-          var t = e._order, i = t.next, o = t.prev;
-          i ? i.prev = o : this._drawLast = o, o ? o.next = i : this._drawFirst = i, delete e._order, delete this._layers[K(e)], this._requestRedraw(e);
+          var t = e._order, n = t.next, o = t.prev;
+          n ? n.prev = o : this._drawLast = o, o ? o.next = n : this._drawFirst = n, delete e._order, delete this._layers[K(e)], this._requestRedraw(e);
         },
         _updatePath: function(e) {
           this._extendRedrawBounds(e), e._project(), e._update(), this._requestRedraw(e);
@@ -5607,13 +5607,13 @@ function Aa() {
         },
         _updateDashArray: function(e) {
           if (typeof e.options.dashArray == "string") {
-            var t = e.options.dashArray.split(/[, ]+/), i = [], o, s;
+            var t = e.options.dashArray.split(/[, ]+/), n = [], o, s;
             for (s = 0; s < t.length; s++) {
               if (o = Number(t[s]), isNaN(o))
                 return;
-              i.push(o);
+              n.push(o);
             }
-            e.options._dashArray = i;
+            e.options._dashArray = n;
           } else
             e.options._dashArray = e.options.dashArray;
         },
@@ -5640,8 +5640,8 @@ function Aa() {
         _draw: function() {
           var e, t = this._redrawBounds;
           if (this._ctx.save(), t) {
-            var i = t.getSize();
-            this._ctx.beginPath(), this._ctx.rect(t.min.x, t.min.y, i.x, i.y), this._ctx.clip();
+            var n = t.getSize();
+            this._ctx.beginPath(), this._ctx.rect(t.min.x, t.min.y, n.x, n.y), this._ctx.clip();
           }
           this._drawing = !0;
           for (var o = this._drawFirst; o; o = o.next)
@@ -5650,11 +5650,11 @@ function Aa() {
         },
         _updatePoly: function(e, t) {
           if (this._drawing) {
-            var i, o, s, c, d = e._parts, p = d.length, f = this._ctx;
+            var n, o, s, c, h = e._parts, p = h.length, f = this._ctx;
             if (p) {
-              for (f.beginPath(), i = 0; i < p; i++) {
-                for (o = 0, s = d[i].length; o < s; o++)
-                  c = d[i][o], f[o ? "lineTo" : "moveTo"](c.x, c.y);
+              for (f.beginPath(), n = 0; n < p; n++) {
+                for (o = 0, s = h[n].length; o < s; o++)
+                  c = h[n][o], f[o ? "lineTo" : "moveTo"](c.x, c.y);
                 t && f.closePath();
               }
               this._fillStroke(f, e);
@@ -5663,19 +5663,19 @@ function Aa() {
         },
         _updateCircle: function(e) {
           if (!(!this._drawing || e._empty())) {
-            var t = e._point, i = this._ctx, o = Math.max(Math.round(e._radius), 1), s = (Math.max(Math.round(e._radiusY), 1) || o) / o;
-            s !== 1 && (i.save(), i.scale(1, s)), i.beginPath(), i.arc(t.x, t.y / s, o, 0, Math.PI * 2, !1), s !== 1 && i.restore(), this._fillStroke(i, e);
+            var t = e._point, n = this._ctx, o = Math.max(Math.round(e._radius), 1), s = (Math.max(Math.round(e._radiusY), 1) || o) / o;
+            s !== 1 && (n.save(), n.scale(1, s)), n.beginPath(), n.arc(t.x, t.y / s, o, 0, Math.PI * 2, !1), s !== 1 && n.restore(), this._fillStroke(n, e);
           }
         },
         _fillStroke: function(e, t) {
-          var i = t.options;
-          i.fill && (e.globalAlpha = i.fillOpacity, e.fillStyle = i.fillColor || i.color, e.fill(i.fillRule || "evenodd")), i.stroke && i.weight !== 0 && (e.setLineDash && e.setLineDash(t.options && t.options._dashArray || []), e.globalAlpha = i.opacity, e.lineWidth = i.weight, e.strokeStyle = i.color, e.lineCap = i.lineCap, e.lineJoin = i.lineJoin, e.stroke());
+          var n = t.options;
+          n.fill && (e.globalAlpha = n.fillOpacity, e.fillStyle = n.fillColor || n.color, e.fill(n.fillRule || "evenodd")), n.stroke && n.weight !== 0 && (e.setLineDash && e.setLineDash(t.options && t.options._dashArray || []), e.globalAlpha = n.opacity, e.lineWidth = n.weight, e.strokeStyle = n.color, e.lineCap = n.lineCap, e.lineJoin = n.lineJoin, e.stroke());
         },
         // Canvas obviously doesn't have mouse events for individual drawn objects,
         // so we emulate that by calculating what's under the mouse on mousemove/click manually
         _onClick: function(e) {
-          for (var t = this._map.mouseEventToLayerPoint(e), i, o, s = this._drawFirst; s; s = s.next)
-            i = s.layer, i.options.interactive && i._containsPoint(t) && (!(e.type === "click" || e.type === "preclick") || !this._map._draggableMoved(i)) && (o = i);
+          for (var t = this._map.mouseEventToLayerPoint(e), n, o, s = this._drawFirst; s; s = s.next)
+            n = s.layer, n.options.interactive && n._containsPoint(t) && (!(e.type === "click" || e.type === "preclick") || !this._map._draggableMoved(n)) && (o = n);
           this._fireEvent(o ? [o] : !1, e);
         },
         _onMouseMove: function(e) {
@@ -5686,47 +5686,47 @@ function Aa() {
         },
         _handleMouseOut: function(e) {
           var t = this._hoveredLayer;
-          t && (q(this._container, "leaflet-interactive"), this._fireEvent([t], e, "mouseout"), this._hoveredLayer = null, this._mouseHoverThrottled = !1);
+          t && (re(this._container, "leaflet-interactive"), this._fireEvent([t], e, "mouseout"), this._hoveredLayer = null, this._mouseHoverThrottled = !1);
         },
         _handleMouseHover: function(e, t) {
           if (!this._mouseHoverThrottled) {
-            for (var i, o, s = this._drawFirst; s; s = s.next)
-              i = s.layer, i.options.interactive && i._containsPoint(t) && (o = i);
-            o !== this._hoveredLayer && (this._handleMouseOut(e), o && (j(this._container, "leaflet-interactive"), this._fireEvent([o], e, "mouseover"), this._hoveredLayer = o)), this._fireEvent(this._hoveredLayer ? [this._hoveredLayer] : !1, e), this._mouseHoverThrottled = !0, setTimeout(J(function() {
+            for (var n, o, s = this._drawFirst; s; s = s.next)
+              n = s.layer, n.options.interactive && n._containsPoint(t) && (o = n);
+            o !== this._hoveredLayer && (this._handleMouseOut(e), o && (J(this._container, "leaflet-interactive"), this._fireEvent([o], e, "mouseover"), this._hoveredLayer = o)), this._fireEvent(this._hoveredLayer ? [this._hoveredLayer] : !1, e), this._mouseHoverThrottled = !0, setTimeout(N(function() {
               this._mouseHoverThrottled = !1;
             }, this), 32);
           }
         },
-        _fireEvent: function(e, t, i) {
-          this._map._fireDOMEvent(t, i || t.type, e);
+        _fireEvent: function(e, t, n) {
+          this._map._fireDOMEvent(t, n || t.type, e);
         },
         _bringToFront: function(e) {
           var t = e._order;
           if (t) {
-            var i = t.next, o = t.prev;
-            if (i)
-              i.prev = o;
+            var n = t.next, o = t.prev;
+            if (n)
+              n.prev = o;
             else
               return;
-            o ? o.next = i : i && (this._drawFirst = i), t.prev = this._drawLast, this._drawLast.next = t, t.next = null, this._drawLast = t, this._requestRedraw(e);
+            o ? o.next = n : n && (this._drawFirst = n), t.prev = this._drawLast, this._drawLast.next = t, t.next = null, this._drawLast = t, this._requestRedraw(e);
           }
         },
         _bringToBack: function(e) {
           var t = e._order;
           if (t) {
-            var i = t.next, o = t.prev;
+            var n = t.next, o = t.prev;
             if (o)
-              o.next = i;
+              o.next = n;
             else
               return;
-            i ? i.prev = o : o && (this._drawLast = o), t.prev = null, t.next = this._drawFirst, this._drawFirst.prev = t, this._drawFirst = t, this._requestRedraw(e);
+            n ? n.prev = o : o && (this._drawLast = o), t.prev = null, t.next = this._drawFirst, this._drawFirst.prev = t, this._drawFirst = t, this._requestRedraw(e);
           }
         }
       });
-      function xo(e) {
-        return I.canvas ? new wo(e) : null;
+      function Lo(e) {
+        return Z.canvas ? new Po(e) : null;
       }
-      var rn = (function() {
+      var ri = (function() {
         try {
           return document.namespaces.add("lvml", "urn:schemas-microsoft-com:vml"), function(e) {
             return document.createElement("<lvml:" + e + ' class="lvml">');
@@ -5738,14 +5738,14 @@ function Aa() {
         };
       })(), _a = {
         _initContainer: function() {
-          this._container = se("div", "leaflet-vml-container");
+          this._container = Y("div", "leaflet-vml-container");
         },
         _update: function() {
-          this._map._animatingZoom || (zt.prototype._update.call(this), this.fire("update"));
+          this._map._animatingZoom || (Bt.prototype._update.call(this), this.fire("update"));
         },
         _initPath: function(e) {
-          var t = e._container = rn("shape");
-          j(t, "leaflet-vml-shape " + (this.options.className || "")), t.coordsize = "1 1", e._path = rn("path"), t.appendChild(e._path), this._updateStyle(e), this._layers[K(e)] = e;
+          var t = e._container = ri("shape");
+          J(t, "leaflet-vml-shape " + (this.options.className || "")), t.coordsize = "1 1", e._path = ri("path"), t.appendChild(e._path), this._updateStyle(e), this._layers[K(e)] = e;
         },
         _addPath: function(e) {
           var t = e._container;
@@ -5753,62 +5753,62 @@ function Aa() {
         },
         _removePath: function(e) {
           var t = e._container;
-          be(t), e.removeInteractiveTarget(t), delete this._layers[K(e)];
+          I(t), e.removeInteractiveTarget(t), delete this._layers[K(e)];
         },
         _updateStyle: function(e) {
-          var t = e._stroke, i = e._fill, o = e.options, s = e._container;
-          s.stroked = !!o.stroke, s.filled = !!o.fill, o.stroke ? (t || (t = e._stroke = rn("stroke")), s.appendChild(t), t.weight = o.weight + "px", t.color = o.color, t.opacity = o.opacity, o.dashArray ? t.dashStyle = He(o.dashArray) ? o.dashArray.join(" ") : o.dashArray.replace(/( *, *)/g, " ") : t.dashStyle = "", t.endcap = o.lineCap.replace("butt", "flat"), t.joinstyle = o.lineJoin) : t && (s.removeChild(t), e._stroke = null), o.fill ? (i || (i = e._fill = rn("fill")), s.appendChild(i), i.color = o.fillColor || o.color, i.opacity = o.fillOpacity) : i && (s.removeChild(i), e._fill = null);
+          var t = e._stroke, n = e._fill, o = e.options, s = e._container;
+          s.stroked = !!o.stroke, s.filled = !!o.fill, o.stroke ? (t || (t = e._stroke = ri("stroke")), s.appendChild(t), t.weight = o.weight + "px", t.color = o.color, t.opacity = o.opacity, o.dashArray ? t.dashStyle = Ne(o.dashArray) ? o.dashArray.join(" ") : o.dashArray.replace(/( *, *)/g, " ") : t.dashStyle = "", t.endcap = o.lineCap.replace("butt", "flat"), t.joinstyle = o.lineJoin) : t && (s.removeChild(t), e._stroke = null), o.fill ? (n || (n = e._fill = ri("fill")), s.appendChild(n), n.color = o.fillColor || o.color, n.opacity = o.fillOpacity) : n && (s.removeChild(n), e._fill = null);
         },
         _updateCircle: function(e) {
-          var t = e._point.round(), i = Math.round(e._radius), o = Math.round(e._radiusY || i);
-          this._setPath(e, e._empty() ? "M0 0" : "AL " + t.x + "," + t.y + " " + i + "," + o + " 0," + 65535 * 360);
+          var t = e._point.round(), n = Math.round(e._radius), o = Math.round(e._radiusY || n);
+          this._setPath(e, e._empty() ? "M0 0" : "AL " + t.x + "," + t.y + " " + n + "," + o + " 0," + 65535 * 360);
         },
         _setPath: function(e, t) {
           e._path.v = t;
         },
         _bringToFront: function(e) {
-          Dt(e._container);
+          Ut(e._container);
         },
         _bringToBack: function(e) {
-          Ce(e._container);
+          Ht(e._container);
         }
-      }, $n = I.vml ? rn : hn, ln = zt.extend({
+      }, Ui = Z.vml ? ri : Vn, li = Bt.extend({
         _initContainer: function() {
-          this._container = $n("svg"), this._container.setAttribute("pointer-events", "none"), this._rootGroup = $n("g"), this._container.appendChild(this._rootGroup);
+          this._container = Ui("svg"), this._container.setAttribute("pointer-events", "none"), this._rootGroup = Ui("g"), this._container.appendChild(this._rootGroup);
         },
         _destroyContainer: function() {
-          be(this._container), pe(this._container), delete this._container, delete this._rootGroup, delete this._svgSize;
+          I(this._container), ue(this._container), delete this._container, delete this._rootGroup, delete this._svgSize;
         },
         _update: function() {
           if (!(this._map._animatingZoom && this._bounds)) {
-            zt.prototype._update.call(this);
-            var e = this._bounds, t = e.getSize(), i = this._container;
-            (!this._svgSize || !this._svgSize.equals(t)) && (this._svgSize = t, i.setAttribute("width", t.x), i.setAttribute("height", t.y)), _e(i, e.min), i.setAttribute("viewBox", [e.min.x, e.min.y, t.x, t.y].join(" ")), this.fire("update");
+            Bt.prototype._update.call(this);
+            var e = this._bounds, t = e.getSize(), n = this._container;
+            (!this._svgSize || !this._svgSize.equals(t)) && (this._svgSize = t, n.setAttribute("width", t.x), n.setAttribute("height", t.y)), Pe(n, e.min), n.setAttribute("viewBox", [e.min.x, e.min.y, t.x, t.y].join(" ")), this.fire("update");
           }
         },
         // methods below are called by vector layers implementations
         _initPath: function(e) {
-          var t = e._path = $n("path");
-          e.options.className && j(t, e.options.className), e.options.interactive && j(t, "leaflet-interactive"), this._updateStyle(e), this._layers[K(e)] = e;
+          var t = e._path = Ui("path");
+          e.options.className && J(t, e.options.className), e.options.interactive && J(t, "leaflet-interactive"), this._updateStyle(e), this._layers[K(e)] = e;
         },
         _addPath: function(e) {
           this._rootGroup || this._initContainer(), this._rootGroup.appendChild(e._path), e.addInteractiveTarget(e._path);
         },
         _removePath: function(e) {
-          be(e._path), e.removeInteractiveTarget(e._path), delete this._layers[K(e)];
+          I(e._path), e.removeInteractiveTarget(e._path), delete this._layers[K(e)];
         },
         _updatePath: function(e) {
           e._project(), e._update();
         },
         _updateStyle: function(e) {
-          var t = e._path, i = e.options;
-          t && (i.stroke ? (t.setAttribute("stroke", i.color), t.setAttribute("stroke-opacity", i.opacity), t.setAttribute("stroke-width", i.weight), t.setAttribute("stroke-linecap", i.lineCap), t.setAttribute("stroke-linejoin", i.lineJoin), i.dashArray ? t.setAttribute("stroke-dasharray", i.dashArray) : t.removeAttribute("stroke-dasharray"), i.dashOffset ? t.setAttribute("stroke-dashoffset", i.dashOffset) : t.removeAttribute("stroke-dashoffset")) : t.setAttribute("stroke", "none"), i.fill ? (t.setAttribute("fill", i.fillColor || i.color), t.setAttribute("fill-opacity", i.fillOpacity), t.setAttribute("fill-rule", i.fillRule || "evenodd")) : t.setAttribute("fill", "none"));
+          var t = e._path, n = e.options;
+          t && (n.stroke ? (t.setAttribute("stroke", n.color), t.setAttribute("stroke-opacity", n.opacity), t.setAttribute("stroke-width", n.weight), t.setAttribute("stroke-linecap", n.lineCap), t.setAttribute("stroke-linejoin", n.lineJoin), n.dashArray ? t.setAttribute("stroke-dasharray", n.dashArray) : t.removeAttribute("stroke-dasharray"), n.dashOffset ? t.setAttribute("stroke-dashoffset", n.dashOffset) : t.removeAttribute("stroke-dashoffset")) : t.setAttribute("stroke", "none"), n.fill ? (t.setAttribute("fill", n.fillColor || n.color), t.setAttribute("fill-opacity", n.fillOpacity), t.setAttribute("fill-rule", n.fillRule || "evenodd")) : t.setAttribute("fill", "none"));
         },
         _updatePoly: function(e, t) {
-          this._setPath(e, ct(e._parts, t));
+          this._setPath(e, $n(e._parts, t));
         },
         _updateCircle: function(e) {
-          var t = e._point, i = Math.max(Math.round(e._radius), 1), o = Math.max(Math.round(e._radiusY), 1) || i, s = "a" + i + "," + o + " 0 1,0 ", c = e._empty() ? "M0 0" : "M" + (t.x - i) + "," + t.y + s + i * 2 + ",0 " + s + -i * 2 + ",0 ";
+          var t = e._point, n = Math.max(Math.round(e._radius), 1), o = Math.max(Math.round(e._radiusY), 1) || n, s = "a" + n + "," + o + " 0 1,0 ", c = e._empty() ? "M0 0" : "M" + (t.x - n) + "," + t.y + s + n * 2 + ",0 " + s + -n * 2 + ",0 ";
           this._setPath(e, c);
         },
         _setPath: function(e, t) {
@@ -5816,17 +5816,17 @@ function Aa() {
         },
         // SVG does not have the concept of zIndex so we resort to changing the DOM order of elements
         _bringToFront: function(e) {
-          Dt(e._path);
+          Ut(e._path);
         },
         _bringToBack: function(e) {
-          Ce(e._path);
+          Ht(e._path);
         }
       });
-      I.vml && ln.include(_a);
-      function ko(e) {
-        return I.svg || I.vml ? new ln(e) : null;
+      Z.vml && li.include(_a);
+      function To(e) {
+        return Z.svg || Z.vml ? new li(e) : null;
       }
-      oe.include({
+      te.include({
         // @namespace Map; @method getRenderer(layer: Path): Renderer
         // Returns the instance of `Renderer` that should be used to render the given
         // `Path`. It will ensure that the `renderer` options of the map and paths
@@ -5842,12 +5842,12 @@ function Aa() {
           return t === void 0 && (t = this._createRenderer({ pane: e }), this._paneRenderers[e] = t), t;
         },
         _createRenderer: function(e) {
-          return this.options.preferCanvas && xo(e) || ko(e);
+          return this.options.preferCanvas && Lo(e) || To(e);
         }
       });
-      var Po = Ii.extend({
+      var So = Bn.extend({
         initialize: function(e, t) {
-          Ii.prototype.initialize.call(this, this._boundsToLatLngs(e), t);
+          Bn.prototype.initialize.call(this, this._boundsToLatLngs(e), t);
         },
         // @method setBounds(latLngBounds: LatLngBounds): this
         // Redraws the rectangle with the passed bounds.
@@ -5855,7 +5855,7 @@ function Aa() {
           return this.setLatLngs(this._boundsToLatLngs(e));
         },
         _boundsToLatLngs: function(e) {
-          return e = ee(e), [
+          return e = G(e), [
             e.getSouthWest(),
             e.getNorthWest(),
             e.getNorthEast(),
@@ -5864,29 +5864,29 @@ function Aa() {
         }
       });
       function va(e, t) {
-        return new Po(e, t);
+        return new So(e, t);
       }
-      ln.create = $n, ln.pointsToPath = ct, Mt.geometryToLayer = In, Mt.coordsToLatLng = no, Mt.coordsToLatLngs = Bn, Mt.latLngToCoords = oo, Mt.latLngsToCoords = Zn, Mt.getFeature = Bi, Mt.asFeature = Nn, oe.mergeOptions({
+      li.create = Ui, li.pointsToPath = $n, It.geometryToLayer = Bi, It.coordsToLatLng = lo, It.coordsToLatLngs = Zi, It.latLngToCoords = uo, It.latLngsToCoords = Ni, It.getFeature = Zn, It.asFeature = Ri, te.mergeOptions({
         // @option boxZoom: Boolean = true
         // Whether the map can be zoomed to a rectangular area specified by
         // dragging the mouse while pressing the shift key.
         boxZoom: !0
       });
-      var Lo = W.extend({
+      var Co = dt.extend({
         initialize: function(e) {
           this._map = e, this._container = e._container, this._pane = e._panes.overlayPane, this._resetStateTimeout = 0, e.on("unload", this._destroy, this);
         },
         addHooks: function() {
-          H(this._container, "mousedown", this._onMouseDown, this);
+          j(this._container, "mousedown", this._onMouseDown, this);
         },
         removeHooks: function() {
-          pe(this._container, "mousedown", this._onMouseDown, this);
+          ue(this._container, "mousedown", this._onMouseDown, this);
         },
         moved: function() {
           return this._moved;
         },
         _destroy: function() {
-          be(this._pane), delete this._pane;
+          I(this._pane), delete this._pane;
         },
         _resetState: function() {
           this._resetStateTimeout = 0, this._moved = !1;
@@ -5897,21 +5897,21 @@ function Aa() {
         _onMouseDown: function(e) {
           if (!e.shiftKey || e.which !== 1 && e.button !== 1)
             return !1;
-          this._clearDeferredResetState(), this._resetState(), Ke(), Ne(), this._startPoint = this._map.mouseEventToContainerPoint(e), H(document, {
-            contextmenu: ie,
+          this._clearDeferredResetState(), this._resetState(), rt(), Yn(), this._startPoint = this._map.mouseEventToContainerPoint(e), j(document, {
+            contextmenu: zt,
             mousemove: this._onMouseMove,
             mouseup: this._onMouseUp,
             keydown: this._onKeyDown
           }, this);
         },
         _onMouseMove: function(e) {
-          this._moved || (this._moved = !0, this._box = se("div", "leaflet-zoom-box", this._container), j(this._container, "leaflet-crosshair"), this._map.fire("boxzoomstart")), this._point = this._map.mouseEventToContainerPoint(e);
-          var t = new m(this._point, this._startPoint), i = t.getSize();
-          _e(this._box, t.min), this._box.style.width = i.x + "px", this._box.style.height = i.y + "px";
+          this._moved || (this._moved = !0, this._box = Y("div", "leaflet-zoom-box", this._container), J(this._container, "leaflet-crosshair"), this._map.fire("boxzoomstart")), this._point = this._map.mouseEventToContainerPoint(e);
+          var t = new m(this._point, this._startPoint), n = t.getSize();
+          Pe(this._box, t.min), this._box.style.width = n.x + "px", this._box.style.height = n.y + "px";
         },
         _finish: function() {
-          this._moved && (be(this._box), q(this._container, "leaflet-crosshair")), si(), Ye(), pe(document, {
-            contextmenu: ie,
+          this._moved && (I(this._box), re(this._container, "leaflet-crosshair")), lt(), Jn(), ue(document, {
+            contextmenu: zt,
             mousemove: this._onMouseMove,
             mouseup: this._onMouseUp,
             keydown: this._onKeyDown
@@ -5919,8 +5919,8 @@ function Aa() {
         },
         _onMouseUp: function(e) {
           if (!(e.which !== 1 && e.button !== 1) && (this._finish(), !!this._moved)) {
-            this._clearDeferredResetState(), this._resetStateTimeout = setTimeout(J(this._resetState, this), 0);
-            var t = new y(
+            this._clearDeferredResetState(), this._resetStateTimeout = setTimeout(N(this._resetState, this), 0);
+            var t = new b(
               this._map.containerPointToLatLng(this._startPoint),
               this._map.containerPointToLatLng(this._point)
             );
@@ -5931,7 +5931,7 @@ function Aa() {
           e.keyCode === 27 && (this._finish(), this._clearDeferredResetState(), this._resetState());
         }
       });
-      oe.addInitHook("addHandler", "boxZoom", Lo), oe.mergeOptions({
+      te.addInitHook("addHandler", "boxZoom", Co), te.mergeOptions({
         // @option doubleClickZoom: Boolean|String = true
         // Whether the map can be zoomed in by double clicking on it and
         // zoomed out by double clicking while holding shift. If passed
@@ -5939,7 +5939,7 @@ function Aa() {
         //  view regardless of where the mouse was.
         doubleClickZoom: !0
       });
-      var To = W.extend({
+      var Mo = dt.extend({
         addHooks: function() {
           this._map.on("dblclick", this._onDoubleClick, this);
         },
@@ -5947,11 +5947,11 @@ function Aa() {
           this._map.off("dblclick", this._onDoubleClick, this);
         },
         _onDoubleClick: function(e) {
-          var t = this._map, i = t.getZoom(), o = t.options.zoomDelta, s = e.originalEvent.shiftKey ? i - o : i + o;
+          var t = this._map, n = t.getZoom(), o = t.options.zoomDelta, s = e.originalEvent.shiftKey ? n - o : n + o;
           t.options.doubleClickZoom === "center" ? t.setZoom(s) : t.setZoomAround(e.containerPoint, s);
         }
       });
-      oe.addInitHook("addHandler", "doubleClickZoom", To), oe.mergeOptions({
+      te.addInitHook("addHandler", "doubleClickZoom", Mo), te.mergeOptions({
         // @option dragging: Boolean = true
         // Whether the map is draggable with mouse/touch or not.
         dragging: !0,
@@ -5986,20 +5986,20 @@ function Aa() {
         // solid, preventing the user from dragging outside the bounds.
         maxBoundsViscosity: 0
       });
-      var So = W.extend({
+      var zo = dt.extend({
         addHooks: function() {
           if (!this._draggable) {
             var e = this._map;
-            this._draggable = new ft(e._mapPane, e._container), this._draggable.on({
+            this._draggable = new _t(e._mapPane, e._container), this._draggable.on({
               dragstart: this._onDragStart,
               drag: this._onDrag,
               dragend: this._onDragEnd
             }, this), this._draggable.on("predrag", this._onPreDragLimit, this), e.options.worldCopyJump && (this._draggable.on("predrag", this._onPreDragWrap, this), e.on("zoomend", this._onZoomEnd, this), e.whenReady(this._onZoomEnd, this));
           }
-          j(this._map._container, "leaflet-grab leaflet-touch-drag"), this._draggable.enable(), this._positions = [], this._times = [];
+          J(this._map._container, "leaflet-grab leaflet-touch-drag"), this._draggable.enable(), this._positions = [], this._times = [];
         },
         removeHooks: function() {
-          q(this._map._container, "leaflet-grab"), q(this._map._container, "leaflet-touch-drag"), this._draggable.disable();
+          re(this._map._container, "leaflet-grab"), re(this._map._container, "leaflet-touch-drag"), this._draggable.disable();
         },
         moved: function() {
           return this._draggable && this._draggable._moved;
@@ -6010,7 +6010,7 @@ function Aa() {
         _onDragStart: function() {
           var e = this._map;
           if (e._stop(), this._map.options.maxBounds && this._map.options.maxBoundsViscosity) {
-            var t = ee(this._map.options.maxBounds);
+            var t = G(this._map.options.maxBounds);
             this._offsetLimit = T(
               this._map.latLngToContainerPoint(t.getNorthWest()).multiplyBy(-1),
               this._map.latLngToContainerPoint(t.getSouthEast()).multiplyBy(-1).add(this._map.getSize())
@@ -6021,8 +6021,8 @@ function Aa() {
         },
         _onDrag: function(e) {
           if (this._map.options.inertia) {
-            var t = this._lastTime = +/* @__PURE__ */ new Date(), i = this._lastPos = this._draggable._absPos || this._draggable._newPos;
-            this._positions.push(i), this._times.push(t), this._prunePositions(t);
+            var t = this._lastTime = +/* @__PURE__ */ new Date(), n = this._lastPos = this._draggable._absPos || this._draggable._newPos;
+            this._positions.push(n), this._times.push(t), this._prunePositions(t);
           }
           this._map.fire("move", e).fire("drag", e);
         },
@@ -6044,20 +6044,20 @@ function Aa() {
           }
         },
         _onPreDragWrap: function() {
-          var e = this._worldWidth, t = Math.round(e / 2), i = this._initialWorldOffset, o = this._draggable._newPos.x, s = (o - t + i) % e + t - i, c = (o + t + i) % e - t - i, d = Math.abs(s + i) < Math.abs(c + i) ? s : c;
-          this._draggable._absPos = this._draggable._newPos.clone(), this._draggable._newPos.x = d;
+          var e = this._worldWidth, t = Math.round(e / 2), n = this._initialWorldOffset, o = this._draggable._newPos.x, s = (o - t + n) % e + t - n, c = (o + t + n) % e - t - n, h = Math.abs(s + n) < Math.abs(c + n) ? s : c;
+          this._draggable._absPos = this._draggable._newPos.clone(), this._draggable._newPos.x = h;
         },
         _onDragEnd: function(e) {
-          var t = this._map, i = t.options, o = !i.inertia || e.noInertia || this._times.length < 2;
+          var t = this._map, n = t.options, o = !n.inertia || e.noInertia || this._times.length < 2;
           if (t.fire("dragend", e), o)
             t.fire("moveend");
           else {
             this._prunePositions(+/* @__PURE__ */ new Date());
-            var s = this._lastPos.subtract(this._positions[0]), c = (this._lastTime - this._times[0]) / 1e3, d = i.easeLinearity, p = s.multiplyBy(d / c), f = p.distanceTo([0, 0]), x = Math.min(i.inertiaMaxSpeed, f), S = p.multiplyBy(x / f), U = x / (i.inertiaDeceleration * d), ne = S.multiplyBy(-U / 2).round();
-            !ne.x && !ne.y ? t.fire("moveend") : (ne = t._limitOffset(ne, t.options.maxBounds), Se(function() {
-              t.panBy(ne, {
-                duration: U,
-                easeLinearity: d,
+            var s = this._lastPos.subtract(this._positions[0]), c = (this._lastTime - this._times[0]) / 1e3, h = n.easeLinearity, p = s.multiplyBy(h / c), f = p.distanceTo([0, 0]), k = Math.min(n.inertiaMaxSpeed, f), S = p.multiplyBy(k / f), H = k / (n.inertiaDeceleration * h), se = S.multiplyBy(-H / 2).round();
+            !se.x && !se.y ? t.fire("moveend") : (se = t._limitOffset(se, t.options.maxBounds), Se(function() {
+              t.panBy(se, {
+                duration: H,
+                easeLinearity: h,
                 noMoveStart: !0,
                 animate: !0
               });
@@ -6065,7 +6065,7 @@ function Aa() {
           }
         }
       });
-      oe.addInitHook("addHandler", "dragging", So), oe.mergeOptions({
+      te.addInitHook("addHandler", "dragging", zo), te.mergeOptions({
         // @option keyboard: Boolean = true
         // Makes the map focusable and allows users to navigate the map with keyboard
         // arrows and `+`/`-` keys.
@@ -6074,7 +6074,7 @@ function Aa() {
         // Amount of pixels to pan when pressing an arrow key.
         keyboardPanDelta: 80
       });
-      var Co = W.extend({
+      var Eo = dt.extend({
         keyCodes: {
           left: [37],
           right: [39],
@@ -6088,7 +6088,7 @@ function Aa() {
         },
         addHooks: function() {
           var e = this._map._container;
-          e.tabIndex <= 0 && (e.tabIndex = "0"), H(e, {
+          e.tabIndex <= 0 && (e.tabIndex = "0"), j(e, {
             focus: this._onFocus,
             blur: this._onBlur,
             mousedown: this._onMouseDown
@@ -6098,7 +6098,7 @@ function Aa() {
           }, this);
         },
         removeHooks: function() {
-          this._removeHooks(), pe(this._map._container, {
+          this._removeHooks(), ue(this._map._container, {
             focus: this._onFocus,
             blur: this._onBlur,
             mousedown: this._onMouseDown
@@ -6109,8 +6109,8 @@ function Aa() {
         },
         _onMouseDown: function() {
           if (!this._focused) {
-            var e = document.body, t = document.documentElement, i = e.scrollTop || t.scrollTop, o = e.scrollLeft || t.scrollLeft;
-            this._map._container.focus(), window.scrollTo(o, i);
+            var e = document.body, t = document.documentElement, n = e.scrollTop || t.scrollTop, o = e.scrollLeft || t.scrollLeft;
+            this._map._container.focus(), window.scrollTo(o, n);
           }
         },
         _onFocus: function() {
@@ -6120,50 +6120,50 @@ function Aa() {
           this._focused = !1, this._map.fire("blur");
         },
         _setPanDelta: function(e) {
-          var t = this._panKeys = {}, i = this.keyCodes, o, s;
-          for (o = 0, s = i.left.length; o < s; o++)
-            t[i.left[o]] = [-1 * e, 0];
-          for (o = 0, s = i.right.length; o < s; o++)
-            t[i.right[o]] = [e, 0];
-          for (o = 0, s = i.down.length; o < s; o++)
-            t[i.down[o]] = [0, e];
-          for (o = 0, s = i.up.length; o < s; o++)
-            t[i.up[o]] = [0, -1 * e];
+          var t = this._panKeys = {}, n = this.keyCodes, o, s;
+          for (o = 0, s = n.left.length; o < s; o++)
+            t[n.left[o]] = [-1 * e, 0];
+          for (o = 0, s = n.right.length; o < s; o++)
+            t[n.right[o]] = [e, 0];
+          for (o = 0, s = n.down.length; o < s; o++)
+            t[n.down[o]] = [0, e];
+          for (o = 0, s = n.up.length; o < s; o++)
+            t[n.up[o]] = [0, -1 * e];
         },
         _setZoomDelta: function(e) {
-          var t = this._zoomKeys = {}, i = this.keyCodes, o, s;
-          for (o = 0, s = i.zoomIn.length; o < s; o++)
-            t[i.zoomIn[o]] = e;
-          for (o = 0, s = i.zoomOut.length; o < s; o++)
-            t[i.zoomOut[o]] = -e;
+          var t = this._zoomKeys = {}, n = this.keyCodes, o, s;
+          for (o = 0, s = n.zoomIn.length; o < s; o++)
+            t[n.zoomIn[o]] = e;
+          for (o = 0, s = n.zoomOut.length; o < s; o++)
+            t[n.zoomOut[o]] = -e;
         },
         _addHooks: function() {
-          H(document, "keydown", this._onKeyDown, this);
+          j(document, "keydown", this._onKeyDown, this);
         },
         _removeHooks: function() {
-          pe(document, "keydown", this._onKeyDown, this);
+          ue(document, "keydown", this._onKeyDown, this);
         },
         _onKeyDown: function(e) {
           if (!(e.altKey || e.ctrlKey || e.metaKey)) {
-            var t = e.keyCode, i = this._map, o;
+            var t = e.keyCode, n = this._map, o;
             if (t in this._panKeys) {
-              if (!i._panAnim || !i._panAnim._inProgress)
-                if (o = this._panKeys[t], e.shiftKey && (o = V(o).multiplyBy(3)), i.options.maxBounds && (o = i._limitOffset(V(o), i.options.maxBounds)), i.options.worldCopyJump) {
-                  var s = i.wrapLatLng(i.unproject(i.project(i.getCenter()).add(o)));
-                  i.panTo(s);
+              if (!n._panAnim || !n._panAnim._inProgress)
+                if (o = this._panKeys[t], e.shiftKey && (o = $(o).multiplyBy(3)), n.options.maxBounds && (o = n._limitOffset($(o), n.options.maxBounds)), n.options.worldCopyJump) {
+                  var s = n.wrapLatLng(n.unproject(n.project(n.getCenter()).add(o)));
+                  n.panTo(s);
                 } else
-                  i.panBy(o);
+                  n.panBy(o);
             } else if (t in this._zoomKeys)
-              i.setZoom(i.getZoom() + (e.shiftKey ? 3 : 1) * this._zoomKeys[t]);
-            else if (t === 27 && i._popup && i._popup.options.closeOnEscapeKey)
-              i.closePopup();
+              n.setZoom(n.getZoom() + (e.shiftKey ? 3 : 1) * this._zoomKeys[t]);
+            else if (t === 27 && n._popup && n._popup.options.closeOnEscapeKey)
+              n.closePopup();
             else
               return;
-            ie(e);
+            zt(e);
           }
         }
       });
-      oe.addInitHook("addHandler", "keyboard", Co), oe.mergeOptions({
+      te.addInitHook("addHandler", "keyboard", Eo), te.mergeOptions({
         // @section Mouse wheel options
         // @option scrollWheelZoom: Boolean|String = true
         // Whether the map can be zoomed by using the mouse wheel. If passed `'center'`,
@@ -6179,68 +6179,68 @@ function Aa() {
         // faster (and vice versa).
         wheelPxPerZoomLevel: 60
       });
-      var Mo = W.extend({
+      var Oo = dt.extend({
         addHooks: function() {
-          H(this._map._container, "wheel", this._onWheelScroll, this), this._delta = 0;
+          j(this._map._container, "wheel", this._onWheelScroll, this), this._delta = 0;
         },
         removeHooks: function() {
-          pe(this._map._container, "wheel", this._onWheelScroll, this);
+          ue(this._map._container, "wheel", this._onWheelScroll, this);
         },
         _onWheelScroll: function(e) {
-          var t = b(e), i = this._map.options.wheelDebounceTime;
+          var t = Ci(e), n = this._map.options.wheelDebounceTime;
           this._delta += t, this._lastMousePos = this._map.mouseEventToContainerPoint(e), this._startTime || (this._startTime = +/* @__PURE__ */ new Date());
-          var o = Math.max(i - (+/* @__PURE__ */ new Date() - this._startTime), 0);
-          clearTimeout(this._timer), this._timer = setTimeout(J(this._performZoom, this), o), ie(e);
+          var o = Math.max(n - (+/* @__PURE__ */ new Date() - this._startTime), 0);
+          clearTimeout(this._timer), this._timer = setTimeout(N(this._performZoom, this), o), zt(e);
         },
         _performZoom: function() {
-          var e = this._map, t = e.getZoom(), i = this._map.options.zoomSnap || 0;
+          var e = this._map, t = e.getZoom(), n = this._map.options.zoomSnap || 0;
           e._stop();
-          var o = this._delta / (this._map.options.wheelPxPerZoomLevel * 4), s = 4 * Math.log(2 / (1 + Math.exp(-Math.abs(o)))) / Math.LN2, c = i ? Math.ceil(s / i) * i : s, d = e._limitZoom(t + (this._delta > 0 ? c : -c)) - t;
-          this._delta = 0, this._startTime = null, d && (e.options.scrollWheelZoom === "center" ? e.setZoom(t + d) : e.setZoomAround(this._lastMousePos, t + d));
+          var o = this._delta / (this._map.options.wheelPxPerZoomLevel * 4), s = 4 * Math.log(2 / (1 + Math.exp(-Math.abs(o)))) / Math.LN2, c = n ? Math.ceil(s / n) * n : s, h = e._limitZoom(t + (this._delta > 0 ? c : -c)) - t;
+          this._delta = 0, this._startTime = null, h && (e.options.scrollWheelZoom === "center" ? e.setZoom(t + h) : e.setZoomAround(this._lastMousePos, t + h));
         }
       });
-      oe.addInitHook("addHandler", "scrollWheelZoom", Mo);
+      te.addInitHook("addHandler", "scrollWheelZoom", Oo);
       var ga = 600;
-      oe.mergeOptions({
+      te.mergeOptions({
         // @section Touch interaction options
         // @option tapHold: Boolean
         // Enables simulation of `contextmenu` event, default is `true` for mobile Safari.
-        tapHold: I.touchNative && I.safari && I.mobile,
+        tapHold: Z.touchNative && Z.safari && Z.mobile,
         // @option tapTolerance: Number = 15
         // The max number of pixels a user can shift his finger during touch
         // for it to be considered a valid tap.
         tapTolerance: 15
       });
-      var zo = W.extend({
+      var Ao = dt.extend({
         addHooks: function() {
-          H(this._map._container, "touchstart", this._onDown, this);
+          j(this._map._container, "touchstart", this._onDown, this);
         },
         removeHooks: function() {
-          pe(this._map._container, "touchstart", this._onDown, this);
+          ue(this._map._container, "touchstart", this._onDown, this);
         },
         _onDown: function(e) {
           if (clearTimeout(this._holdTimeout), e.touches.length === 1) {
             var t = e.touches[0];
-            this._startPos = this._newPos = new M(t.clientX, t.clientY), this._holdTimeout = setTimeout(J(function() {
-              this._cancel(), this._isTapValid() && (H(document, "touchend", Ze), H(document, "touchend touchcancel", this._cancelClickPrevent), this._simulateEvent("contextmenu", t));
-            }, this), ga), H(document, "touchend touchcancel contextmenu", this._cancel, this), H(document, "touchmove", this._onMove, this);
+            this._startPos = this._newPos = new W(t.clientX, t.clientY), this._holdTimeout = setTimeout(N(function() {
+              this._cancel(), this._isTapValid() && (j(document, "touchend", Me), j(document, "touchend touchcancel", this._cancelClickPrevent), this._simulateEvent("contextmenu", t));
+            }, this), ga), j(document, "touchend touchcancel contextmenu", this._cancel, this), j(document, "touchmove", this._onMove, this);
           }
         },
         _cancelClickPrevent: function e() {
-          pe(document, "touchend", Ze), pe(document, "touchend touchcancel", e);
+          ue(document, "touchend", Me), ue(document, "touchend touchcancel", e);
         },
         _cancel: function() {
-          clearTimeout(this._holdTimeout), pe(document, "touchend touchcancel contextmenu", this._cancel, this), pe(document, "touchmove", this._onMove, this);
+          clearTimeout(this._holdTimeout), ue(document, "touchend touchcancel contextmenu", this._cancel, this), ue(document, "touchmove", this._onMove, this);
         },
         _onMove: function(e) {
           var t = e.touches[0];
-          this._newPos = new M(t.clientX, t.clientY);
+          this._newPos = new W(t.clientX, t.clientY);
         },
         _isTapValid: function() {
           return this._newPos.distanceTo(this._startPos) <= this._map.options.tapTolerance;
         },
         _simulateEvent: function(e, t) {
-          var i = new MouseEvent(e, {
+          var n = new MouseEvent(e, {
             bubbles: !0,
             cancelable: !0,
             view: window,
@@ -6252,51 +6252,51 @@ function Aa() {
             // button: 2,
             // buttons: 2
           });
-          i._simulated = !0, t.target.dispatchEvent(i);
+          n._simulated = !0, t.target.dispatchEvent(n);
         }
       });
-      oe.addInitHook("addHandler", "tapHold", zo), oe.mergeOptions({
+      te.addInitHook("addHandler", "tapHold", Ao), te.mergeOptions({
         // @section Touch interaction options
         // @option touchZoom: Boolean|String = *
         // Whether the map can be zoomed by touch-dragging with two fingers. If
         // passed `'center'`, it will zoom to the center of the view regardless of
         // where the touch events (fingers) were. Enabled for touch-capable web
         // browsers.
-        touchZoom: I.touch,
+        touchZoom: Z.touch,
         // @option bounceAtZoomLimits: Boolean = true
         // Set it to false if you don't want the map to zoom beyond min/max zoom
         // and then bounce back when pinch-zooming.
         bounceAtZoomLimits: !0
       });
-      var Eo = W.extend({
+      var Io = dt.extend({
         addHooks: function() {
-          j(this._map._container, "leaflet-touch-zoom"), H(this._map._container, "touchstart", this._onTouchStart, this);
+          J(this._map._container, "leaflet-touch-zoom"), j(this._map._container, "touchstart", this._onTouchStart, this);
         },
         removeHooks: function() {
-          q(this._map._container, "leaflet-touch-zoom"), pe(this._map._container, "touchstart", this._onTouchStart, this);
+          re(this._map._container, "leaflet-touch-zoom"), ue(this._map._container, "touchstart", this._onTouchStart, this);
         },
         _onTouchStart: function(e) {
           var t = this._map;
           if (!(!e.touches || e.touches.length !== 2 || t._animatingZoom || this._zooming)) {
-            var i = t.mouseEventToContainerPoint(e.touches[0]), o = t.mouseEventToContainerPoint(e.touches[1]);
-            this._centerPoint = t.getSize()._divideBy(2), this._startLatLng = t.containerPointToLatLng(this._centerPoint), t.options.touchZoom !== "center" && (this._pinchStartLatLng = t.containerPointToLatLng(i.add(o)._divideBy(2))), this._startDist = i.distanceTo(o), this._startZoom = t.getZoom(), this._moved = !1, this._zooming = !0, t._stop(), H(document, "touchmove", this._onTouchMove, this), H(document, "touchend touchcancel", this._onTouchEnd, this), Ze(e);
+            var n = t.mouseEventToContainerPoint(e.touches[0]), o = t.mouseEventToContainerPoint(e.touches[1]);
+            this._centerPoint = t.getSize()._divideBy(2), this._startLatLng = t.containerPointToLatLng(this._centerPoint), t.options.touchZoom !== "center" && (this._pinchStartLatLng = t.containerPointToLatLng(n.add(o)._divideBy(2))), this._startDist = n.distanceTo(o), this._startZoom = t.getZoom(), this._moved = !1, this._zooming = !0, t._stop(), j(document, "touchmove", this._onTouchMove, this), j(document, "touchend touchcancel", this._onTouchEnd, this), Me(e);
           }
         },
         _onTouchMove: function(e) {
           if (!(!e.touches || e.touches.length !== 2 || !this._zooming)) {
-            var t = this._map, i = t.mouseEventToContainerPoint(e.touches[0]), o = t.mouseEventToContainerPoint(e.touches[1]), s = i.distanceTo(o) / this._startDist;
+            var t = this._map, n = t.mouseEventToContainerPoint(e.touches[0]), o = t.mouseEventToContainerPoint(e.touches[1]), s = n.distanceTo(o) / this._startDist;
             if (this._zoom = t.getScaleZoom(s, this._startZoom), !t.options.bounceAtZoomLimits && (this._zoom < t.getMinZoom() && s < 1 || this._zoom > t.getMaxZoom() && s > 1) && (this._zoom = t._limitZoom(this._zoom)), t.options.touchZoom === "center") {
               if (this._center = this._startLatLng, s === 1)
                 return;
             } else {
-              var c = i._add(o)._divideBy(2)._subtract(this._centerPoint);
+              var c = n._add(o)._divideBy(2)._subtract(this._centerPoint);
               if (s === 1 && c.x === 0 && c.y === 0)
                 return;
               this._center = t.unproject(t.project(this._pinchStartLatLng, this._zoom).subtract(c), this._zoom);
             }
-            this._moved || (t._moveStart(!0, !1), this._moved = !0), Pe(this._animRequest);
-            var d = J(t._move, t, this._center, this._zoom, { pinch: !0, round: !1 }, void 0);
-            this._animRequest = Se(d, this, !0), Ze(e);
+            this._moved || (t._moveStart(!0, !1), this._moved = !0), Ce(this._animRequest);
+            var h = N(t._move, t, this._center, this._zoom, { pinch: !0, round: !1 }, void 0);
+            this._animRequest = Se(h, this, !0), Me(e);
           }
         },
         _onTouchEnd: function() {
@@ -6304,163 +6304,163 @@ function Aa() {
             this._zooming = !1;
             return;
           }
-          this._zooming = !1, Pe(this._animRequest), pe(document, "touchmove", this._onTouchMove, this), pe(document, "touchend touchcancel", this._onTouchEnd, this), this._map.options.zoomAnimation ? this._map._animateZoom(this._center, this._map._limitZoom(this._zoom), !0, this._map.options.zoomSnap) : this._map._resetView(this._center, this._map._limitZoom(this._zoom));
+          this._zooming = !1, Ce(this._animRequest), ue(document, "touchmove", this._onTouchMove, this), ue(document, "touchend touchcancel", this._onTouchEnd, this), this._map.options.zoomAnimation ? this._map._animateZoom(this._center, this._map._limitZoom(this._zoom), !0, this._map.options.zoomSnap) : this._map._resetView(this._center, this._map._limitZoom(this._zoom));
         }
       });
-      oe.addInitHook("addHandler", "touchZoom", Eo), oe.BoxZoom = Lo, oe.DoubleClickZoom = To, oe.Drag = So, oe.Keyboard = Co, oe.ScrollWheelZoom = Mo, oe.TapHold = zo, oe.TouchZoom = Eo, a.Bounds = m, a.Browser = I, a.CRS = ge, a.Canvas = wo, a.Circle = io, a.CircleMarker = An, a.Class = je, a.Control = Qe, a.DivIcon = go, a.DivOverlay = wt, a.DomEvent = Jn, a.DomUtil = Lt, a.Draggable = ft, a.Evented = xt, a.FeatureGroup = St, a.GeoJSON = Mt, a.GridLayer = sn, a.Handler = W, a.Icon = Ai, a.ImageOverlay = Rn, a.LatLng = X, a.LatLngBounds = y, a.Layer = mt, a.LayerGroup = Oi, a.LineUtil = Ko, a.Map = oe, a.Marker = On, a.Mixin = ue, a.Path = Wt, a.Point = M, a.PolyUtil = ce, a.Polygon = Ii, a.Polyline = Ct, a.Popup = Vn, a.PosAnimation = Mn, a.Projection = Yo, a.Rectangle = Po, a.Renderer = zt, a.SVG = ln, a.SVGOverlay = vo, a.TileLayer = Zi, a.Tooltip = Dn, a.Transformation = Vi, a.Util = Bt, a.VideoOverlay = _o, a.bind = J, a.bounds = T, a.canvas = xo, a.circle = oa, a.circleMarker = na, a.control = ri, a.divIcon = pa, a.extend = Z, a.featureGroup = ea, a.geoJSON = mo, a.geoJson = ra, a.gridLayer = fa, a.icon = ta, a.imageOverlay = la, a.latLng = $, a.latLngBounds = ee, a.layerGroup = Qo, a.map = Xn, a.marker = ia, a.point = V, a.polygon = sa, a.polyline = aa, a.popup = da, a.rectangle = va, a.setOptions = he, a.stamp = K, a.svg = ko, a.svgOverlay = ca, a.tileLayer = yo, a.tooltip = ha, a.transformation = Zt, a.version = re, a.videoOverlay = ua;
+      te.addInitHook("addHandler", "touchZoom", Io), te.BoxZoom = Co, te.DoubleClickZoom = Mo, te.Drag = zo, te.Keyboard = Eo, te.ScrollWheelZoom = Oo, te.TapHold = Ao, te.TouchZoom = Io, a.Bounds = m, a.Browser = Z, a.CRS = et, a.Canvas = Po, a.Circle = ro, a.CircleMarker = Ii, a.Class = Qe, a.Control = X, a.DivIcon = wo, a.DivOverlay = kt, a.DomEvent = to, a.DomUtil = Qi, a.Draggable = _t, a.Evented = Pt, a.FeatureGroup = Ot, a.GeoJSON = It, a.GridLayer = si, a.Handler = dt, a.Icon = In, a.ImageOverlay = Di, a.LatLng = ne, a.LatLngBounds = b, a.Layer = vt, a.LayerGroup = An, a.LineUtil = Ko, a.Map = te, a.Marker = Ai, a.Mixin = ti, a.Path = qt, a.Point = W, a.PolyUtil = l, a.Polygon = Bn, a.Polyline = At, a.Popup = Vi, a.PosAnimation = hn, a.Projection = Yo, a.Rectangle = So, a.Renderer = Bt, a.SVG = li, a.SVGOverlay = bo, a.TileLayer = Nn, a.Tooltip = $i, a.Transformation = qe, a.Util = Vt, a.VideoOverlay = yo, a.bind = N, a.bounds = T, a.canvas = Lo, a.circle = oa, a.circleMarker = ia, a.control = Et, a.divIcon = pa, a.extend = O, a.featureGroup = ea, a.geoJSON = go, a.geoJson = ra, a.gridLayer = fa, a.icon = ta, a.imageOverlay = la, a.latLng = ie, a.latLngBounds = G, a.layerGroup = Qo, a.map = no, a.marker = na, a.point = $, a.polygon = sa, a.polyline = aa, a.popup = da, a.rectangle = va, a.setOptions = ee, a.stamp = K, a.svg = To, a.svgOverlay = ca, a.tileLayer = xo, a.tooltip = ha, a.transformation = V, a.version = Be, a.videoOverlay = ua;
       var ya = window.L;
       a.noConflict = function() {
         return window.L = ya, this;
       }, window.L = a;
     }));
-  })(cn, cn.exports)), cn.exports;
+  })(di, di.exports)), di.exports;
 }
 var Ia = Aa();
-const R = /* @__PURE__ */ Ea(Ia), Ro = (me, g) => Wn.global.t(me, {});
-function Gt(me) {
-  const g = String(me?.message || me || "");
-  return /connection refused|Unavailable|actively refused|dial tcp|ECONNREFUSED|LIFE is unavailable|life unavailable|502|503/i.test(g) ? Ro("life.kit.notReady") : g || Ro("life.kit.actionFailed");
+const R = /* @__PURE__ */ Ea(Ia), Vo = (_e, y) => Wi.global.t(_e, {});
+function Kt(_e) {
+  const y = String(_e?.message || _e || "");
+  return /connection refused|Unavailable|actively refused|dial tcp|ECONNREFUSED|LIFE is unavailable|life unavailable|502|503/i.test(y) ? Vo("life.kit.notReady") : y || Vo("life.kit.actionFailed");
 }
-const Ho = (me) => new Promise((g) => setTimeout(g, me)), Wo = 3200;
-async function Et(me, g = {}) {
+const Go = (_e) => new Promise((y) => setTimeout(y, _e)), jo = 3200;
+async function Zt(_e, y = {}) {
   let a = null;
-  for (let re = 0; re < 3; re++)
+  for (let Be = 0; Be < 3; Be++)
     try {
-      const Z = await fetch("/api/life/companion", {
+      const O = await fetch("/api/life/companion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: me, payload: g })
+        body: JSON.stringify({ action: _e, payload: y })
       });
-      if (!Z.ok) throw Error(await Z.text() || String(Z.status));
-      return await Z.json().catch(() => ({}));
-    } catch (Z) {
-      a = Z;
-      const ae = /connection refused|Unavailable|actively refused|dial tcp|ECONNREFUSED|502|503|life unavailable/i.test(String(Z?.message || Z));
-      if (re < 2 && ae) {
-        await Ho(1200);
+      if (!O.ok) throw Error(await O.text() || String(O.status));
+      return await O.json().catch(() => ({}));
+    } catch (O) {
+      a = O;
+      const He = /connection refused|Unavailable|actively refused|dial tcp|ECONNREFUSED|502|503|life unavailable/i.test(String(O?.message || O));
+      if (Be < 2 && He) {
+        await Go(1200);
         continue;
       }
-      throw Z;
+      throw O;
     }
   throw a;
 }
-async function Vo(me = "/api/life/companion") {
-  const g = await fetch(me);
-  if (!g.ok) throw Error(await g.text() || String(g.status));
-  return g.json();
+async function $o(_e = "/api/life/companion") {
+  const y = await fetch(_e);
+  if (!y.ok) throw Error(await y.text() || String(y.status));
+  return y.json();
 }
-function Go(me) {
-  const g = `.${me}`;
+function qo(_e) {
+  const y = `.${_e}`;
   return `
-${g}{
+${y}{
   --r-xs:10px; --r-sm:14px; --r-md:20px; --r-lg:28px; --r-xl:36px;
   --spring:cubic-bezier(.2,.9,.25,1.15);
   height:100%;overflow-y:auto;padding:var(--space-xl) var(--space-xl) 96px;
   background:var(--md-surface);color:var(--md-on-surface);
   max-width:1240px;margin:0 auto;
 }
-${g} h1,${g} h2,${g} h3,${g} h4{margin:0;letter-spacing:-.01em}
-${g} .eyebrow{margin:0 0 8px;color:var(--md-primary);font:700 12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em}
-${g} .eyebrow b{font-size:9px}
+${y} h1,${y} h2,${y} h3,${y} h4{margin:0;letter-spacing:-.01em}
+${y} .eyebrow{margin:0 0 8px;color:var(--md-primary);font:700 12px/1.2 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.18em}
+${y} .eyebrow b{font-size:9px}
 
 /* Hero */
-${g} .hero{position:relative;border-radius:var(--r-xl);padding:28px 28px 22px;margin-bottom:22px;
+${y} .hero{position:relative;border-radius:var(--r-xl);padding:28px 28px 22px;margin-bottom:22px;
   background:linear-gradient(135deg,var(--md-primary-container),var(--md-surface-container-high) 70%);
   color:var(--md-on-surface);box-shadow:var(--shadow-1);overflow:hidden}
-${g} .hero::after{content:'';position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;
+${y} .hero::after{content:'';position:absolute;right:-60px;top:-60px;width:220px;height:220px;border-radius:50%;
   background:radial-gradient(circle,color-mix(in srgb,var(--md-primary) 34%,transparent),transparent 68%);pointer-events:none}
-${g} .hero-main{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start;position:relative;z-index:1}
-${g} .hero-copy h1{font-size:clamp(26px,3.4vw,40px);font-weight:800}
-${g} .sub{margin:8px 0 0;max-width:620px;font-size:14px;line-height:1.6;color:var(--md-on-surface-variant)}
-${g} .hero-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-${g} .fab{height:52px;padding:0 22px;border:0;border-radius:18px;background:var(--md-primary);color:var(--md-on-primary,#fff);
+${y} .hero-main{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start;position:relative;z-index:1}
+${y} .hero-copy h1{font-size:clamp(26px,3.4vw,40px);font-weight:800}
+${y} .sub{margin:8px 0 0;max-width:620px;font-size:14px;line-height:1.6;color:var(--md-on-surface-variant)}
+${y} .hero-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+${y} .fab{height:52px;padding:0 22px;border:0;border-radius:18px;background:var(--md-primary);color:var(--md-on-primary,#fff);
   font:700 14px/1 inherit;display:inline-flex;align-items:center;gap:10px;cursor:pointer;box-shadow:0 6px 18px color-mix(in srgb,var(--md-primary) 34%,transparent);
   transition:transform .28s var(--spring),box-shadow .28s}
-@media (hover: hover) and (pointer: fine){${g} .fab:hover:not(:disabled){transform:translateY(-2px) scale(1.02)}}
-${g} .fab:disabled{opacity:.6;cursor:not-allowed}
-${g} .fab-ic{font-size:17px}
-${g} .state-row{position:relative;z-index:1;display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
-${g} .pill{padding:6px 14px;border-radius:999px;background:color-mix(in srgb,var(--md-surface-container-lowest) 70%,transparent);font-size:13px;font-weight:700}
-${g} .pill.soft{font-weight:500;color:var(--md-on-surface-variant)}
-${g} .pill.bad{background:var(--md-warning-container);color:var(--md-on-warning-container)}
+@media (hover: hover) and (pointer: fine){${y} .fab:hover:not(:disabled){transform:translateY(-2px) scale(1.02)}}
+${y} .fab:disabled{opacity:.6;cursor:not-allowed}
+${y} .fab-ic{font-size:17px}
+${y} .state-row{position:relative;z-index:1;display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
+${y} .pill{padding:6px 14px;border-radius:999px;background:color-mix(in srgb,var(--md-surface-container-lowest) 70%,transparent);font-size:13px;font-weight:700}
+${y} .pill.soft{font-weight:500;color:var(--md-on-surface-variant)}
+${y} .pill.bad{background:var(--md-warning-container);color:var(--md-on-warning-container)}
 
-${g} .banner{padding:12px 16px;border-radius:var(--r-sm);font-size:13px;margin:0 0 16px}
-${g} .banner.err{background:var(--md-error-container);color:var(--md-on-error-container)}
-${g} .banner.ok{background:var(--md-primary-container);color:var(--md-on-primary-container)}
+${y} .banner{padding:12px 16px;border-radius:var(--r-sm);font-size:13px;margin:0 0 16px}
+${y} .banner.err{background:var(--md-error-container);color:var(--md-on-error-container)}
+${y} .banner.ok{background:var(--md-primary-container);color:var(--md-on-primary-container)}
 
 /* Tabs */
-${g} .tabs{display:flex;gap:8px;overflow-x:auto;padding:6px 4px 14px;margin-bottom:6px;scrollbar-width:thin}
-${g} .tab{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 18px;border:1px solid var(--md-outline-variant);
+${y} .tabs{display:flex;gap:8px;overflow-x:auto;padding:6px 4px 14px;margin-bottom:6px;scrollbar-width:thin}
+${y} .tab{flex:0 0 auto;display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 18px;border:1px solid var(--md-outline-variant);
   border-radius:999px;background:var(--md-surface-container-low);color:var(--md-on-surface-variant);font:700 13px/1 inherit;cursor:pointer;
   transition:background .25s,color .25s,transform .25s var(--spring)}
-${g} .tab i{font-style:normal;font:700 12px/1 ui-monospace,monospace;opacity:.6}
-${g} .tab-ic{font-size:14px}
-${g} .tab:hover{background:var(--md-surface-container-high)}
-${g} .tab.active{background:var(--md-primary);color:var(--md-on-primary,#fff);border-color:transparent;transform:translateY(-1px);
+${y} .tab i{font-style:normal;font:700 12px/1 ui-monospace,monospace;opacity:.6}
+${y} .tab-ic{font-size:14px}
+${y} .tab:hover{background:var(--md-surface-container-high)}
+${y} .tab.active{background:var(--md-primary);color:var(--md-on-primary,#fff);border-color:transparent;transform:translateY(-1px);
   box-shadow:0 6px 16px color-mix(in srgb,var(--md-primary) 30%,transparent)}
-${g} .tab.active i{opacity:.85}
+${y} .tab.active i{opacity:.85}
 
-${g} .panel{animation:fade .32s var(--spring)}
+${y} .panel{animation:fade .32s var(--spring)}
 @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 /* The v-show panels are permanently mounted, so the entrance animation only
    plays on first paint. A page that switches tabs replays it by toggling this
    class (distinct keyframes, otherwise re-adding the same computed animation
    would not restart it). See CompanionPage replayPanel(). */
-${g} .panel-replay{animation:fadeReplay .32s var(--spring)}
+${y} .panel-replay{animation:fadeReplay .32s var(--spring)}
 @keyframes fadeReplay{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-${g} .section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:8px 0 18px}
-${g} .section-head h2{font-size:22px;font-weight:800}
-${g} .desc{margin:6px 0 0;font-size:13px;color:var(--md-on-surface-variant);max-width:720px;line-height:1.55}
-${g} .head-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+${y} .section-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin:8px 0 18px}
+${y} .section-head h2{font-size:22px;font-weight:800}
+${y} .desc{margin:6px 0 0;font-size:13px;color:var(--md-on-surface-variant);max-width:720px;line-height:1.55}
+${y} .head-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 
 /* Buttons */
-${g} .btn{height:40px;padding:0 16px;border:1px solid transparent;border-radius:999px;font:700 13px/1 inherit;cursor:pointer;
+${y} .btn{height:40px;padding:0 16px;border:1px solid transparent;border-radius:999px;font:700 13px/1 inherit;cursor:pointer;
   display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .22s var(--spring),background .22s,box-shadow .22s}
-${g} .btn.sm{height:34px;padding:0 14px;font-size:13px}
-${g} .btn:disabled{opacity:.5;cursor:not-allowed}
-@media (hover: hover) and (pointer: fine){${g} .btn:hover:not(:disabled){transform:translateY(-1px)}}
-${g} .btn.filled{background:var(--md-primary);color:var(--md-on-primary,#fff)}
-${g} .btn.tonic{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
-${g} .btn.text{background:transparent;color:var(--md-primary)}
-${g} .btn.danger{background:var(--md-error-container);color:var(--md-on-error-container)}
-${g} .link{border:0;background:transparent;color:var(--md-primary);font:700 12px/1 inherit;cursor:pointer;padding:4px}
+${y} .btn.sm{height:34px;padding:0 14px;font-size:13px}
+${y} .btn:disabled{opacity:.5;cursor:not-allowed}
+@media (hover: hover) and (pointer: fine){${y} .btn:hover:not(:disabled){transform:translateY(-1px)}}
+${y} .btn.filled{background:var(--md-primary);color:var(--md-on-primary,#fff)}
+${y} .btn.tonic{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+${y} .btn.text{background:transparent;color:var(--md-primary)}
+${y} .btn.danger{background:var(--md-error-container);color:var(--md-on-error-container)}
+${y} .link{border:0;background:transparent;color:var(--md-primary);font:700 12px/1 inherit;cursor:pointer;padding:4px}
 
 /* Cards */
-${g} .card{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--r-lg);padding:20px;margin-bottom:16px}
-${g} .card > h3{font-size:16px;font-weight:750;margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-${g} .card.sub{padding:16px;margin-bottom:0}
+${y} .card{background:var(--md-surface-container-lowest);border:1px solid var(--md-outline-variant);border-radius:var(--r-lg);padding:20px;margin-bottom:16px}
+${y} .card > h3{font-size:16px;font-weight:750;margin-bottom:14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+${y} .card.sub{padding:16px;margin-bottom:0}
 /* minmax(0, 1fr) rather than 1fr: a bare 1fr track has an auto minimum, so one
    child with a large min-content width (a long model id, a URL) blows the track
    past the container instead of shrinking. */
-${g} .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
-${g} .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
-${g} .sub-label{margin:16px 0 8px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--md-on-surface-variant)}
-${g} .hint{font-size:12px;color:var(--md-on-surface-variant);line-height:1.55;margin:6px 0}
-${g} .meta{font-size:12px;color:var(--md-on-surface-variant);line-height:1.5;overflow-wrap:anywhere}
-${g} .empty{padding:14px;text-align:center;font-size:13px;color:var(--md-on-surface-variant)}
+${y} .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+${y} .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;align-items:start}
+${y} .sub-label{margin:16px 0 8px;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--md-on-surface-variant)}
+${y} .hint{font-size:12px;color:var(--md-on-surface-variant);line-height:1.55;margin:6px 0}
+${y} .meta{font-size:12px;color:var(--md-on-surface-variant);line-height:1.5;overflow-wrap:anywhere}
+${y} .empty{padding:14px;text-align:center;font-size:13px;color:var(--md-on-surface-variant)}
 
 /* Fields */
-${g} .field{width:100%;height:48px;padding:0 16px;border:1px solid var(--md-outline-variant);border-radius:var(--r-sm);
+${y} .field{width:100%;height:48px;padding:0 16px;border:1px solid var(--md-outline-variant);border-radius:var(--r-sm);
   background:var(--md-surface-container-high);color:var(--md-on-surface);font:400 14px/1.4 inherit;outline:none;transition:border-color .2s,box-shadow .2s}
-${g} .field:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 14%,transparent)}
-${g} .field.tiny{width:104px;height:38px;padding:0 12px;font-size:13px}
-${g} .switches{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0}
-${g} .sw{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--md-on-surface-variant);cursor:pointer}
-${g} .sw input{width:18px;height:18px;accent-color:var(--md-primary)}
-${g} .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
-${g} .settings-grid label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}
-${g} .settings-grid .field{height:40px}
-${g} .fld{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant);min-width:180px}
+${y} .field:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 14%,transparent)}
+${y} .field.tiny{width:104px;height:38px;padding:0 12px;font-size:13px}
+${y} .switches{display:flex;gap:16px;flex-wrap:wrap;margin:8px 0}
+${y} .sw{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--md-on-surface-variant);cursor:pointer}
+${y} .sw input{width:18px;height:18px;accent-color:var(--md-primary)}
+${y} .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+${y} .settings-grid label{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}
+${y} .settings-grid .field{height:40px}
+${y} .fld{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant);min-width:180px}
 
 /* Chips / status */
-${g} .count-pill{margin-left:auto;flex:0 0 auto;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700}
-${g} .count-pill.ok{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}
-${g} .actions-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
+${y} .count-pill{margin-left:auto;flex:0 0 auto;background:var(--md-surface-container-high);color:var(--md-on-surface-variant);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:700}
+${y} .count-pill.ok{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}
+${y} .actions-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:8px}
 
 /* Feed list (adapters, routes, commitments …) */
-${g} .feed{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
-${g} .feed > li{padding:14px 16px;border-radius:var(--r-md);background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 60%,transparent)}
-${g} .feed > li.empty{background:none;border:0}
+${y} .feed{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+${y} .feed > li{padding:14px 16px;border-radius:var(--r-md);background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 60%,transparent)}
+${y} .feed > li.empty{background:none;border:0}
 
 /* Material 3 Expressive align.
  *
@@ -6472,34 +6472,34 @@ ${g} .feed > li.empty{background:none;border:0}
  * page rendered without an #app ancestor — they are not dead, just shadowed.
  *
  * (No backticks in these comments: the whole sheet is a JS template literal.) */
-#app ${g} .card{border-color:color-mix(in srgb,var(--md-outline-variant) 55%,transparent);background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}
-#app ${g} .field{height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high)}
-#app ${g} .field:focus{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}
-#app ${g} .field.tiny{height:40px}
-#app ${g} .settings-grid .field{height:44px}
-#app ${g} .btn{height:44px;padding:0 20px}
-#app ${g} .btn.sm{height:36px;padding:0 15px}
+#app ${y} .card{border-color:color-mix(in srgb,var(--md-outline-variant) 55%,transparent);background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}
+#app ${y} .field{height:52px;border-radius:16px;border-color:transparent;background:var(--md-surface-container-high)}
+#app ${y} .field:focus{border-color:var(--md-primary);background:var(--md-surface-container-lowest);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 16%,transparent)}
+#app ${y} .field.tiny{height:40px}
+#app ${y} .settings-grid .field{height:44px}
+#app ${y} .btn{height:44px;padding:0 20px}
+#app ${y} .btn.sm{height:36px;padding:0 15px}
 
 /* Theme-specific overrides key off html[data-theme] — the darkmode plugin's
    toggle — not prefers-color-scheme, so a manual light/dark choice in Settings
    is honored (the injected CSS is global, so html-level selectors are fine). */
 @media (prefers-reduced-motion: reduce){
-  ${g} .panel{animation:none}
-  ${g} .panel-replay{animation:none}
-  ${g} .fab,${g} .btn,${g} .tab{transition:none}
-  ${g} .fab:hover:not(:disabled),${g} .btn:hover:not(:disabled),${g} .tab.active{transform:none}
+  ${y} .panel{animation:none}
+  ${y} .panel-replay{animation:none}
+  ${y} .fab,${y} .btn,${y} .tab{transition:none}
+  ${y} .fab:hover:not(:disabled),${y} .btn:hover:not(:disabled),${y} .tab.active{transform:none}
 }
-html[data-theme="dark"] ${g} .pill.bad{background:#5a2d00;color:#ffd7b0}
-@media(max-width:820px){${g} .grid2,${g} .grid3{grid-template-columns:1fr}}
-@media(max-width:560px){${g}{padding:var(--space-lg) var(--space-lg) 80px}${g} .hero{padding:20px}${g} .hero-actions{width:100%}}
+html[data-theme="dark"] ${y} .pill.bad{background:#5a2d00;color:#ffd7b0}
+@media(max-width:820px){${y} .grid2,${y} .grid3{grid-template-columns:1fr}}
+@media(max-width:560px){${y}{padding:var(--space-lg) var(--space-lg) 80px}${y} .hero{padding:20px}${y} .hero-actions{width:100%}}
 `;
 }
-function Ba(me, g) {
-  if (typeof document > "u" || document.getElementById(me)) return;
+function Ba(_e, y) {
+  if (typeof document > "u" || document.getElementById(_e)) return;
   const a = document.createElement("style");
-  a.id = me, a.textContent = g, document.head.appendChild(a);
+  a.id = _e, a.textContent = y, document.head.appendChild(a);
 }
-const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }, Va = { class: "hero-copy" }, Da = { class: "sub" }, $a = { class: "hero-actions" }, Ua = ["disabled"], Fa = { class: "state-row" }, Ha = { class: "pill soft" }, Wa = { class: "pill soft" }, Ga = { class: "pill soft" }, ja = {
+const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }, Da = { class: "hero-copy" }, Va = { class: "sub" }, $a = { class: "hero-actions" }, Ua = ["disabled"], Ha = { class: "state-row" }, Fa = { class: "pill soft" }, Wa = { class: "pill soft" }, Ga = { class: "pill soft" }, ja = {
   key: 0,
   class: "banner err"
 }, qa = {
@@ -6514,10 +6514,10 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
 }, Qa = {
   key: 1,
   class: "feed"
-}, es = { class: "adapter-row" }, ts = { class: "pill muted" }, is = {
+}, es = { class: "adapter-row" }, ts = { class: "pill muted" }, ns = {
   class: "meta",
   style: { "margin-top": "6px" }
-}, ns = { class: "pill soft" }, os = { class: "meta" }, as = {
+}, is = { class: "pill soft" }, os = { class: "meta" }, as = {
   key: 0,
   class: "hint",
   style: { color: "var(--md-error,#b3261e)" }
@@ -6539,17 +6539,17 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
 }, As = ["placeholder"], Is = { class: "actions-row" }, Bs = {
   class: "fld",
   style: { "margin-left": "auto" }
-}, Zs = ["disabled"], Do = "life-plugin-adapters-style", Ns = /* @__PURE__ */ Uo({
+}, Zs = ["disabled"], Uo = "life-plugin-adapters-style", Ns = /* @__PURE__ */ Fo({
   __name: "AdapterSettingsPage",
-  setup(me) {
-    const { confirm: g } = Fo(), a = (m, T) => Wn.global.t(m, T ?? {}), re = G(!0), Z = G(""), ae = G("");
-    function J(m) {
-      ae.value = m, setTimeout(() => {
-        ae.value === m && (ae.value = "");
-      }, Wo);
+  setup(_e) {
+    const { confirm: y } = Wo(), a = (m, T) => Wi.global.t(m, T ?? {}), Be = F(!0), O = F(""), He = F("");
+    function N(m) {
+      He.value = m, setTimeout(() => {
+        He.value === m && (He.value = "");
+      }, jo);
     }
-    const Fe = G([]), K = G([]), Ae = G([]), we = G(!1), de = G(null), B = G(xe()), Xe = G(null);
-    function xe() {
+    const Le = F([]), K = F([]), Xe = F([]), ce = F(!1), de = F(null), q = F(Ze()), Te = F(null);
+    function Ze() {
       return {
         id: "",
         name: "",
@@ -6567,145 +6567,145 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
         observe_group: !0
       };
     }
-    function he(m) {
+    function ee(m) {
       return K.value.find((T) => T.id === m) || { id: m };
     }
-    function jt(m) {
-      const T = he(m.id);
+    function Yt(m) {
+      const T = ee(m.id);
       return m.enabled ? T.connected ? { label: a("life.adapters.stateConnected", { n: T.clients || 0 }), tone: "ok" } : T.running ? {
         label: a(m.direction === "connect" ? "life.adapters.stateConnecting" : "life.adapters.stateWaiting"),
         tone: "wait"
       } : { label: T.error ? a("life.adapters.stateFailed") : a("life.adapters.stateIdle"), tone: "bad" } : { label: a("life.adapters.stateDisabled"), tone: "muted" };
     }
-    A(() => Ae.value.filter((m) => m.implemented).map((m) => m.id));
-    const Ot = A(() => Ae.value.filter((m) => !m.implemented).map((m) => m.id));
-    async function ut() {
-      re.value = !0, Z.value = "";
+    A(() => Xe.value.filter((m) => m.implemented).map((m) => m.id));
+    const fn = A(() => Xe.value.filter((m) => !m.implemented).map((m) => m.id));
+    async function ge() {
+      Be.value = !0, O.value = "";
       try {
-        const [m, T, y] = await Promise.all([
-          Et("adapter_list"),
-          Et("adapter_platforms"),
-          Et("adapter_routes_get")
+        const [m, T, b] = await Promise.all([
+          Zt("adapter_list"),
+          Zt("adapter_platforms"),
+          Zt("adapter_routes_get")
         ]);
-        Fe.value = m?.instances || [], K.value = m?.runtime || [], Ae.value = T?.platforms || [], $e.value = (y?.routes || []).map(di), Se.value = y?.default_config_id || "default", B.value = { ...xe(), ws_port: He() };
+        Le.value = m?.instances || [], K.value = m?.runtime || [], Xe.value = T?.platforms || [], Fe.value = (b?.routes || []).map(Qt), Se.value = b?.default_config_id || "default", q.value = { ...Ze(), ws_port: Ne() };
       } catch (m) {
-        Z.value = Gt(m);
+        O.value = Kt(m);
       } finally {
-        re.value = !1;
+        Be.value = !1;
       }
     }
-    function He() {
-      const m = new Set(Fe.value.map((y) => Number(y.ws_port) || 0));
+    function Ne() {
+      const m = new Set(Le.value.map((b) => Number(b.ws_port) || 0));
       let T = 6199;
       for (; m.has(T) && T < 65535; ) T += 1;
       return T;
     }
-    async function qt() {
-      de.value = "", B.value = {
-        ...xe(),
-        ws_port: He()
-      }, await Hn(), Xe.value?.scrollIntoView({ behavior: "smooth", block: "center" });
+    async function Nt() {
+      de.value = "", q.value = {
+        ...Ze(),
+        ws_port: Ne()
+      }, await Fi(), Te.value?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-    async function At(m) {
-      de.value = m.id, B.value = {
-        ...xe(),
+    async function Rt(m) {
+      de.value = m.id, q.value = {
+        ...Ze(),
         ...m,
         trigger_keywords: Array.isArray(m.trigger_keywords) ? m.trigger_keywords.join(",") : m.trigger_keywords || ""
-      }, await Hn(), Xe.value?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, await Fi(), Te.value?.scrollIntoView({ behavior: "smooth", block: "center" });
     }
-    async function Kt() {
-      we.value = !0;
+    async function Jt() {
+      ce.value = !0;
       try {
-        const m = { ...B.value };
-        m.id && !m.ws_token && delete m.ws_token, m.id && !m.access_token && delete m.access_token, m.trigger_keywords = String(m.trigger_keywords || "").split(",").map((X) => X.trim()).filter(Boolean);
+        const m = { ...q.value };
+        m.id && !m.ws_token && delete m.ws_token, m.id && !m.access_token && delete m.access_token, m.trigger_keywords = String(m.trigger_keywords || "").split(",").map((ne) => ne.trim()).filter(Boolean);
         const T = Number(m.ws_port);
         m.ws_port === "" || m.ws_port === null || m.ws_port === void 0 ? delete m.ws_port : T > 0 ? m.ws_port = T : delete m.ws_port, m.id || delete m.id;
-        const y = await Et("adapter_upsert", { instance: m });
-        if (y && y.ok === !1) throw Error(y.error || a("life.adapters.saveFailed"));
-        y?.sync?.failed?.includes(y?.instance?.id) && m.enabled ? J(a("life.adapters.savedUnlistened")) : J(m.enabled === !1 ? a("life.adapters.savedDisabled") : a("life.adapters.savedListening")), de.value = null, await ut();
+        const b = await Zt("adapter_upsert", { instance: m });
+        if (b && b.ok === !1) throw Error(b.error || a("life.adapters.saveFailed"));
+        b?.sync?.failed?.includes(b?.instance?.id) && m.enabled ? N(a("life.adapters.savedUnlistened")) : N(m.enabled === !1 ? a("life.adapters.savedDisabled") : a("life.adapters.savedListening")), de.value = null, await ge();
       } catch (m) {
-        Z.value = Gt(m);
+        O.value = Kt(m);
       } finally {
-        we.value = !1;
+        ce.value = !1;
       }
     }
-    async function Yt(m) {
-      we.value = !0;
+    async function mn(m) {
+      ce.value = !0;
       try {
-        await Et("adapter_toggle", { id: m.id, enabled: !m.enabled }), J(m.enabled ? a("life.adapters.toggledDisabled", { name: m.name }) : a("life.adapters.toggledEnabled", { name: m.name })), await ut();
+        await Zt("adapter_toggle", { id: m.id, enabled: !m.enabled }), N(m.enabled ? a("life.adapters.toggledDisabled", { name: m.name }) : a("life.adapters.toggledEnabled", { name: m.name })), await ge();
       } catch (T) {
-        Z.value = Gt(T);
+        O.value = Kt(T);
       } finally {
-        we.value = !1;
+        ce.value = !1;
       }
     }
-    async function ci(m) {
-      if (await g({
+    async function Dt(m) {
+      if (await y({
         title: a("life.adapters.deleteTitle"),
         message: a("life.adapters.deleteMessage", { name: m.name }),
         confirmLabel: a("life.adapters.delete"),
         danger: !0
       })) {
-        we.value = !0;
+        ce.value = !0;
         try {
-          await Et("adapter_delete", { id: m.id }), J(a("life.adapters.deleted")), de.value === m.id && (de.value = null), await ut();
-        } catch (y) {
-          Z.value = Gt(y);
+          await Zt("adapter_delete", { id: m.id }), N(a("life.adapters.deleted")), de.value === m.id && (de.value = null), await ge();
+        } catch (b) {
+          O.value = Kt(b);
         } finally {
-          we.value = !1;
+          ce.value = !1;
         }
       }
     }
-    async function It() {
-      we.value = !0;
+    async function Xt() {
+      ce.value = !0;
       try {
-        const T = (await Et("adapter_sync"))?.failed || [];
-        J(T.length ? a("life.adapters.resyncFailed", { count: T.length, names: T.join(a("life.adapters.listSeparator")) }) : a("life.adapters.resynced")), await ut();
+        const T = (await Zt("adapter_sync"))?.failed || [];
+        N(T.length ? a("life.adapters.resyncFailed", { count: T.length, names: T.join(a("life.adapters.listSeparator")) }) : a("life.adapters.resynced")), await ge();
       } catch (m) {
-        Z.value = Gt(m);
+        O.value = Kt(m);
       } finally {
-        we.value = !1;
+        ce.value = !1;
       }
     }
-    const $e = G([]), Se = G("default"), Pe = G({ pattern: "*", config_id: "default" }), Bt = G(!1);
-    let je = 0;
-    function di(m) {
-      return { ...m, _key: `rule-${++je}` };
+    const Fe = F([]), Se = F("default"), Ce = F({ pattern: "*", config_id: "default" }), Vt = F(!1);
+    let Qe = 0;
+    function Qt(m) {
+      return { ...m, _key: `rule-${++Qe}` };
     }
-    const Ue = (m) => ({ pattern: m.pattern, config_id: m.config_id });
-    function xt() {
-      const m = String(Pe.value.pattern || "").trim();
+    const We = (m) => ({ pattern: m.pattern, config_id: m.config_id });
+    function Pt() {
+      const m = String(Ce.value.pattern || "").trim();
       if (!m) {
-        Z.value = a("life.adapters.routePatternRequired");
+        O.value = a("life.adapters.routePatternRequired");
         return;
       }
-      $e.value = [...$e.value, di({ pattern: m, config_id: String(Pe.value.config_id || "default").trim() || "default" })], Pe.value = { pattern: "*", config_id: "default" }, Z.value = "";
+      Fe.value = [...Fe.value, Qt({ pattern: m, config_id: String(Ce.value.config_id || "default").trim() || "default" })], Ce.value = { pattern: "*", config_id: "default" }, O.value = "";
     }
-    function M(m) {
-      $e.value = $e.value.filter((T, y) => y !== m);
+    function W(m) {
+      Fe.value = Fe.value.filter((T, b) => b !== m);
     }
-    function _t(m, T) {
-      const y = [...$e.value], ee = m + T;
-      if (ee < 0 || ee >= y.length) return;
-      const [X] = y.splice(m, 1);
-      y.splice(ee, 0, X), $e.value = y;
+    function en(m, T) {
+      const b = [...Fe.value], G = m + T;
+      if (G < 0 || G >= b.length) return;
+      const [ne] = b.splice(m, 1);
+      b.splice(G, 0, ne), Fe.value = b;
     }
-    async function V() {
-      Bt.value = !0;
+    async function $() {
+      Vt.value = !0;
       try {
-        await Et("adapter_routes_set", {
-          routes: $e.value.map(Ue),
+        await Zt("adapter_routes_set", {
+          routes: Fe.value.map(We),
           default_config_id: String(Se.value || "default").trim() || "default"
-        }), J(a("life.adapters.routesSaved"));
+        }), N(a("life.adapters.routesSaved"));
       } catch (m) {
-        Z.value = Gt(m);
+        O.value = Kt(m);
       } finally {
-        Bt.value = !1;
+        Vt.value = !1;
       }
     }
-    if (typeof document < "u" && !document.getElementById(Do)) {
+    if (typeof document < "u" && !document.getElementById(Uo)) {
       const m = document.createElement("style");
-      m.id = Do, m.textContent = Go("lsp") + `
+      m.id = Uo, m.textContent = qo("lsp") + `
 .lsp .adapter-row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
 .lsp .adapter-row strong{font-size:15px;font-weight:750;overflow-wrap:anywhere}
 .lsp .adapter-row .meta{flex:1 1 100%}
@@ -6743,54 +6743,54 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
 }
 `, document.head.appendChild(m);
     }
-    return Fn(ut), (m, T) => (_(), v("main", Za, [
-      n("header", Na, [
-        n("div", Ra, [
-          n("div", Va, [
-            T[17] || (T[17] = n(
+    return ci(ge), (m, T) => (v(), g("main", Za, [
+      i("header", Na, [
+        i("div", Ra, [
+          i("div", Da, [
+            T[17] || (T[17] = i(
               "p",
               { class: "eyebrow" },
               [
-                n("b", null, "●"),
-                N(" L.I.F.E · MESSAGING PLATFORMS")
+                i("b", null, "●"),
+                z(" L.I.F.E · MESSAGING PLATFORMS")
               ],
               -1
               /* CACHED */
             )),
-            n(
+            i(
               "h1",
               null,
               r(a("life.adapters.title")),
               1
               /* TEXT */
             ),
-            n("p", Da, [
-              N(
+            i("p", Va, [
+              z(
                 r(a("life.adapters.subtitleBefore")),
                 1
                 /* TEXT */
               ),
-              n(
+              i(
                 "b",
                 null,
                 r(a("life.adapters.subtitleServer")),
                 1
                 /* TEXT */
               ),
-              N(
+              z(
                 r(a("life.adapters.subtitleAfter")),
                 1
                 /* TEXT */
               )
             ])
           ]),
-          n("div", $a, [
-            n("button", {
+          i("div", $a, [
+            i("button", {
               class: "fab",
-              disabled: we.value || re.value,
-              onClick: It
+              disabled: ce.value || Be.value,
+              onClick: Xt
             }, [
-              T[18] || (T[18] = n(
+              T[18] || (T[18] = i(
                 "span",
                 {
                   class: "fab-ic",
@@ -6800,147 +6800,147 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 -1
                 /* CACHED */
               )),
-              N(
-                r(we.value ? a("life.adapters.processing") : a("life.adapters.relisten")),
+              z(
+                r(ce.value ? a("life.adapters.processing") : a("life.adapters.relisten")),
                 1
                 /* TEXT */
               )
             ], 8, Ua)
           ])
         ]),
-        n("div", Fa, [
-          n(
+        i("div", Ha, [
+          i(
             "span",
-            Ha,
-            r(a("life.adapters.adapterCount", { n: Fe.value.length })),
+            Fa,
+            r(a("life.adapters.adapterCount", { n: Le.value.length })),
             1
             /* TEXT */
           ),
-          n(
+          i(
             "span",
             Wa,
-            r(a("life.adapters.enabledCount", { n: Fe.value.filter((y) => y.enabled).length })),
+            r(a("life.adapters.enabledCount", { n: Le.value.filter((b) => b.enabled).length })),
             1
             /* TEXT */
           ),
-          n(
+          i(
             "span",
             Ga,
-            r(a("life.adapters.connectedCount", { n: K.value.filter((y) => y.connected).length })),
+            r(a("life.adapters.connectedCount", { n: K.value.filter((b) => b.connected).length })),
             1
             /* TEXT */
           )
         ])
       ]),
-      Z.value ? (_(), v(
+      O.value ? (v(), g(
         "p",
         ja,
-        r(Z.value),
+        r(O.value),
         1
         /* TEXT */
       )) : E("v-if", !0),
-      ae.value ? (_(), v(
+      He.value ? (v(), g(
         "p",
         qa,
-        r(ae.value),
+        r(He.value),
         1
         /* TEXT */
       )) : E("v-if", !0),
-      re.value ? (_(), v(
+      Be.value ? (v(), g(
         "p",
         Ka,
         r(a("life.adapters.loadingConfig")),
         1
         /* TEXT */
       )) : E("v-if", !0),
-      re.value ? E("v-if", !0) : (_(), v(
+      Be.value ? E("v-if", !0) : (v(), g(
         Q,
         { key: 3 },
         [
-          n("article", Ya, [
-            n("h3", null, [
-              N(
+          i("article", Ya, [
+            i("h3", null, [
+              z(
                 r(a("life.adapters.adaptersHeading")) + " ",
                 1
                 /* TEXT */
               ),
-              n(
+              i(
                 "span",
                 Ja,
-                r(Fe.value.length),
+                r(Le.value.length),
                 1
                 /* TEXT */
               ),
-              n(
+              i(
                 "button",
                 {
                   class: "btn filled sm",
                   style: { "margin-left": "auto" },
-                  onClick: qt
+                  onClick: Nt
                 },
                 r(a("life.adapters.addAdapter")),
                 1
                 /* TEXT */
               )
             ]),
-            Fe.value.length ? (_(), v("ol", Qa, [
-              (_(!0), v(
+            Le.value.length ? (v(), g("ol", Qa, [
+              (v(!0), g(
                 Q,
                 null,
-                Te(Fe.value, (y) => (_(), v("li", {
-                  key: y.id
+                Ee(Le.value, (b) => (v(), g("li", {
+                  key: b.id
                 }, [
-                  n("div", es, [
-                    n(
+                  i("div", es, [
+                    i(
                       "strong",
                       null,
-                      r(y.name || y.id),
+                      r(b.name || b.id),
                       1
                       /* TEXT */
                     ),
-                    n(
+                    i(
                       "span",
                       {
-                        class: Y(["pill", jt(y).tone])
+                        class: D(["pill", Yt(b).tone])
                       },
-                      r(jt(y).label),
+                      r(Yt(b).label),
                       3
                       /* TEXT, CLASS */
                     ),
-                    n(
+                    i(
                       "span",
                       ts,
-                      r(y.platform),
+                      r(b.platform),
                       1
                       /* TEXT */
                     )
                   ]),
-                  n("div", is, [
-                    n(
+                  i("div", ns, [
+                    i(
                       "span",
-                      ns,
-                      r(y.direction === "connect" ? a("life.adapters.directionConnect") : a("life.adapters.directionReverse")),
+                      is,
+                      r(b.direction === "connect" ? a("life.adapters.directionConnect") : a("life.adapters.directionReverse")),
                       1
                       /* TEXT */
                     ),
-                    N(
-                      " " + r(y.direction === "connect" ? a("life.adapters.connectingTo", { target: `${y.ws_host}:${y.ws_port}${y.ws_path || ""}` }) : a("life.adapters.listening", { host: y.ws_host, port: y.ws_port })) + " · " + r(a("life.adapters.personaInline")) + " ",
+                    z(
+                      " " + r(b.direction === "connect" ? a("life.adapters.connectingTo", { target: `${b.ws_host}:${b.ws_port}${b.ws_path || ""}` }) : a("life.adapters.listening", { host: b.ws_host, port: b.ws_port })) + " · " + r(a("life.adapters.personaInline")) + " ",
                       1
                       /* TEXT */
                     ),
-                    n(
+                    i(
                       "code",
                       null,
-                      r(y.config_id),
+                      r(b.config_id),
                       1
                       /* TEXT */
                     ),
-                    y.http_url ? (_(), v(
+                    b.http_url ? (v(), g(
                       Q,
                       { key: 0 },
                       [
-                        N(
-                          " · HTTP " + r(y.http_url),
+                        z(
+                          " · HTTP " + r(b.http_url),
                           1
                           /* TEXT */
                         )
@@ -6949,22 +6949,22 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* STABLE_FRAGMENT */
                     )) : E("v-if", !0)
                   ]),
-                  n("div", os, [
-                    n(
+                  i("div", os, [
+                    i(
                       "span",
                       {
-                        class: Y({ "token-warn": !y.has_ws_token && y.ws_host === "0.0.0.0" })
+                        class: D({ "token-warn": !b.has_ws_token && b.ws_host === "0.0.0.0" })
                       },
-                      r(y.has_ws_token ? a("life.adapters.tokenSet") : a("life.adapters.tokenUnset")),
+                      r(b.has_ws_token ? a("life.adapters.tokenSet") : a("life.adapters.tokenUnset")),
                       3
                       /* TEXT, CLASS */
                     ),
-                    y.trigger_keywords && y.trigger_keywords.length ? (_(), v(
+                    b.trigger_keywords && b.trigger_keywords.length ? (v(), g(
                       Q,
                       { key: 0 },
                       [
-                        N(
-                          " · " + r(a("life.adapters.triggerWords")) + " " + r(y.trigger_keywords.join(a("life.adapters.listSeparator"))),
+                        z(
+                          " · " + r(a("life.adapters.triggerWords")) + " " + r(b.trigger_keywords.join(a("life.adapters.listSeparator"))),
                           1
                           /* TEXT */
                         )
@@ -6973,34 +6973,34 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* STABLE_FRAGMENT */
                     )) : E("v-if", !0)
                   ]),
-                  he(y.id).error ? (_(), v(
+                  ee(b.id).error ? (v(), g(
                     "p",
                     as,
-                    r(a("life.adapters.listenError", { error: he(y.id).error })),
+                    r(a("life.adapters.listenError", { error: ee(b.id).error })),
                     1
                     /* TEXT */
                   )) : E("v-if", !0),
-                  n("div", ss, [
-                    n("button", {
+                  i("div", ss, [
+                    i("button", {
                       class: "btn sm",
-                      disabled: we.value,
-                      onClick: (ee) => Yt(y)
-                    }, r(y.enabled ? a("life.adapters.disable") : a("life.adapters.enable")), 9, rs),
-                    n("button", {
+                      disabled: ce.value,
+                      onClick: (G) => mn(b)
+                    }, r(b.enabled ? a("life.adapters.disable") : a("life.adapters.enable")), 9, rs),
+                    i("button", {
                       class: "btn sm",
-                      onClick: (ee) => At(y)
+                      onClick: (G) => Rt(b)
                     }, r(a("life.adapters.edit")), 9, ls),
-                    n("button", {
+                    i("button", {
                       class: "btn sm danger",
-                      disabled: we.value,
-                      onClick: (ee) => ci(y)
+                      disabled: ce.value,
+                      onClick: (G) => Dt(b)
                     }, r(a("life.adapters.delete")), 9, us)
                   ])
                 ]))),
                 128
                 /* KEYED_FRAGMENT */
               ))
-            ])) : (_(), v(
+            ])) : (v(), g(
               "p",
               Xa,
               r(a("life.adapters.emptyAdapters")),
@@ -7009,67 +7009,67 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
             ))
           ]),
           Oe(Ca, { name: "lsp-fade" }, {
-            default: Bo(() => [
-              de.value !== null ? (_(), v(
+            default: Ro(() => [
+              de.value !== null ? (v(), g(
                 "article",
                 {
                   key: 0,
                   ref_key: "editorEl",
-                  ref: Xe,
+                  ref: Te,
                   class: "card"
                 },
                 [
-                  n(
+                  i(
                     "h3",
                     null,
-                    r(B.value.id ? a("life.adapters.editAdapterTitle") : a("life.adapters.addAdapterTitle")),
+                    r(q.value.id ? a("life.adapters.editAdapterTitle") : a("life.adapters.addAdapterTitle")),
                     1
                     /* TEXT */
                   ),
-                  n("div", cs, [
-                    n("label", null, [
-                      n(
+                  i("div", cs, [
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.adapters.platformCategory")),
                         1
                         /* TEXT */
                       ),
-                      Oe(Ve(De), {
-                        modelValue: B.value.platform,
-                        "onUpdate:modelValue": T[0] || (T[0] = (y) => B.value.platform = y),
-                        options: Ae.value.map((y) => ({ value: y.id, label: y.id + (y.implemented ? "" : a("life.adapters.notImplemented")) }))
+                      Oe($e(Ue), {
+                        modelValue: q.value.platform,
+                        "onUpdate:modelValue": T[0] || (T[0] = (b) => q.value.platform = b),
+                        options: Xe.value.map((b) => ({ value: b.id, label: b.id + (b.implemented ? "" : a("life.adapters.notImplemented")) }))
                       }, null, 8, ["modelValue", "options"])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.adapters.direction")),
                         1
                         /* TEXT */
                       ),
-                      Oe(Ve(De), {
-                        modelValue: B.value.direction,
-                        "onUpdate:modelValue": T[1] || (T[1] = (y) => B.value.direction = y),
+                      Oe($e(Ue), {
+                        modelValue: q.value.direction,
+                        "onUpdate:modelValue": T[1] || (T[1] = (b) => q.value.direction = b),
                         options: [
                           { value: "reverse", label: a("life.adapters.directionReverse") },
                           { value: "connect", label: a("life.adapters.directionConnect") }
                         ]
                       }, null, 8, ["modelValue", "options"])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.adapters.botName")),
                         1
                         /* TEXT */
                       ),
-                      P(n(
+                      P(i(
                         "input",
                         {
-                          "onUpdate:modelValue": T[2] || (T[2] = (y) => B.value.name = y),
+                          "onUpdate:modelValue": T[2] || (T[2] = (b) => q.value.name = b),
                           class: "field",
                           placeholder: "napcat"
                         },
@@ -7077,21 +7077,21 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         512
                         /* NEED_PATCH */
                       ), [
-                        [C, B.value.name]
+                        [M, q.value.name]
                       ])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.adapters.wsHost")),
                         1
                         /* TEXT */
                       ),
-                      P(n(
+                      P(i(
                         "input",
                         {
-                          "onUpdate:modelValue": T[3] || (T[3] = (y) => B.value.ws_host = y),
+                          "onUpdate:modelValue": T[3] || (T[3] = (b) => q.value.ws_host = b),
                           class: "field",
                           placeholder: "0.0.0.0"
                         },
@@ -7099,21 +7099,21 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         512
                         /* NEED_PATCH */
                       ), [
-                        [C, B.value.ws_host]
+                        [M, q.value.ws_host]
                       ])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.adapters.wsPort")),
                         1
                         /* TEXT */
                       ),
-                      P(n(
+                      P(i(
                         "input",
                         {
-                          "onUpdate:modelValue": T[4] || (T[4] = (y) => B.value.ws_port = y),
+                          "onUpdate:modelValue": T[4] || (T[4] = (b) => q.value.ws_port = b),
                           class: "field",
                           type: "number",
                           min: "1",
@@ -7125,90 +7125,90 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          C,
-                          B.value.ws_port,
+                          M,
+                          q.value.ws_port,
                           void 0,
                           { number: !0 }
                         ]
                       ])
                     ]),
-                    B.value.direction === "connect" ? (_(), v("label", ds, [
-                      n(
+                    q.value.direction === "connect" ? (v(), g("label", ds, [
+                      i(
                         "span",
                         null,
                         r(a("life.adapters.wsPath")),
                         1
                         /* TEXT */
                       ),
-                      P(n("input", {
-                        "onUpdate:modelValue": T[5] || (T[5] = (y) => B.value.ws_path = y),
+                      P(i("input", {
+                        "onUpdate:modelValue": T[5] || (T[5] = (b) => q.value.ws_path = b),
                         class: "field",
                         placeholder: a("life.adapters.wsPathPlaceholder")
                       }, null, 8, hs), [
-                        [C, B.value.ws_path]
+                        [M, q.value.ws_path]
                       ])
                     ])) : E("v-if", !0),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.adapters.wsToken")),
                         1
                         /* TEXT */
                       ),
-                      P(n("input", {
-                        "onUpdate:modelValue": T[6] || (T[6] = (y) => B.value.ws_token = y),
+                      P(i("input", {
+                        "onUpdate:modelValue": T[6] || (T[6] = (b) => q.value.ws_token = b),
                         class: "field",
                         type: "password",
                         placeholder: a("life.adapters.wsTokenPlaceholder")
                       }, null, 8, ps), [
-                        [C, B.value.ws_token]
+                        [M, q.value.ws_token]
                       ])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.adapters.httpUrl")),
                         1
                         /* TEXT */
                       ),
-                      P(n("input", {
-                        "onUpdate:modelValue": T[7] || (T[7] = (y) => B.value.http_url = y),
+                      P(i("input", {
+                        "onUpdate:modelValue": T[7] || (T[7] = (b) => q.value.http_url = b),
                         class: "field",
                         placeholder: a("life.adapters.httpUrlPlaceholder")
                       }, null, 8, fs), [
-                        [C, B.value.http_url]
+                        [M, q.value.http_url]
                       ])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.adapters.accessToken")),
                         1
                         /* TEXT */
                       ),
-                      P(n("input", {
-                        "onUpdate:modelValue": T[8] || (T[8] = (y) => B.value.access_token = y),
+                      P(i("input", {
+                        "onUpdate:modelValue": T[8] || (T[8] = (b) => q.value.access_token = b),
                         class: "field",
                         placeholder: a("life.adapters.accessTokenPlaceholder")
                       }, null, 8, ms), [
-                        [C, B.value.access_token]
+                        [M, q.value.access_token]
                       ])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.adapters.configFile")),
                         1
                         /* TEXT */
                       ),
-                      P(n(
+                      P(i(
                         "input",
                         {
-                          "onUpdate:modelValue": T[9] || (T[9] = (y) => B.value.config_id = y),
+                          "onUpdate:modelValue": T[9] || (T[9] = (b) => q.value.config_id = b),
                           class: "field",
                           placeholder: "default"
                         },
@@ -7216,47 +7216,47 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         512
                         /* NEED_PATCH */
                       ), [
-                        [C, B.value.config_id]
+                        [M, q.value.config_id]
                       ])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.adapters.triggerKeywordsInherit")),
                         1
                         /* TEXT */
                       ),
-                      P(n("input", {
-                        "onUpdate:modelValue": T[10] || (T[10] = (y) => B.value.trigger_keywords = y),
+                      P(i("input", {
+                        "onUpdate:modelValue": T[10] || (T[10] = (b) => q.value.trigger_keywords = b),
                         class: "field",
                         placeholder: a("life.adapters.triggerKeywordsPlaceholder")
                       }, null, 8, _s), [
-                        [C, B.value.trigger_keywords]
+                        [M, q.value.trigger_keywords]
                       ])
                     ])
                   ]),
-                  n(
+                  i(
                     "p",
                     vs,
                     r(a("life.adapters.directionHint")),
                     1
                     /* TEXT */
                   ),
-                  n("label", gs, [
-                    P(n(
+                  i("label", gs, [
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": T[11] || (T[11] = (y) => B.value.enabled = y),
+                        "onUpdate:modelValue": T[11] || (T[11] = (b) => q.value.enabled = b),
                         type: "checkbox"
                       },
                       null,
                       512
                       /* NEED_PATCH */
                     ), [
-                      [fe, B.value.enabled]
+                      [me, q.value.enabled]
                     ]),
-                    n(
+                    i(
                       "span",
                       null,
                       r(a("life.adapters.enableThisAdapter")),
@@ -7264,20 +7264,20 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* TEXT */
                     )
                   ]),
-                  n("label", ys, [
-                    P(n(
+                  i("label", ys, [
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": T[12] || (T[12] = (y) => B.value.observe_group = y),
+                        "onUpdate:modelValue": T[12] || (T[12] = (b) => q.value.observe_group = b),
                         type: "checkbox"
                       },
                       null,
                       512
                       /* NEED_PATCH */
                     ), [
-                      [fe, B.value.observe_group]
+                      [me, q.value.observe_group]
                     ]),
-                    n(
+                    i(
                       "span",
                       null,
                       r(a("life.adapters.observeGroup")),
@@ -7285,24 +7285,24 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* TEXT */
                     )
                   ]),
-                  Ot.value.length ? (_(), v(
+                  fn.value.length ? (v(), g(
                     "p",
                     bs,
-                    r(a("life.adapters.pendingPlatforms", { names: Ot.value.join(a("life.adapters.listSeparator")) })),
+                    r(a("life.adapters.pendingPlatforms", { names: fn.value.join(a("life.adapters.listSeparator")) })),
                     1
                     /* TEXT */
                   )) : E("v-if", !0),
-                  n("div", ws, [
-                    n("button", {
+                  i("div", ws, [
+                    i("button", {
                       class: "btn filled sm",
-                      disabled: we.value,
-                      onClick: Kt
-                    }, r(we.value ? a("life.adapters.saving") : a("life.adapters.save")), 9, xs),
-                    n(
+                      disabled: ce.value,
+                      onClick: Jt
+                    }, r(ce.value ? a("life.adapters.saving") : a("life.adapters.save")), 9, xs),
+                    i(
                       "button",
                       {
                         class: "btn sm",
-                        onClick: T[13] || (T[13] = (y) => de.value = null)
+                        onClick: T[13] || (T[13] = (b) => de.value = null)
                       },
                       r(a("life.adapters.cancel")),
                       1
@@ -7317,76 +7317,76 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
             _: 1
             /* STABLE */
           }),
-          n("article", ks, [
-            n(
+          i("article", ks, [
+            i(
               "h3",
               null,
               r(a("life.adapters.routesTitle")),
               1
               /* TEXT */
             ),
-            n("p", Ps, [
-              N(
+            i("p", Ps, [
+              z(
                 r(a("life.adapters.routesHintBefore")),
                 1
                 /* TEXT */
               ),
-              n(
+              i(
                 "b",
                 null,
                 r(a("life.adapters.routesHintOrder")),
                 1
                 /* TEXT */
               ),
-              N(
+              z(
                 r(a("life.adapters.routesHintAfterOrder")),
                 1
                 /* TEXT */
               ),
-              T[19] || (T[19] = n(
+              T[19] || (T[19] = i(
                 "code",
                 null,
                 "*",
                 -1
                 /* CACHED */
               )),
-              N(
+              z(
                 r(a("life.adapters.routesHintMatchAll")),
                 1
                 /* TEXT */
               ),
-              n(
+              i(
                 "code",
                 null,
                 r(a("life.adapters.routeRegexExample")),
                 1
                 /* TEXT */
               ),
-              N(
+              z(
                 r(a("life.adapters.routesHintAnd")),
                 1
                 /* TEXT */
               ),
-              n(
+              i(
                 "code",
                 null,
                 r(a("life.adapters.routePrefixExample")),
                 1
                 /* TEXT */
               ),
-              N(
+              z(
                 r(a("life.adapters.routesHintTail")),
                 1
                 /* TEXT */
               ),
-              T[20] || (T[20] = n(
+              T[20] || (T[20] = i(
                 "code",
                 null,
                 "/sid",
                 -1
                 /* CACHED */
               )),
-              N(
+              z(
                 r(a("life.adapters.routesHintSid")),
                 1
                 /* TEXT */
@@ -7397,54 +7397,54 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
               name: "rule-flip",
               class: "feed"
             }, {
-              default: Bo(() => [
-                (_(!0), v(
+              default: Ro(() => [
+                (v(!0), g(
                   Q,
                   null,
-                  Te($e.value, (y, ee) => (_(), v("li", {
-                    key: y._key,
+                  Ee(Fe.value, (b, G) => (v(), g("li", {
+                    key: b._key,
                     class: "rule-row"
                   }, [
-                    n(
+                    i(
                       "span",
                       Ls,
-                      r(ee + 1),
+                      r(G + 1),
                       1
                       /* TEXT */
                     ),
-                    n(
+                    i(
                       "code",
                       null,
-                      r(y.pattern),
+                      r(b.pattern),
                       1
                       /* TEXT */
                     ),
-                    n(
+                    i(
                       "span",
                       Ts,
-                      "→ " + r(y.config_id),
+                      "→ " + r(b.config_id),
                       1
                       /* TEXT */
                     ),
-                    n("span", Ss, [
-                      n("button", {
+                    i("span", Ss, [
+                      i("button", {
                         class: "btn sm",
-                        disabled: ee === 0,
+                        disabled: G === 0,
                         "aria-label": a("life.adapters.moveUp"),
                         title: a("life.adapters.moveUp"),
-                        onClick: (X) => _t(ee, -1)
+                        onClick: (ne) => en(G, -1)
                       }, "↑", 8, Cs),
-                      n("button", {
+                      i("button", {
                         class: "btn sm",
-                        disabled: ee === $e.value.length - 1,
+                        disabled: G === Fe.value.length - 1,
                         "aria-label": a("life.adapters.moveDown"),
                         title: a("life.adapters.moveDown"),
-                        onClick: (X) => _t(ee, 1)
+                        onClick: (ne) => en(G, 1)
                       }, "↓", 8, Ms),
-                      n("button", {
+                      i("button", {
                         class: "btn sm danger",
                         "aria-label": a("life.adapters.delete"),
-                        onClick: (X) => M(ee)
+                        onClick: (ne) => W(G)
                       }, r(a("life.adapters.delete")), 9, zs)
                     ])
                   ]))),
@@ -7455,42 +7455,42 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
               _: 1
               /* STABLE */
             }),
-            $e.value.length ? E("v-if", !0) : (_(), v(
+            Fe.value.length ? E("v-if", !0) : (v(), g(
               "p",
               Es,
               r(a("life.adapters.emptyRoutes")),
               1
               /* TEXT */
             )),
-            n("div", Os, [
-              n("label", null, [
-                n(
+            i("div", Os, [
+              i("label", null, [
+                i(
                   "span",
                   null,
                   r(a("life.adapters.sessionPattern")) + "*",
                   1
                   /* TEXT */
                 ),
-                P(n("input", {
-                  "onUpdate:modelValue": T[14] || (T[14] = (y) => Pe.value.pattern = y),
+                P(i("input", {
+                  "onUpdate:modelValue": T[14] || (T[14] = (b) => Ce.value.pattern = b),
                   class: "field",
                   placeholder: a("life.adapters.sessionPatternPlaceholder")
                 }, null, 8, As), [
-                  [C, Pe.value.pattern]
+                  [M, Ce.value.pattern]
                 ])
               ]),
-              n("label", null, [
-                n(
+              i("label", null, [
+                i(
                   "span",
                   null,
                   r(a("life.adapters.configFile")),
                   1
                   /* TEXT */
                 ),
-                P(n(
+                P(i(
                   "input",
                   {
-                    "onUpdate:modelValue": T[15] || (T[15] = (y) => Pe.value.config_id = y),
+                    "onUpdate:modelValue": T[15] || (T[15] = (b) => Ce.value.config_id = b),
                     class: "field",
                     placeholder: "default"
                   },
@@ -7498,33 +7498,33 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   512
                   /* NEED_PATCH */
                 ), [
-                  [C, Pe.value.config_id]
+                  [M, Ce.value.config_id]
                 ])
               ])
             ]),
-            n("div", Is, [
-              n(
+            i("div", Is, [
+              i(
                 "button",
                 {
                   class: "btn sm",
-                  onClick: xt
+                  onClick: Pt
                 },
                 r(a("life.adapters.addRule")),
                 1
                 /* TEXT */
               ),
-              n("label", Bs, [
-                n(
+              i("label", Bs, [
+                i(
                   "span",
                   null,
                   r(a("life.adapters.defaultConfig")),
                   1
                   /* TEXT */
                 ),
-                P(n(
+                P(i(
                   "input",
                   {
-                    "onUpdate:modelValue": T[16] || (T[16] = (y) => Se.value = y),
+                    "onUpdate:modelValue": T[16] || (T[16] = (b) => Se.value = b),
                     class: "field",
                     placeholder: "default"
                   },
@@ -7532,14 +7532,14 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   512
                   /* NEED_PATCH */
                 ), [
-                  [C, Se.value]
+                  [M, Se.value]
                 ])
               ]),
-              n("button", {
+              i("button", {
                 class: "btn filled sm",
-                disabled: Bt.value,
-                onClick: V
-              }, r(Bt.value ? a("life.adapters.saving") : a("life.adapters.saveRoutes")), 9, Zs)
+                disabled: Vt.value,
+                onClick: $
+              }, r(Vt.value ? a("life.adapters.saving") : a("life.adapters.saveRoutes")), 9, Zs)
             ])
           ])
         ],
@@ -7548,223 +7548,224 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       ))
     ]));
   }
-}), Rs = { class: "hero" }, Vs = { class: "hero-main" }, Ds = { class: "hero-copy" }, $s = { class: "sub" }, Us = { class: "hero-actions" }, Fs = ["disabled"], Hs = ["disabled"], Ws = ["disabled"], Gs = { class: "state-row" }, js = { class: "pill soft" }, qs = { class: "pill soft" }, Ks = { class: "pill soft" }, Ys = {
+}), Rs = { class: "hero" }, Ds = { class: "hero-main" }, Vs = { class: "hero-copy" }, $s = {
+  key: 0,
+  class: "dirty-pill"
+}, Us = { class: "sub" }, Hs = { class: "hero-actions" }, Fs = ["disabled"], Ws = ["disabled"], Gs = ["disabled"], js = ["disabled"], qs = { class: "state-row" }, Ks = { class: "pill soft" }, Ys = { class: "pill soft" }, Js = { class: "pill soft" }, Xs = {
   key: 0,
   class: "banner err"
-}, Js = {
+}, Qs = {
   key: 1,
   class: "banner ok"
-}, Xs = ["aria-label"], Qs = ["onClick"], er = { class: "tab-ic" }, tr = {
+}, er = ["aria-label"], tr = ["onClick"], nr = { class: "tab-ic" }, ir = {
   "data-panel": "persona",
   class: "panel"
-}, ir = { class: "section-head" }, nr = { class: "desc" }, or = { class: "head-actions" }, ar = ["disabled"], sr = ["disabled"], rr = { class: "card" }, lr = { class: "settings-grid" }, ur = { class: "pfield" }, cr = { class: "pfield" }, dr = { class: "pfield" }, hr = { class: "pfield" }, pr = { class: "hint" }, fr = {
+}, or = { class: "section-head" }, ar = { class: "desc" }, sr = { class: "head-actions" }, rr = ["disabled"], lr = ["disabled"], ur = { class: "card" }, cr = { class: "settings-grid" }, dr = { class: "pfield" }, hr = { class: "pfield" }, pr = { class: "pfield" }, fr = { class: "pfield" }, mr = { class: "hint" }, _r = {
   key: 0,
   class: "card"
-}, mr = { class: "count-pill ok" }, _r = { class: "settings-grid" }, vr = { class: "hint" }, gr = {
+}, vr = { class: "count-pill ok" }, gr = { class: "settings-grid" }, yr = { class: "hint" }, br = {
   key: 0,
   class: "hint"
-}, yr = { class: "settings-grid" }, br = { class: "settings-grid" }, wr = { class: "pdetails" }, xr = {
+}, wr = { class: "settings-grid" }, xr = { class: "settings-grid" }, kr = { class: "pdetails" }, Pr = {
   class: "settings-grid",
   style: { "margin-top": "10px" }
-}, kr = { class: "settings-grid" }, Pr = ["value"], Lr = { class: "hint" }, Tr = {
+}, Lr = { class: "settings-grid" }, Tr = ["value"], Sr = { class: "hint" }, Cr = {
   key: 2,
   class: "hint"
-}, Sr = { class: "settings-grid" }, Cr = ["value"], Mr = { class: "hint" }, zr = {
+}, Mr = { class: "settings-grid" }, zr = ["value"], Er = { class: "hint" }, Or = {
   key: 4,
   class: "hint"
-}, Er = { class: "settings-grid" }, Or = ["value"], Ar = { class: "hint" }, Ir = {
+}, Ar = { class: "settings-grid" }, Ir = ["value"], Br = { class: "hint" }, Zr = {
   key: 6,
   class: "hint"
-}, Br = {
+}, Nr = {
   "data-panel": "cognition",
   class: "panel"
-}, Zr = { class: "section-head" }, Nr = { class: "desc" }, Rr = { class: "head-actions" }, Vr = ["disabled"], Dr = { class: "card" }, $r = { class: "settings-grid" }, Ur = { class: "cog-metric" }, Fr = { class: "cog-metric" }, Hr = { class: "cog-metric" }, Wr = { class: "cog-metric" }, Gr = { class: "cog-metric" }, jr = { class: "cog-metric" }, qr = {
+}, Rr = { class: "section-head" }, Dr = { class: "desc" }, Vr = { class: "head-actions" }, $r = ["disabled"], Ur = { class: "card" }, Hr = { class: "settings-grid" }, Fr = { class: "cog-metric" }, Wr = { class: "cog-metric" }, Gr = { class: "cog-metric" }, jr = { class: "cog-metric" }, qr = { class: "cog-metric" }, Kr = { class: "cog-metric" }, Yr = {
   key: 0,
   class: "hint"
-}, Kr = {
+}, Jr = {
   key: 1,
   class: "hint"
-}, Yr = {
+}, Xr = {
   key: 2,
   class: "hint"
-}, Jr = { style: { display: "flex", gap: "12px", "align-items": "center", "flex-wrap": "wrap", "margin-top": "10px" } }, Xr = { class: "sw" }, Qr = ["disabled"], el = { class: "hint" }, tl = { class: "card" }, il = {
+}, Qr = { style: { display: "flex", gap: "12px", "align-items": "center", "flex-wrap": "wrap", "margin-top": "10px" } }, el = { class: "sw" }, tl = ["disabled"], nl = { class: "hint" }, il = { class: "card" }, ol = {
   key: 0,
   class: "count-pill sync-pill"
-}, nl = {
+}, al = {
   key: 0,
   class: "empty"
-}, ol = { class: "sub-label" }, al = { class: "hint" }, sl = { class: "at-a-glance" }, rl = ["aria-label"], ll = { class: "plot-label plot-n" }, ul = { class: "plot-label plot-s" }, cl = { class: "plot-label plot-w" }, dl = { class: "plot-label plot-e" }, hl = {
+}, sl = { class: "sub-label" }, rl = { class: "hint" }, ll = { class: "at-a-glance" }, ul = ["aria-label"], cl = { class: "plot-label plot-n" }, dl = { class: "plot-label plot-s" }, hl = { class: "plot-label plot-w" }, pl = { class: "plot-label plot-e" }, fl = {
   class: "mood-plot",
   viewBox: "0 0 120 120",
   "aria-hidden": "true"
-}, pl = ["cx", "cy"], fl = ["cx", "cy"], ml = { class: "plot-quadrant" }, _l = { class: "glance-col" }, vl = { class: "glance-title" }, gl = ["title"], yl = { class: "gauge-head" }, bl = { class: "gauge-name" }, wl = { class: "gauge-alias" }, xl = { class: "gauge-val" }, kl = { class: "gauge-effect" }, Pl = { class: "glance-col" }, Ll = { class: "glance-title" }, Tl = ["title"], Sl = { class: "gauge-head" }, Cl = { class: "gauge-name" }, Ml = { class: "gauge-alias" }, zl = { class: "gauge-val" }, El = { class: "gauge-effect" }, Ol = { class: "sub-label" }, Al = { class: "hint" }, Il = { class: "gauge-grid" }, Bl = ["title"], Zl = { class: "gauge-head" }, Nl = { class: "gauge-name" }, Rl = { class: "gauge-alias" }, Vl = { class: "gauge-val" }, Dl = { class: "gauge-effect" }, $l = {
+}, ml = ["cx", "cy"], _l = ["cx", "cy"], vl = { class: "plot-quadrant" }, gl = { class: "glance-col" }, yl = { class: "glance-title" }, bl = ["title"], wl = { class: "gauge-head" }, xl = { class: "gauge-name" }, kl = { class: "gauge-alias" }, Pl = { class: "gauge-val" }, Ll = { class: "gauge-effect" }, Tl = { class: "glance-col" }, Sl = { class: "glance-title" }, Cl = ["title"], Ml = { class: "gauge-head" }, zl = { class: "gauge-name" }, El = { class: "gauge-alias" }, Ol = { class: "gauge-val" }, Al = { class: "gauge-effect" }, Il = { class: "sub-label" }, Bl = { class: "hint" }, Zl = { class: "gauge-grid" }, Nl = ["title"], Rl = { class: "gauge-head" }, Dl = { class: "gauge-name" }, Vl = { class: "gauge-alias" }, $l = { class: "gauge-val" }, Ul = { class: "gauge-effect" }, Hl = {
   key: 0,
   class: "som-channels"
-}, Ul = { class: "som-chan-name" }, Fl = { class: "som-chan-bar" }, Hl = { class: "som-chan-val" }, Wl = {
+}, Fl = { class: "som-chan-name" }, Wl = { class: "som-chan-bar" }, Gl = { class: "som-chan-val" }, jl = {
   key: 0,
   class: "hint"
-}, Gl = { class: "sub-label" }, jl = { class: "hint" }, ql = { class: "gauge-grid" }, Kl = ["title"], Yl = { class: "gauge-head" }, Jl = { class: "gauge-name" }, Xl = { class: "gauge-alias" }, Ql = { class: "gauge-val" }, eu = { class: "gauge-effect" }, tu = { class: "chip-row" }, iu = { class: "chip muted" }, nu = { class: "chip muted" }, ou = { class: "sub-label" }, au = { class: "hint" }, su = { class: "chip-row" }, ru = { class: "chip" }, lu = { class: "chip muted" }, uu = { class: "chip muted" }, cu = { class: "gauge-grid" }, du = ["title"], hu = { class: "gauge-head" }, pu = { class: "gauge-name" }, fu = { class: "gauge-alias" }, mu = { class: "gauge-val" }, _u = { class: "gauge-effect" }, vu = { class: "sub-label" }, gu = { class: "hint" }, yu = { class: "chip-row" }, bu = { class: "chip" }, wu = { class: "gauge-grid" }, xu = ["title"], ku = { class: "gauge-head" }, Pu = { class: "gauge-name" }, Lu = { class: "gauge-alias" }, Tu = { class: "gauge-val" }, Su = { class: "gauge-effect" }, Cu = { class: "sub-label" }, Mu = { class: "hint" }, zu = { class: "chip-row" }, Eu = { class: "chip" }, Ou = { class: "chip muted" }, Au = { class: "gauge-grid" }, Iu = ["title"], Bu = { class: "gauge-head" }, Zu = { class: "gauge-name" }, Nu = { class: "gauge-alias" }, Ru = { class: "gauge-val" }, Vu = { class: "gauge-effect" }, Du = { class: "sub-label" }, $u = { class: "hint" }, Uu = { class: "chip-row" }, Fu = { class: "chip" }, Hu = { class: "chip muted" }, Wu = {
+}, ql = { class: "sub-label" }, Kl = { class: "hint" }, Yl = { class: "gauge-grid" }, Jl = ["title"], Xl = { class: "gauge-head" }, Ql = { class: "gauge-name" }, eu = { class: "gauge-alias" }, tu = { class: "gauge-val" }, nu = { class: "gauge-effect" }, iu = { class: "chip-row" }, ou = { class: "chip muted" }, au = { class: "chip muted" }, su = { class: "sub-label" }, ru = { class: "hint" }, lu = { class: "chip-row" }, uu = { class: "chip" }, cu = { class: "chip muted" }, du = { class: "chip muted" }, hu = { class: "gauge-grid" }, pu = ["title"], fu = { class: "gauge-head" }, mu = { class: "gauge-name" }, _u = { class: "gauge-alias" }, vu = { class: "gauge-val" }, gu = { class: "gauge-effect" }, yu = { class: "sub-label" }, bu = { class: "hint" }, wu = { class: "chip-row" }, xu = { class: "chip" }, ku = { class: "gauge-grid" }, Pu = ["title"], Lu = { class: "gauge-head" }, Tu = { class: "gauge-name" }, Su = { class: "gauge-alias" }, Cu = { class: "gauge-val" }, Mu = { class: "gauge-effect" }, zu = { class: "sub-label" }, Eu = { class: "hint" }, Ou = { class: "chip-row" }, Au = { class: "chip" }, Iu = { class: "chip muted" }, Bu = { class: "gauge-grid" }, Zu = ["title"], Nu = { class: "gauge-head" }, Ru = { class: "gauge-name" }, Du = { class: "gauge-alias" }, Vu = { class: "gauge-val" }, $u = { class: "gauge-effect" }, Uu = { class: "sub-label" }, Hu = { class: "hint" }, Fu = { class: "chip-row" }, Wu = { class: "chip" }, Gu = { class: "chip muted" }, ju = {
   key: 0,
   class: "chip muted"
-}, Gu = {
+}, qu = {
   key: 1,
   class: "chip warn"
-}, ju = { class: "gauge-grid" }, qu = ["title"], Ku = { class: "gauge-head" }, Yu = { class: "gauge-name" }, Ju = { class: "gauge-alias" }, Xu = { class: "gauge-val" }, Qu = { class: "gauge-effect" }, ec = { class: "pdetails" }, tc = {
+}, Ku = { class: "gauge-grid" }, Yu = ["title"], Ju = { class: "gauge-head" }, Xu = { class: "gauge-name" }, Qu = { class: "gauge-alias" }, ec = { class: "gauge-val" }, tc = { class: "gauge-effect" }, nc = { class: "pdetails" }, ic = {
   class: "settings-grid",
   style: { "margin-top": "10px" }
-}, ic = {
-  key: 0,
-  class: "cog-metric"
-}, nc = {
-  key: 1,
-  class: "cog-metric"
 }, oc = {
-  key: 2,
+  key: 0,
   class: "cog-metric"
 }, ac = {
-  key: 3,
+  key: 1,
   class: "cog-metric"
 }, sc = {
-  key: 4,
+  key: 2,
   class: "cog-metric"
 }, rc = {
-  key: 5,
+  key: 3,
   class: "cog-metric"
 }, lc = {
-  key: 6,
+  key: 4,
   class: "cog-metric"
 }, uc = {
+  key: 5,
+  class: "cog-metric"
+}, cc = {
+  key: 6,
+  class: "cog-metric"
+}, dc = {
   key: 7,
   class: "cog-metric"
-}, cc = { class: "pdetails" }, dc = {
+}, hc = { class: "pdetails" }, pc = {
   class: "settings-grid",
   style: { "margin-top": "10px" }
-}, hc = { class: "cog-metric" }, pc = { class: "cog-metric" }, fc = { class: "cog-metric" }, mc = { class: "cog-metric" }, _c = { class: "cog-metric" }, vc = { class: "cog-metric" }, gc = { class: "cog-metric" }, yc = { class: "cog-metric" }, bc = { class: "cog-metric" }, wc = { class: "cog-metric" }, xc = { class: "cog-metric" }, kc = { class: "cog-metric" }, Pc = {
+}, fc = { class: "cog-metric" }, mc = { class: "cog-metric" }, _c = { class: "cog-metric" }, vc = { class: "cog-metric" }, gc = { class: "cog-metric" }, yc = { class: "cog-metric" }, bc = { class: "cog-metric" }, wc = { class: "cog-metric" }, xc = { class: "cog-metric" }, kc = { class: "cog-metric" }, Pc = { class: "cog-metric" }, Lc = { class: "cog-metric" }, Tc = {
   key: 0,
   class: "cog-metric"
-}, Lc = {
+}, Sc = {
   key: 2,
   class: "hint"
-}, Tc = {
+}, Cc = {
   key: 3,
   class: "hint"
-}, Sc = {
+}, Mc = {
   key: 4,
   class: "hint"
-}, Cc = {
+}, zc = {
   key: 5,
   class: "hint"
-}, Mc = {
+}, Ec = {
   key: 6,
   class: "hint"
-}, zc = { class: "card" }, Ec = { class: "switches" }, Oc = { class: "sw" }, Ac = { class: "sw" }, Ic = { class: "sw" }, Bc = { class: "sw" }, Zc = { class: "sw" }, Nc = { class: "sw" }, Rc = { class: "hint" }, Vc = { class: "card" }, Dc = { class: "hint" }, $c = { class: "preset-row" }, Uc = ["onClick"], Fc = { class: "grid2" }, Hc = { class: "card" }, Wc = { class: "settings-grid" }, Gc = { class: "switches" }, jc = { class: "sw" }, qc = { class: "sw" }, Kc = { class: "sw" }, Yc = { class: "sw" }, Jc = { class: "sw" }, Xc = { class: "card" }, Qc = { class: "settings-grid" }, ed = { class: "sw" }, td = { class: "sw" }, id = { class: "sw" }, nd = { class: "card" }, od = { class: "settings-grid" }, ad = { class: "sw" }, sd = { class: "card" }, rd = { class: "settings-grid" }, ld = { class: "sw" }, ud = { class: "card" }, cd = { class: "settings-grid" }, dd = { class: "sw" }, hd = { class: "card" }, pd = { class: "hint" }, fd = { class: "sw" }, md = { class: "settings-grid" }, _d = { class: "hint" }, vd = { class: "card" }, gd = { class: "hint" }, yd = { class: "sw" }, bd = { class: "settings-grid" }, wd = { class: "hint" }, xd = { class: "card" }, kd = { class: "hint" }, Pd = { class: "sw" }, Ld = { class: "settings-grid" }, Td = { class: "hint" }, Sd = { class: "card" }, Cd = { class: "hint" }, Md = { class: "sw" }, zd = { class: "settings-grid" }, Ed = { class: "hint" }, Od = { class: "hint" }, Ad = { class: "card" }, Id = { class: "hint" }, Bd = { class: "switches" }, Zd = { class: "sw" }, Nd = { class: "sw" }, Rd = { class: "sw" }, Vd = { class: "sw" }, Dd = {
+}, Oc = { class: "card" }, Ac = { class: "switches" }, Ic = { class: "sw" }, Bc = { class: "sw" }, Zc = { class: "sw" }, Nc = { class: "sw" }, Rc = { class: "sw" }, Dc = { class: "sw" }, Vc = { class: "hint" }, $c = { class: "card" }, Uc = { class: "hint" }, Hc = { class: "preset-row" }, Fc = ["onClick"], Wc = { class: "grid2" }, Gc = { class: "card" }, jc = { class: "settings-grid" }, qc = { class: "def-hint" }, Kc = { class: "def-hint" }, Yc = { class: "def-hint" }, Jc = { class: "def-hint" }, Xc = { class: "def-hint" }, Qc = { class: "def-hint" }, ed = { class: "def-hint" }, td = { class: "def-hint" }, nd = { class: "def-hint" }, id = { class: "switches" }, od = { class: "sw" }, ad = { class: "sw" }, sd = { class: "sw" }, rd = { class: "sw" }, ld = { class: "sw" }, ud = { class: "card" }, cd = { class: "settings-grid" }, dd = { class: "def-hint" }, hd = { class: "def-hint" }, pd = { class: "def-hint" }, fd = { class: "sw" }, md = { class: "sw" }, _d = { class: "sw" }, vd = { class: "card" }, gd = { class: "settings-grid" }, yd = { class: "sw" }, bd = { class: "card" }, wd = { class: "settings-grid" }, xd = { class: "sw" }, kd = { class: "card" }, Pd = { class: "settings-grid" }, Ld = { class: "sw" }, Td = { class: "card" }, Sd = { class: "hint" }, Cd = { class: "sw" }, Md = { class: "settings-grid" }, zd = { class: "hint" }, Ed = { class: "card" }, Od = { class: "hint" }, Ad = { class: "sw" }, Id = { class: "settings-grid" }, Bd = { class: "hint" }, Zd = { class: "card" }, Nd = { class: "hint" }, Rd = { class: "sw" }, Dd = { class: "settings-grid" }, Vd = { class: "hint" }, $d = { class: "card" }, Ud = { class: "hint" }, Hd = { class: "sw" }, Fd = { class: "settings-grid" }, Wd = { class: "hint" }, Gd = { class: "hint" }, jd = { class: "card" }, qd = { class: "hint" }, Kd = { class: "switches" }, Yd = { class: "sw" }, Jd = { class: "sw" }, Xd = { class: "sw" }, Qd = { class: "sw" }, eh = {
   "data-panel": "world",
   class: "panel"
-}, $d = { class: "section-head" }, Ud = { class: "desc" }, Fd = { class: "head-actions" }, Hd = { class: "card" }, Wd = { class: "settings-grid" }, Gd = { class: "hint" }, jd = { class: "card" }, qd = { class: "hint" }, Kd = { class: "world-field" }, Yd = { class: "world-label" }, Jd = ["placeholder"], Xd = { class: "card" }, Qd = { class: "hint" }, eh = { class: "settings-grid" }, th = ["placeholder"], ih = ["placeholder"], nh = ["placeholder"], oh = { class: "world-field" }, ah = { class: "world-label" }, sh = ["placeholder"], rh = { class: "world-field" }, lh = { class: "world-label" }, uh = ["placeholder"], ch = { class: "world-field" }, dh = { class: "world-label" }, hh = ["placeholder"], ph = { class: "world-actions" }, fh = ["disabled"], mh = ["disabled"], _h = { class: "hint" }, vh = { class: "card" }, gh = { class: "wm-head" }, yh = { class: "count-pill" }, bh = {
+}, th = { class: "section-head" }, nh = { class: "desc" }, ih = { class: "head-actions" }, oh = { class: "card" }, ah = { class: "settings-grid" }, sh = { class: "hint" }, rh = { class: "card" }, lh = { class: "hint" }, uh = { class: "world-field" }, ch = { class: "world-label" }, dh = ["placeholder"], hh = { class: "card" }, ph = { class: "hint" }, fh = { class: "settings-grid" }, mh = ["placeholder"], _h = ["placeholder"], vh = ["placeholder"], gh = { class: "world-field" }, yh = { class: "world-label" }, bh = ["placeholder"], wh = { class: "world-field" }, xh = { class: "world-label" }, kh = ["placeholder"], Ph = { class: "world-field" }, Lh = { class: "world-label" }, Th = ["placeholder"], Sh = { class: "world-actions" }, Ch = ["disabled"], Mh = ["disabled"], zh = { class: "hint" }, Eh = { class: "card" }, Oh = { class: "wm-head" }, Ah = { class: "count-pill" }, Ih = {
   key: 0,
   class: "wm-place"
-}, wh = {
+}, Bh = {
   key: 0,
   class: "hint wm-premise"
-}, xh = { class: "wm-map-wrap" }, kh = {
+}, Zh = { class: "wm-map-wrap" }, Nh = {
   key: 0,
   class: "wm-offline"
-}, Ph = {
+}, Rh = {
   key: 1,
   class: "wm-compass",
   "aria-hidden": "true"
-}, Lh = {
+}, Dh = {
   key: 1,
   class: "empty"
-}, Th = {
+}, Vh = {
   key: 2,
   class: "wm-legend"
-}, Sh = {
+}, $h = {
   key: 3,
   class: "wm-routes"
-}, Ch = {
+}, Uh = {
   key: 0,
   class: "wm-routes-col"
-}, Mh = {
+}, Hh = {
   key: 1,
   class: "wm-routes-col"
-}, zh = { class: "card" }, Eh = { class: "wm-head" }, Oh = { class: "count-pill" }, Ah = { class: "feed" }, Ih = { class: "meta" }, Bh = {
+}, Fh = { class: "card" }, Wh = { class: "wm-head" }, Gh = { class: "count-pill" }, jh = { class: "feed" }, qh = { class: "meta" }, Kh = {
   key: 0,
   class: "empty"
-}, Zh = {
+}, Yh = {
   "data-panel": "adapters",
   class: "panel"
-}, Nh = {
+}, Jh = {
   "data-panel": "state",
   class: "panel"
-}, Rh = { class: "section-head" }, Vh = { class: "desc" }, Dh = { class: "card" }, $h = { class: "count-pill" }, Uh = { class: "hint" }, Fh = { class: "feed" }, Hh = { class: "rel-head" }, Wh = { class: "meta" }, Gh = { class: "rel-track-row" }, jh = { class: "rel-track-label" }, qh = ["aria-label"], Kh = { class: "rel-stage-name" }, Yh = ["title"], Jh = { class: "gauge-head" }, Xh = { class: "gauge-name" }, Qh = { class: "gauge-alias" }, ep = { class: "gauge-val" }, tp = { class: "gauge-bar signed" }, ip = { class: "gauge-effect" }, np = {
+}, Xh = { class: "section-head" }, Qh = { class: "desc" }, ep = { class: "card" }, tp = { class: "count-pill" }, np = { class: "hint" }, ip = { class: "feed" }, op = { class: "rel-head" }, ap = { class: "meta" }, sp = { class: "rel-track-row" }, rp = { class: "rel-track-label" }, lp = ["aria-label"], up = { class: "rel-stage-name" }, cp = ["title"], dp = { class: "gauge-head" }, hp = { class: "gauge-name" }, pp = { class: "gauge-alias" }, fp = { class: "gauge-val" }, mp = { class: "gauge-bar signed" }, _p = { class: "gauge-effect" }, vp = {
   key: 0,
   class: "rel-mode"
-}, op = { class: "chip" }, ap = { class: "meta" }, sp = {
+}, gp = { class: "chip" }, yp = { class: "meta" }, bp = {
   key: 0,
   class: "empty"
-}, rp = { class: "card" }, lp = { class: "count-pill" }, up = { class: "hint" }, cp = { class: "feed" }, dp = { class: "meta" }, hp = {
+}, wp = { class: "card" }, xp = { class: "count-pill" }, kp = { class: "hint" }, Pp = { class: "feed" }, Lp = { class: "meta" }, Tp = {
   key: 0,
   class: "empty"
-}, pp = { class: "grid2" }, fp = { class: "card" }, mp = { class: "hint" }, _p = { class: "feed" }, vp = { class: "meta" }, gp = { class: "meta" }, yp = { class: "meta" }, bp = {
+}, Sp = { class: "grid2" }, Cp = { class: "card" }, Mp = { class: "hint" }, zp = { class: "feed" }, Ep = { class: "meta" }, Op = { class: "meta" }, Ap = { class: "meta" }, Ip = {
   key: 0,
   class: "empty"
-}, wp = { class: "card" }, xp = { class: "hint" }, kp = { class: "feed" }, Pp = { class: "value-name" }, Lp = { class: "value-bar" }, Tp = { class: "value-num" }, Sp = {
+}, Bp = { class: "card" }, Zp = { class: "hint" }, Np = { class: "feed" }, Rp = { class: "value-name" }, Dp = { class: "value-bar" }, Vp = { class: "value-num" }, $p = {
   key: 0,
   class: "empty"
-}, Cp = { class: "section" }, Mp = { class: "section-head" }, zp = { class: "desc" }, Ep = { class: "grid2" }, Op = { class: "card" }, Ap = { class: "hint" }, Ip = {
+}, Up = { class: "section" }, Hp = { class: "section-head" }, Fp = { class: "desc" }, Wp = { class: "grid2" }, Gp = { class: "card" }, jp = { class: "hint" }, qp = {
   class: "hint",
   style: { "margin-top": "10px" }
-}, Bp = { style: { "margin-top": "14px", display: "flex", gap: "10px", "flex-wrap": "wrap" } }, Zp = ["disabled"], $o = 0.15, Np = "https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}", Rp = /* @__PURE__ */ Uo({
+}, Kp = { style: { "margin-top": "14px", display: "flex", gap: "10px", "flex-wrap": "wrap" } }, Yp = ["disabled"], Ho = 0.15, Jp = "https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}", Xp = /* @__PURE__ */ Fo({
   __name: "CompanionPage",
-  setup(me) {
-    const { confirm: g } = Fo(), a = (h, u) => Wn.global.t(h, u ?? {});
-    za();
-    const re = (h) => Wn.global.t(h, {}, { locale: "zh" }), Z = (h) => h.map((u) => ({ value: re(`life.companion.${u}`), label: a(`life.companion.${u}`) })), ae = G({ settings: {}, cognition: null }), J = G(!1), Fe = G(""), K = G(""), Ae = G("cognition"), we = G(null), de = [
+  setup(_e) {
+    const { confirm: y } = Wo(), a = (d, u) => Wi.global.t(d, u ?? {}), Be = za(), O = (d) => Wi.global.t(d, {}, { locale: "zh" }), He = (d) => d.map((u) => ({ value: u, label: a(`life.companion.${u}`) })), N = F({ settings: {}, cognition: null }), Le = F(!1), K = F(""), Xe = F(""), ce = F("cognition"), de = F(null), q = [
       { key: "cognition", i: "01", labelKey: "life.companion.nav.cognition", icon: "◉" },
       { key: "persona", i: "02", labelKey: "life.companion.nav.persona", icon: "✎" },
       { key: "world", i: "03", labelKey: "life.companion.nav.world", icon: "✦" },
       { key: "adapters", i: "04", labelKey: "life.companion.nav.adapters", icon: "✉" },
       { key: "state", i: "05", labelKey: "life.companion.nav.state", icon: "☺" }
     ];
-    function B(h) {
-      K.value = h, setTimeout(() => {
-        K.value === h && (K.value = "");
-      }, Wo);
+    function Te(d) {
+      Xe.value = d, setTimeout(() => {
+        Xe.value === d && (Xe.value = "");
+      }, jo);
     }
-    async function Xe(h = 0) {
-      J.value = !0, Fe.value = "";
+    async function Ze(d = 0) {
+      Le.value = !0, K.value = "";
       try {
-        ae.value = await Vo("/api/life/companion"), Ki(), J.value = !1;
+        N.value = await $o("/api/life/companion"), ut(), Le.value = !1;
       } catch (u) {
-        if (h < 4)
-          return await Ho(1500), Xe(h + 1);
-        Fe.value = Gt(u), J.value = !1;
+        if (d < 4)
+          return await Go(1500), Ze(d + 1);
+        K.value = Kt(u), Le.value = !1;
       }
     }
-    async function xe(h, u) {
+    async function ee(d, u) {
       try {
-        const l = await Et(h, u);
-        return await Xe(), l;
+        const l = await Zt(d, u);
+        return await Ze(), l;
       } catch (l) {
-        return Fe.value = Gt(l), null;
+        return K.value = Kt(l), null;
       }
     }
-    function he(h) {
-      Ae.value = h;
-      const u = matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", l = we.value;
+    function Yt(d) {
+      ce.value = d;
+      const u = matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", l = de.value;
       l ? l.scrollTo({ top: 0, behavior: u }) : window.scrollTo({ top: 0, behavior: u });
     }
-    function jt(h) {
-      const u = we.value?.querySelector(`section[data-panel="${h}"]`);
+    function fn(d) {
+      const u = de.value?.querySelector(`section[data-panel="${d}"]`);
       u && (u.classList.remove("panel-replay"), u.offsetWidth, u.classList.add("panel-replay"), u.addEventListener("animationend", () => u.classList.remove("panel-replay"), { once: !0 }));
     }
-    ui(Ae, (h) => {
-      Hn(() => jt(h));
-    }), ui(Ae, (h) => {
-      h === "adapters" && Sn();
+    pn(ce, (d) => {
+      Fi(() => fn(d));
+    }), pn(ce, (d) => {
+      d === "adapters" && Si();
     });
-    const Ot = {
+    const ge = {
       cog_enabled: "1",
       cog_lite_mode: "0",
       cog_modulate_affect: "1",
@@ -7802,29 +7803,19 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       cog_selfhood_discount: "0.1",
       cog_selfhood_detail: "20",
       cog_attachment_enabled: "0",
-      get cog_attachment_type() {
-        return re("life.companion.attach.dependent");
-      },
+      cog_attachment_type: "attach.dependent",
       cog_tsundere_enabled: "0",
-      get cog_tsundere_type() {
-        return re("life.companion.tsundere.classic");
-      },
+      cog_tsundere_type: "tsundere.classic",
       cog_yandere_enabled: "0",
-      get cog_yandere_type() {
-        return re("life.companion.yandere.mode.yandere");
-      },
+      cog_yandere_type: "yandere.mode.yandere",
       cog_personadyn_enabled: "0",
-      get cog_personadyn_type() {
-        return re("life.companion.pdt.0");
-      },
-      get cog_personadyn_gender() {
-        return re("life.companion.pdGender.unspecified");
-      },
+      cog_personadyn_type: "pdt.0",
+      cog_personadyn_gender: "pdGender.unspecified",
       cog_memory_encode: "1",
       cog_sleep_replay: "1",
       cog_memory_reconsolidate: "1",
       cog_cls_interleave: "1"
-    }, ut = [
+    }, Ne = [
       "cog_enabled",
       "cog_lite_mode",
       "cog_modulate_affect",
@@ -7850,19 +7841,19 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       "cog_sleep_replay",
       "cog_memory_reconsolidate",
       "cog_cls_interleave"
-    ], He = ["cog_affect_profile", "cog_language_framing", "cog_attachment_type", "cog_tsundere_type", "cog_yandere_type", "cog_personadyn_type", "cog_personadyn_gender"], qt = A(() => Z(["attach.secluded", "attach.dependent", "attach.delusional", "attach.monitoring", "attach.selfHarm", "attach.exclusion"])), At = A(() => Z(["tsundere.classic", "tsundere.cold", "tsundere.gruff", "tsundere.indulgent"])), Kt = A(() => Z(["yandere.mode.yandere", "yandere.mode.tsundere", "yandere.mode.neutral", "yandere.mode.hybrid"])), Yt = [
-      Array.from({ length: 18 }, (h, u) => `pdt.${u}`),
-      Array.from({ length: 10 }, (h, u) => `pdt.${18 + u}`),
-      Array.from({ length: 9 }, (h, u) => `pdt.${28 + u}`),
-      Array.from({ length: 4 }, (h, u) => `pdt.${37 + u}`),
-      Array.from({ length: 13 }, (h, u) => `pdt.${41 + u}`),
-      Array.from({ length: 11 }, (h, u) => `pdt.${54 + u}`),
-      Array.from({ length: 13 }, (h, u) => `pdt.${65 + u}`),
-      Array.from({ length: 16 }, (h, u) => `pdt.${78 + u}`),
-      Array.from({ length: 78 }, (h, u) => `pdt.${94 + u}`)
+    ], Nt = ["cog_affect_profile", "cog_language_framing", "cog_attachment_type", "cog_tsundere_type", "cog_yandere_type", "cog_personadyn_type", "cog_personadyn_gender"], Rt = A(() => He(["attach.secluded", "attach.dependent", "attach.delusional", "attach.monitoring", "attach.selfHarm", "attach.exclusion"])), Jt = A(() => He(["tsundere.classic", "tsundere.cold", "tsundere.gruff", "tsundere.indulgent"])), mn = A(() => He(["yandere.mode.yandere", "yandere.mode.tsundere", "yandere.mode.neutral", "yandere.mode.hybrid"])), Dt = [
+      Array.from({ length: 18 }, (d, u) => `pdt.${u}`),
+      Array.from({ length: 10 }, (d, u) => `pdt.${18 + u}`),
+      Array.from({ length: 9 }, (d, u) => `pdt.${28 + u}`),
+      Array.from({ length: 4 }, (d, u) => `pdt.${37 + u}`),
+      Array.from({ length: 13 }, (d, u) => `pdt.${41 + u}`),
+      Array.from({ length: 11 }, (d, u) => `pdt.${54 + u}`),
+      Array.from({ length: 13 }, (d, u) => `pdt.${65 + u}`),
+      Array.from({ length: 16 }, (d, u) => `pdt.${78 + u}`),
+      Array.from({ length: 78 }, (d, u) => `pdt.${94 + u}`)
     ];
-    A(() => Yt.map((h, u) => ({ label: a(`life.companion.pdg.${u}`), keys: h })));
-    const ci = A(() => [...new Set(Yt.flat())].map((h) => ({ value: re(`life.companion.${h}`), label: a(`life.companion.${h}`) }))), It = A(() => Z(["pdGender.unspecified", "pdGender.maleScript", "pdGender.femaleScript", "pdGender.neutral", "pdGender.highTradMale", "pdGender.lowTradMale", "pdGender.highTradFemale", "pdGender.feminist"])), $e = A(() => ["typical", "depression", "anxiety", "bpd", "alexithymia"].map((h) => ({ value: h, label: a(`life.companion.profile.${h}`) }))), Se = A(() => [
+    A(() => Dt.map((d, u) => ({ label: a(`life.companion.pdg.${u}`), keys: d })));
+    const Xt = A(() => [...new Set(Dt.flat())].map((d) => ({ value: d, label: a(`life.companion.${d}`) }))), Fe = A(() => He(["pdGender.unspecified", "pdGender.maleScript", "pdGender.femaleScript", "pdGender.neutral", "pdGender.highTradMale", "pdGender.lowTradMale", "pdGender.highTradFemale", "pdGender.feminist"])), Se = A(() => ["typical", "depression", "anxiety", "bpd", "alexithymia"].map((d) => ({ value: d, label: a(`life.companion.profile.${d}`) }))), Ce = A(() => [
       "independent",
       "interchanging",
       "cognitive_determinism",
@@ -7870,855 +7861,915 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       "thinking_for_speaking",
       "radical_connectionism",
       "determinism"
-    ].map((h) => ({ value: h, label: a(`life.companion.framing.${h}`) }))), Pe = ["egocentric", "subjective", "self-reflective", "mutual", "societal-symbolic"], Bt = A(() => Pe.map((h, u) => ({ value: String(u), label: a(`life.companion.stage.${h}`) }))), je = A({
-      get: () => String(Number(w.value.cog_social_stage ?? 2)),
-      set: (h) => {
-        w.value.cog_social_stage = Number(h);
+    ].map((d) => ({ value: d, label: a(`life.companion.framing.${d}`) }))), Vt = ["egocentric", "subjective", "self-reflective", "mutual", "societal-symbolic"], Qe = A(() => Vt.map((d, u) => ({ value: String(u), label: a(`life.companion.stage.${d}`) }))), Qt = A({
+      get: () => String(Number(_.value.cog_social_stage ?? 2)),
+      set: (d) => {
+        _.value.cog_social_stage = Number(d);
       }
+    }), We = {
+      cog_attachment_type: ["attach.secluded", "attach.dependent", "attach.delusional", "attach.monitoring", "attach.selfHarm", "attach.exclusion"],
+      cog_tsundere_type: ["tsundere.classic", "tsundere.cold", "tsundere.gruff", "tsundere.indulgent"],
+      cog_yandere_type: ["yandere.mode.yandere", "yandere.mode.tsundere", "yandere.mode.neutral", "yandere.mode.hybrid"],
+      cog_personadyn_type: [...new Set(Dt.flat())],
+      cog_personadyn_gender: ["pdGender.unspecified", "pdGender.maleScript", "pdGender.femaleScript", "pdGender.neutral", "pdGender.highTradMale", "pdGender.lowTradMale", "pdGender.highTradFemale", "pdGender.feminist"]
+    };
+    function Pt(d) {
+      const u = String(N.value.settings?.[d] ?? ge[d] ?? ""), l = We[d];
+      return l && !l.includes(u) ? l.find((C) => O(`life.companion.${C}`) === u) ?? u : u;
+    }
+    function W(d) {
+      const u = String(d ?? "");
+      return O(`life.companion.${u}`) !== `life.companion.${u}` ? O(`life.companion.${u}`) : u;
+    }
+    function en() {
+      const d = {};
+      for (const [u, l] of Object.entries(ge)) {
+        const B = Pt(u) || l;
+        d[u] = Ne.includes(u) ? B === "1" : Nt.includes(u) ? B : Number(B);
+      }
+      return d;
+    }
+    function $() {
+      const d = {};
+      for (const [u, l] of Object.entries(ge)) {
+        const B = _.value[u];
+        Ne.includes(u) ? d[u] = B ? "1" : "0" : d[u] = String(B ?? l);
+      }
+      return d;
+    }
+    const m = A(() => N.value.cognition || null), T = A(() => m.value?.last_control || null), b = A(() => m.value?.wave1 || null), G = A(() => m.value?.wave2 || null), ne = A(() => m.value?.wave3 || null), ie = A(() => m.value?.wave4a || null), et = A(() => m.value?.wave4b || null), je = A(() => m.value?.persona || null), Re = A(() => m.value?.attachment || null), Ae = A(() => m.value?.tsundere || null), qe = A(() => m.value?.yandere || null), V = A(() => m.value?.personadyn || null), Dn = A(() => {
+      const d = V.value?.big5;
+      return d ? ["o_open", "c_conscientious", "e_extravert", "a_agreeable", "n_neurotic"].map((l) => ke(d[l], 2)).join(" · ") : "—";
+    }), Gi = A(() => {
+      const d = V.value?.hexaco;
+      return d ? ["h_honesty", "hex_e", "hex_x", "hex_a", "hex_c", "hex_o"].map((l) => ke(d[l], 2)).join(" · ") : "—";
     });
-    function di(h) {
-      return String(ae.value.settings?.[h] ?? Ot[h] ?? "");
+    function Vn(d, u = 3) {
+      return d ? Object.entries(d).filter(([, l]) => typeof l == "number").sort((l, B) => B[1] - l[1]).slice(0, u).map(([l, B]) => `${fi(l)} ${ke(B, 2)}`) : [];
     }
-    function Ue() {
-      const h = {};
-      for (const [u, l] of Object.entries(Ot)) {
-        const O = di(u) || l;
-        h[u] = ut.includes(u) ? O === "1" : He.includes(u) ? O : Number(O);
-      }
-      return h;
-    }
-    function xt() {
-      const h = {};
-      for (const [u, l] of Object.entries(Ot)) {
-        const O = w.value[u];
-        ut.includes(u) ? h[u] = O ? "1" : "0" : h[u] = String(O ?? l);
-      }
-      return h;
-    }
-    const M = A(() => ae.value.cognition || null), _t = A(() => M.value?.last_control || null), V = A(() => M.value?.wave1 || null), m = A(() => M.value?.wave2 || null), T = A(() => M.value?.wave3 || null), y = A(() => M.value?.wave4a || null), ee = A(() => M.value?.wave4b || null), X = A(() => M.value?.persona || null), $ = A(() => M.value?.attachment || null), ge = A(() => M.value?.tsundere || null), Be = A(() => M.value?.yandere || null), F = A(() => M.value?.personadyn || null), Ri = A(() => {
-      const h = F.value?.big5;
-      return h ? ["o_open", "c_conscientious", "e_extravert", "a_agreeable", "n_neurotic"].map((l) => Le(h[l], 2)).join(" · ") : "—";
-    }), Vi = A(() => {
-      const h = F.value?.hexaco;
-      return h ? ["h_honesty", "hex_e", "hex_x", "hex_a", "hex_c", "hex_o"].map((l) => Le(h[l], 2)).join(" · ") : "—";
-    });
-    function Zt(h, u = 3) {
-      return h ? Object.entries(h).filter(([, l]) => typeof l == "number").sort((l, O) => O[1] - l[1]).slice(0, u).map(([l, O]) => `${vn(l)} ${Le(O, 2)}`) : [];
-    }
-    const hi = A(() => Zt(F.value?.desires, 3)), dn = A(() => Zt(F.value?.emotions, 3)), hn = A(() => {
-      const h = F.value?.learning?.theta_drift;
-      return h ? Object.values(h).reduce((u, l) => u + Math.abs(l || 0), 0) : 0;
-    }), ct = A(() => m.value?.episode || null), Di = (h) => {
+    const $n = A(() => Vn(V.value?.desires, 3)), _n = A(() => Vn(V.value?.emotions, 3)), vn = A(() => {
+      const d = V.value?.learning?.theta_drift;
+      return d ? Object.values(d).reduce((u, l) => u + Math.abs(l || 0), 0) : 0;
+    }), gt = A(() => G.value?.episode || null), hi = (d) => {
       const u = { euthymic: "life.companion.episode.euthymic", subthreshold: "life.companion.episode.subthreshold", episode: "life.companion.episode.episode" };
-      return u[h] ? a(u[h]) : "—";
-    }, ye = A(() => M.value?.life || null), vt = G(!1), pi = G("start"), Jt = G(!0);
-    function pn() {
-      const h = ye.value?.born_at;
-      if (!h) return "—";
-      const u = Date.now() - new Date(h).getTime();
+      return u[d] ? a(u[d]) : "—";
+    }, ye = A(() => m.value?.life || null), pt = F(!1), gn = F("start"), Un = F(!0);
+    function ji() {
+      const d = ye.value?.born_at;
+      if (!d) return "—";
+      const u = Date.now() - new Date(d).getTime();
       if (!isFinite(u) || u < 0) return "—";
-      const l = Math.floor(u / 864e5), O = Math.floor(u % 864e5 / 36e5);
-      return l > 0 ? a("life.companion.life.ageDaysHours", { days: l, hours: O }) : a("life.companion.life.ageHours", { hours: O });
+      const l = Math.floor(u / 864e5), B = Math.floor(u % 864e5 / 36e5);
+      return l > 0 ? a("life.companion.life.ageDaysHours", { days: l, hours: B }) : a("life.companion.life.ageHours", { hours: B });
     }
-    function $i() {
-      return pi.value === "start" ? a("life.companion.life.starting") : a("life.companion.life.pausing");
+    function yn() {
+      return gn.value === "start" ? a("life.companion.life.starting") : a("life.companion.life.pausing");
     }
-    async function fn() {
-      vt.value = !0, pi.value = "start";
+    async function Hn() {
+      pt.value = !0, gn.value = "start";
       try {
-        const h = await xe("life_start", { greet: Jt.value });
-        h && B(h.greeting ? a("life.companion.flash.lifeStartedGreeting", { greeting: h.greeting }) : a("life.companion.flash.lifeStarted"));
+        const d = await ee("life_start", { greet: Un.value });
+        d && Te(d.greeting ? a("life.companion.flash.lifeStartedGreeting", { greeting: d.greeting }) : a("life.companion.flash.lifeStarted"));
       } finally {
-        vt.value = !1;
+        pt.value = !1;
       }
     }
-    async function mn() {
-      vt.value = !0, pi.value = "stop";
+    async function Fn() {
+      pt.value = !0, gn.value = "stop";
       try {
-        await xe("life_stop", {}) && B(a("life.companion.flash.lifeStopped"));
+        await ee("life_stop", {}) && Te(a("life.companion.flash.lifeStopped"));
       } finally {
-        vt.value = !1;
+        pt.value = !1;
       }
     }
-    function Ui(h, u) {
-      Object.assign(w.value, h), H().then(() => B(a("life.companion.flash.presetApplied", { label: u })));
+    function qi(d, u) {
+      Object.assign(_.value, d), Me().then(() => Te(a("life.companion.flash.presetApplied", { label: u })));
     }
-    const _n = [
+    const pi = [
       { labelKey: "life.companion.preset.regular", fields: { cog_affect_enabled: !0, cog_affect_profile: "typical", cog_affect_threat: 0.2, cog_affect_reward: 1, cog_attachment_enabled: !1, cog_tsundere_enabled: !1, cog_personadyn_enabled: !1 } },
       { labelKey: "life.companion.preset.depression", fields: { cog_affect_enabled: !0, cog_affect_profile: "depression", cog_affect_threat: 0.45, cog_affect_reward: 0.7 } },
-      { labelKey: "life.companion.preset.tsundere", fields: { cog_tsundere_enabled: !0, cog_tsundere_type: re("life.companion.tsundere.classic") } },
-      { labelKey: "life.companion.preset.personadyn", fields: { cog_personadyn_enabled: !0, cog_personadyn_type: re("life.companion.pdt.1") } },
-      { labelKey: "life.companion.preset.yandereSecluded", fields: { cog_affect_enabled: !0, cog_affect_profile: "depression", cog_attachment_enabled: !0, cog_attachment_type: re("life.companion.attach.secluded") } },
-      { labelKey: "life.companion.preset.yandereDependent", fields: { cog_affect_enabled: !0, cog_attachment_enabled: !0, cog_attachment_type: re("life.companion.attach.dependent") } },
-      { labelKey: "life.companion.preset.yandereDelusional", fields: { cog_affect_enabled: !0, cog_affect_profile: "depression", cog_attachment_enabled: !0, cog_attachment_type: re("life.companion.attach.delusional") } }
-    ], Fi = A(() => M.value?.wave2?.somatic_channels || null), vn = (h) => {
+      { labelKey: "life.companion.preset.tsundere", fields: { cog_tsundere_enabled: !0, cog_tsundere_type: "tsundere.classic" } },
+      { labelKey: "life.companion.preset.personadyn", fields: { cog_personadyn_enabled: !0, cog_personadyn_type: "pdt.1" } },
+      { labelKey: "life.companion.preset.yandereSecluded", fields: { cog_affect_enabled: !0, cog_affect_profile: "depression", cog_attachment_enabled: !0, cog_attachment_type: "attach.secluded" } },
+      { labelKey: "life.companion.preset.yandereDependent", fields: { cog_affect_enabled: !0, cog_attachment_enabled: !0, cog_attachment_type: O("life.companion.attach.dependent") } },
+      { labelKey: "life.companion.preset.yandereDelusional", fields: { cog_affect_enabled: !0, cog_affect_profile: "depression", cog_attachment_enabled: !0, cog_attachment_type: O("life.companion.attach.delusional") } }
+    ], Wn = A(() => m.value?.wave2?.somatic_channels || null), fi = (d) => {
       const u = { fatigue: "channel.fatigue", pain: "channel.pain", cardiorespiratory: "channel.cardiorespiratory", gastrointestinal: "channel.gastrointestinal", dizziness: "channel.dizziness", sleep: "channel.sleep" };
-      return u[h] ? a(`life.companion.${u[h]}`) : h;
-    }, gn = (h) => Math.max(0.02, Math.min(1, Number(h))).toFixed(3), yn = A(() => {
-      const h = X.value?.evidence || {};
-      return Object.entries(h).map(([u, l]) => a("life.companion.evidencePair", { dim: u, words: l.join(a("life.companion.listSeparator")) })).join(a("life.companion.evidenceSeparator"));
+      return u[d] ? a(`life.companion.${u[d]}`) : d;
+    }, mi = (d) => Math.max(0.02, Math.min(1, Number(d))).toFixed(3), Gn = A(() => {
+      const d = je.value?.evidence || {};
+      return Object.entries(d).map(([u, l]) => a("life.companion.evidencePair", { dim: u, words: l.join(a("life.companion.listSeparator")) })).join(a("life.companion.evidenceSeparator"));
     });
-    function Le(h, u = 3) {
-      return h == null || h === "" ? "—" : Number(h).toFixed(u);
+    function ke(d, u = 3) {
+      return d == null || d === "" ? "—" : Number(d).toFixed(u);
     }
-    const Xt = A(() => (ae.value.timeline || []).filter((h) => h.topic === re("life.companion.val.world")).slice(0, 30)), Qt = A(() => ae.value.commitments || []), Hi = A(() => ae.value.user_model || []), bn = A(() => Object.entries(ae.value.values || {}).map(([h, u]) => ({ k: h, v: Number(u) })).sort((h, u) => Math.abs(u.v) - Math.abs(h.v)).slice(0, 20));
-    function kt(h) {
+    const bn = A(() => (N.value.timeline || []).filter((d) => d.topic === O("life.companion.val.world")).slice(0, 30)), Lt = A(() => N.value.commitments || []), _i = A(() => N.value.user_model || []), vi = A(() => Object.entries(N.value.values || {}).map(([d, u]) => ({ k: d, v: Number(u) })).sort((d, u) => Math.abs(u.v) - Math.abs(d.v)).slice(0, 20));
+    function wn(d) {
       try {
-        const u = JSON.parse(h || "[]");
+        const u = JSON.parse(d || "[]");
         return Array.isArray(u) ? u : [];
       } catch {
         return [];
       }
     }
-    const fi = A(() => ae.value.emotion || null), Nt = A(() => ae.value.circadian || null), mi = A(() => ae.value.relationships || []), ei = (h) => Math.max(0, Math.min(1, h)), ti = A(() => {
-      const h = fi.value || {}, u = Math.max(-1, Math.min(1, Number(h.valence) || 0)), l = ei(Number(h.arousal ?? 0.5));
+    const tn = A(() => N.value.emotion || null), Tt = A(() => N.value.circadian || null), jn = A(() => N.value.relationships || []), xn = (d) => Math.max(0, Math.min(1, d)), kn = A(() => {
+      const d = tn.value || {}, u = Math.max(-1, Math.min(1, Number(d.valence) || 0)), l = xn(Number(d.arousal ?? 0.5));
       return { x: (10 + (u + 1) / 2 * 100).toFixed(1), y: (110 - l * 100).toFixed(1) };
-    }), wn = A(() => {
-      const h = fi.value;
-      if (!h) return "life.companion.quadrant.serene";
-      const u = Number(h.valence) >= 0, l = Number(h.arousal) >= 0.5;
+    }), gi = A(() => {
+      const d = tn.value;
+      if (!d) return "life.companion.quadrant.serene";
+      const u = Number(d.valence) >= 0, l = Number(d.arousal) >= 0.5;
       return u ? l ? "life.companion.quadrant.excited" : "life.companion.quadrant.serene" : l ? "life.companion.quadrant.tense" : "life.companion.quadrant.gloomy";
-    }), xn = (h) => h <= -$o ? "lo" : h >= $o ? "hi" : "mid";
-    function le(h, u, l, O) {
-      const z = Number(l);
-      if (!isFinite(z)) return null;
-      const W = ei(z / O.max), ue = O.signed ? xn(z) : W < 0.34 ? "lo" : W < 0.67 ? "mid" : "hi", ke = {
+    }), yi = (d) => d <= -Ho ? "lo" : d >= Ho ? "hi" : "mid";
+    function he(d, u, l, B) {
+      const C = Number(l);
+      if (!isFinite(C)) return null;
+      const oe = xn(C / B.max), pe = B.signed ? yi(C) : oe < 0.34 ? "lo" : oe < 0.67 ? "mid" : "hi", we = {
         label: u,
-        value: z,
-        max: O.max,
-        kind: O.kind,
-        signed: !!O.signed,
-        effect: a(`life.companion.effect.${h}`),
-        display: Le(z, 2),
-        alias: a(`life.companion.alias.${h}`),
-        state: a(`life.companion.gw.${h}.${ue}`),
+        value: C,
+        max: B.max,
+        kind: B.kind,
+        signed: !!B.signed,
+        effect: a(`life.companion.effect.${d}`),
+        display: ke(C, 2),
+        alias: a(`life.companion.alias.${d}`),
+        state: a(`life.companion.gw.${d}.${pe}`),
         stateTone: "mid"
       };
-      return ke.stateTone = ke.signed ? ke.value >= 0 ? "good" : "bad" : ht(ke), ke;
+      return we.stateTone = we.signed ? we.value >= 0 ? "good" : "bad" : ft(we), we;
     }
-    function dt(h) {
-      return ei(h.value / h.max);
+    function tt(d) {
+      return xn(d.value / d.max);
     }
-    function ht(h) {
-      const u = dt(h);
-      return h.kind === "neutral" ? "mid" : h.kind === "bad" ? u >= 0.67 ? "bad" : u < 0.34 ? "good" : "mid" : u >= 0.67 ? "good" : u < 0.34 ? "bad" : "mid";
+    function ft(d) {
+      const u = tt(d);
+      return d.kind === "neutral" ? "mid" : d.kind === "bad" ? u >= 0.67 ? "bad" : u < 0.34 ? "good" : "mid" : u >= 0.67 ? "good" : u < 0.34 ? "bad" : "mid";
     }
-    function tt(h) {
-      const u = ei(Math.abs(h)) * 50;
-      return { width: `${u}%`, left: h >= 0 ? "50%" : `${50 - u}%` };
+    function at(d) {
+      const u = xn(Math.abs(d)) * 50;
+      return { width: `${u}%`, left: d >= 0 ? "50%" : `${50 - u}%` };
     }
-    const it = (h) => h.filter((u) => u !== null), Gn = A(() => {
-      const h = fi.value || {};
-      return it([
-        le("valence", a("life.companion.gauge.valence"), h.valence, { max: 1, kind: "neutral", signed: !0 }),
-        le("arousal", a("life.companion.gauge.arousal"), h.arousal, { max: 1, kind: "neutral" }),
-        le("connection", a("life.companion.gauge.connection"), h.connection, { max: 1, kind: "good" }),
-        le("irritation", a("life.companion.gauge.irritation"), h.irritation, { max: 1, kind: "bad" })
+    const yt = (d) => d.filter((u) => u !== null), Ki = A(() => {
+      const d = tn.value || {};
+      return yt([
+        he("valence", a("life.companion.gauge.valence"), d.valence, { max: 1, kind: "neutral", signed: !0 }),
+        he("arousal", a("life.companion.gauge.arousal"), d.arousal, { max: 1, kind: "neutral" }),
+        he("connection", a("life.companion.gauge.connection"), d.connection, { max: 1, kind: "good" }),
+        he("irritation", a("life.companion.gauge.irritation"), d.irritation, { max: 1, kind: "bad" })
       ]);
-    }), jn = A(() => {
-      const h = Nt.value || {};
-      return it([
-        le("energy", a("life.companion.body.energy"), h.mental_energy, { max: 100, kind: "good" }),
-        le("hunger", a("life.companion.body.hunger"), h.hunger, { max: 100, kind: "bad" }),
-        le("health", a("life.companion.body.health"), h.health, { max: 100, kind: "good" })
+    }), st = A(() => {
+      const d = Tt.value || {};
+      return yt([
+        he("energy", a("life.companion.body.energy"), d.mental_energy, { max: 100, kind: "good" }),
+        he("hunger", a("life.companion.body.hunger"), d.hunger, { max: 100, kind: "bad" }),
+        he("health", a("life.companion.body.health"), d.health, { max: 100, kind: "good" })
       ]);
-    }), qn = A(() => it([
-      le("mood", a("life.companion.gauge.mood"), m.value?.mood, { max: 1, kind: "neutral", signed: !0 }),
-      le("vagal", a("life.companion.gauge.vagal"), m.value?.vagal_tone, { max: 1, kind: "good" }),
-      le("somatization", a("life.companion.gauge.somatization"), m.value?.somatization_index, { max: 1, kind: "bad" }),
-      le("healthAnxiety", a("life.companion.gauge.healthAnxiety"), m.value?.health_anxiety, { max: 1, kind: "bad" }),
-      le("somaticBurden", a("life.companion.gauge.somaticBurden"), m.value?.somatic_burden, { max: 1, kind: "bad" }),
-      le("allostatic", a("life.companion.gauge.allostatic"), m.value?.allostatic_load, { max: 1, kind: "bad" }),
-      le("loneliness", a("life.companion.gauge.loneliness"), m.value?.loneliness, { max: 1, kind: "bad" })
-    ])), Kn = A(() => it([
-      le("empathy", a("life.companion.gauge.empathy"), y.value?.empathy, { max: 1, kind: "good" }),
-      le("patience", a("life.companion.gauge.patience"), ee.value?.patience, { max: 1, kind: "good" })
-    ])), nt = A(() => it([
-      le("distress", a("life.companion.gauge.distress"), $.value?.distress, { max: 1, kind: "bad" }),
-      le("comorbid", a("life.companion.gauge.comorbid"), $.value?.comorbid_depression, { max: 1, kind: "bad" })
-    ])), I = A(() => it([
-      le("affection", a("life.companion.gauge.affection"), ge.value?.affection, { max: 1, kind: "good" }),
-      le("tsun", a("life.companion.gauge.tsun"), ge.value?.expression, { max: 1, kind: "neutral" }),
-      le("fixation", a("life.companion.gauge.fixation"), ge.value?.fixation, { max: 1, kind: "bad" })
-    ])), kn = A(() => it([
-      le("jealousy", a("life.companion.gauge.jealousy"), Be.value?.jealousy, { max: 1, kind: "bad" }),
-      le("intensity", a("life.companion.gauge.intensity"), Be.value?.intensity, { max: 1, kind: "neutral" }),
-      le("darkness", a("life.companion.gauge.darkness"), Be.value?.darkness, { max: 1, kind: "bad" })
-    ])), Pn = A(() => it([
-      le("pdPressure", a("life.companion.gauge.pdPressure"), F.value?.pressure, { max: 1, kind: "bad" }),
-      le("pdAffection", a("life.companion.gauge.pdAffection"), F.value?.affection, { max: 1, kind: "good" }),
-      le("pdAnxiety", a("life.companion.gauge.pdAnxiety"), F.value?.anxiety, { max: 1, kind: "bad" }),
-      le("pdPossession", a("life.companion.gauge.pdPossession"), F.value?.possessiveness, { max: 1, kind: "bad" }),
-      le("pdTrust", a("life.companion.gauge.pdTrust"), F.value?.trust, { max: 1, kind: "good" }),
-      le("pdSelfControl", a("life.companion.gauge.pdSelfControl"), F.value?.self_control, { max: 1, kind: "good" }),
-      le("pdSuppression", a("life.companion.gauge.pdSuppression"), F.value?.suppression, { max: 1, kind: "bad" })
-    ])), _i = ["警惕", "疏离", "陌生", "认识", "熟悉", "友好", "亲近", "亲密"], Wi = ["回避", "受伤", "放松", "活泼", "温暖", "亲近", "爱意"], vi = (h) => _i.includes(h) ? a(`life.companion.relStage.${h}`) : h || "—", Gi = (h) => _i.indexOf(h), Rt = (h) => Wi.includes(h) ? a(`life.companion.interaction.${h}`) : h || "—", Ln = (h) => Wi.includes(h) ? a(`life.companion.interactionEffect.${h}`) : "", w = G({}), gi = G("off"), Yn = A(() => [
+    }), Z = A(() => yt([
+      he("mood", a("life.companion.gauge.mood"), G.value?.mood, { max: 1, kind: "neutral", signed: !0 }),
+      he("vagal", a("life.companion.gauge.vagal"), G.value?.vagal_tone, { max: 1, kind: "good" }),
+      he("somatization", a("life.companion.gauge.somatization"), G.value?.somatization_index, { max: 1, kind: "bad" }),
+      he("healthAnxiety", a("life.companion.gauge.healthAnxiety"), G.value?.health_anxiety, { max: 1, kind: "bad" }),
+      he("somaticBurden", a("life.companion.gauge.somaticBurden"), G.value?.somatic_burden, { max: 1, kind: "bad" }),
+      he("allostatic", a("life.companion.gauge.allostatic"), G.value?.allostatic_load, { max: 1, kind: "bad" }),
+      he("loneliness", a("life.companion.gauge.loneliness"), G.value?.loneliness, { max: 1, kind: "bad" })
+    ])), bi = A(() => yt([
+      he("empathy", a("life.companion.gauge.empathy"), ie.value?.empathy, { max: 1, kind: "good" }),
+      he("patience", a("life.companion.gauge.patience"), et.value?.patience, { max: 1, kind: "good" })
+    ])), wi = A(() => yt([
+      he("distress", a("life.companion.gauge.distress"), Re.value?.distress, { max: 1, kind: "bad" }),
+      he("comorbid", a("life.companion.gauge.comorbid"), Re.value?.comorbid_depression, { max: 1, kind: "bad" })
+    ])), xi = A(() => yt([
+      he("affection", a("life.companion.gauge.affection"), Ae.value?.affection, { max: 1, kind: "good" }),
+      he("tsun", a("life.companion.gauge.tsun"), Ae.value?.expression, { max: 1, kind: "neutral" }),
+      he("fixation", a("life.companion.gauge.fixation"), Ae.value?.fixation, { max: 1, kind: "bad" })
+    ])), ki = A(() => yt([
+      he("jealousy", a("life.companion.gauge.jealousy"), qe.value?.jealousy, { max: 1, kind: "bad" }),
+      he("intensity", a("life.companion.gauge.intensity"), qe.value?.intensity, { max: 1, kind: "neutral" }),
+      he("darkness", a("life.companion.gauge.darkness"), qe.value?.darkness, { max: 1, kind: "bad" })
+    ])), qn = A(() => yt([
+      he("pdPressure", a("life.companion.gauge.pdPressure"), V.value?.pressure, { max: 1, kind: "bad" }),
+      he("pdAffection", a("life.companion.gauge.pdAffection"), V.value?.affection, { max: 1, kind: "good" }),
+      he("pdAnxiety", a("life.companion.gauge.pdAnxiety"), V.value?.anxiety, { max: 1, kind: "bad" }),
+      he("pdPossession", a("life.companion.gauge.pdPossession"), V.value?.possessiveness, { max: 1, kind: "bad" }),
+      he("pdTrust", a("life.companion.gauge.pdTrust"), V.value?.trust, { max: 1, kind: "good" }),
+      he("pdSelfControl", a("life.companion.gauge.pdSelfControl"), V.value?.self_control, { max: 1, kind: "good" }),
+      he("pdSuppression", a("life.companion.gauge.pdSuppression"), V.value?.suppression, { max: 1, kind: "bad" })
+    ])), Pn = ["警惕", "疏离", "陌生", "认识", "熟悉", "友好", "亲近", "亲密"], St = ["回避", "受伤", "放松", "活泼", "温暖", "亲近", "爱意"], Kn = (d) => Pn.includes(d) ? a(`life.companion.relStage.${d}`) : d || "—", Pi = (d) => Pn.indexOf(d), Yi = (d) => St.includes(d) ? a(`life.companion.interaction.${d}`) : d || "—", Ji = (d) => St.includes(d) ? a(`life.companion.interactionEffect.${d}`) : "", _ = F({}), $t = F("off"), Xi = A(() => [
       { value: "off", label: a("life.companion.worldDensity.off") },
       { value: "texture", label: a("life.companion.worldDensity.texture") },
       { value: "full", label: a("life.companion.worldDensity.full") }
-    ]), yi = G("fictional"), ii = G(""), bi = G(""), Pt = G(""), wi = G(""), xi = G(""), ki = G(""), Pi = G(""), ot = G(!1), Vt = G(!1), ni = A(() => [
+    ]), bt = F("fictional"), nn = F(""), on = F(""), an = F(""), sn = F(""), rn = F(""), Ct = F(""), mt = F(""), nt = F(!1), ln = F(!1), un = A(() => [
       { value: "fictional", label: a("life.companion.worldFictional.fictional") },
       { value: "real", label: a("life.companion.worldFictional.real") }
-    ]), at = A(() => ae.value.worldview || null), te = A(() => at.value?.map || { locations: [], edges: [], actors: [], width: 1e3, height: 700, title: "" }), oi = A(() => at.value?.actor_locations || {}), se = ["home", "work", "shop", "food", "park", "transit", "other"], be = { home: "life.companion.kind.home", work: "life.companion.kind.work", shop: "life.companion.kind.shop", food: "life.companion.kind.food", park: "life.companion.kind.park", transit: "life.companion.kind.transit", other: "life.companion.kind.other" }, ai = { home: "#e07a5f", work: "#5b8def", shop: "#e0a23d", food: "#57a773", park: "#3faead", transit: "#8b6fd6", other: "#8a94a6" }, Dt = A(() => se.filter((h) => (te.value.locations || []).some((u) => (u.kind || "other") === h)));
-    function Ce(h) {
+    ]), Y = A(() => N.value.worldview || null), I = A(() => Y.value?.map || { locations: [], edges: [], actors: [], width: 1e3, height: 700, title: "" }), Ln = A(() => Y.value?.actor_locations || {}), Ut = ["home", "work", "shop", "food", "park", "transit", "other"], Ht = { home: "life.companion.kind.home", work: "life.companion.kind.work", shop: "life.companion.kind.shop", food: "life.companion.kind.food", park: "life.companion.kind.park", transit: "life.companion.kind.transit", other: "life.companion.kind.other" }, Tn = { home: "#e07a5f", work: "#5b8def", shop: "#e0a23d", food: "#57a773", park: "#3faead", transit: "#8b6fd6", other: "#8a94a6" }, J = A(() => Ut.filter((d) => (I.value.locations || []).some((u) => (u.kind || "other") === d)));
+    function re(d) {
       const u = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
-      return String(h ?? "").replace(/[&<>"']/g, (l) => u[l]);
+      return String(d ?? "").replace(/[&<>"']/g, (l) => u[l]);
     }
-    const $t = G(null), j = G(!1);
-    let q = null, D = null, Ut = "";
-    const We = ["#2b4250", "#33495a", "#2f4a44", "#3a4258", "#463f4f", "#3d4a3a", "#4a4436", "#39485c"], Tn = ["#dfe4ea", "#d6dce4", "#e6eaf0", "#cfd7e0"];
-    let gt = "";
-    const qe = G("city"), _e = {};
-    function pt(h, u, l) {
-      (_e[h] || (_e[h] = [])).push({ layer: u, base: l });
+    const Ft = F(null), wt = F(!1);
+    let le = null, U = null, Wt = "";
+    const xt = ["#2b4250", "#33495a", "#2f4a44", "#3a4258", "#463f4f", "#3d4a3a", "#4a4436", "#39485c"], Pe = ["#dfe4ea", "#d6dce4", "#e6eaf0", "#cfd7e0"];
+    let it = "";
+    const rt = F("city"), lt = {};
+    function cn(d, u, l) {
+      (lt[d] || (lt[d] = [])).push({ layer: u, base: l });
     }
-    function Ke(h) {
-      gt = gt === h ? "" : h;
-      for (const [u, l] of Object.entries(_e)) {
-        const O = u === gt;
-        for (const { layer: z, base: W } of l)
-          z.setStyle && z.setStyle({ ...W, weight: (W.weight || 2) + (O ? 3.5 : 0), opacity: O ? 1 : W.opacity ?? 1 }), O && z.bringToFront && z.bringToFront();
+    function Ke(d) {
+      it = it === d ? "" : d;
+      for (const [u, l] of Object.entries(lt)) {
+        const B = u === it;
+        for (const { layer: C, base: oe } of l)
+          C.setStyle && C.setStyle({ ...oe, weight: (oe.weight || 2) + (B ? 3.5 : 0), opacity: B ? 1 : oe.opacity ?? 1 }), B && C.bringToFront && C.bringToFront();
       }
     }
-    function si() {
-      gt = "", Ci(!1);
+    function Yn() {
+      it = "", j(!1);
     }
-    function ji() {
-      qe.value = qe.value === "city" ? "nation" : "city", Ci(!1);
+    function Jn() {
+      rt.value = rt.value === "city" ? "nation" : "city", j(!1);
     }
-    function yt() {
-      return { w: te.value.width || 1e3, h: te.value.height || 700 };
+    function Mt() {
+      return { w: I.value.width || 1e3, h: I.value.height || 700 };
     }
-    function Ne(h, u) {
-      return [yt().h - u, h];
+    function De(d, u) {
+      return [Mt().h - u, d];
     }
-    function Ye(h, u) {
-      return R.divIcon({ className: "wm-route", html: `<span class="wm-route-inner" style="--c:${u}">${Ce(h)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] });
+    function Ye(d, u) {
+      return R.divIcon({ className: "wm-route", html: `<span class="wm-route-inner" style="--c:${u}">${re(d)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] });
     }
-    function Li(h, u) {
-      return R.divIcon({ className: "wm-route wm-minor", html: `<span class="wm-route-inner" style="--c:${u}">${Ce(h)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] });
+    function Sn(d, u) {
+      return R.divIcon({ className: "wm-route wm-minor", html: `<span class="wm-route-inner" style="--c:${u}">${re(d)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] });
     }
-    function qi(h, u) {
-      return R.divIcon({ className: "wm-route wm-station", html: `<span class="wm-route-inner" style="--c:${u}">${Ce(h)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] });
+    function Li(d, u) {
+      return R.divIcon({ className: "wm-route wm-station", html: `<span class="wm-route-inner" style="--c:${u}">${re(d)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] });
     }
-    function Ti(h) {
+    function Cn(d) {
       const u = [], l = [];
-      for (const O of h) {
-        const z = String(O.text).length * 13 + 20, W = 22;
-        u.some((ke) => Math.abs(ke.x - O.x) < (ke.w + z) / 2 && Math.abs(ke.y - O.y) < (ke.h + W) / 2) || (u.push({ x: O.x, y: O.y, w: z, h: W }), l.push(O));
+      for (const B of d) {
+        const C = String(B.text).length * 13 + 20, oe = 22;
+        u.some((we) => Math.abs(we.x - B.x) < (we.w + C) / 2 && Math.abs(we.y - B.y) < (we.h + oe) / 2) || (u.push({ x: B.x, y: B.y, w: C, h: oe }), l.push(B));
       }
       return l;
     }
-    function Si() {
-      const h = te.value.kind === "real" ? "real" : "fictional";
-      if (q && Ut !== h && (q.remove(), q = null, D = null), !(q || !$t.value)) {
-        if (h === "real") {
-          j.value = !1, q = R.map($t.value, { zoomControl: !0, attributionControl: !0 }).setView([35, 105], 5);
-          const u = R.tileLayer(Np, { subdomains: ["1", "2", "3", "4"], maxZoom: 19, minZoom: 3, attribution: a("life.companion.map.attribution") });
+    function Qi() {
+      const d = I.value.kind === "real" ? "real" : "fictional";
+      if (le && Wt !== d && (le.remove(), le = null, U = null), !(le || !Ft.value)) {
+        if (d === "real") {
+          wt.value = !1, le = R.map(Ft.value, { zoomControl: !0, attributionControl: !0 }).setView([35, 105], 5);
+          const u = R.tileLayer(Jp, { subdomains: ["1", "2", "3", "4"], maxZoom: 19, minZoom: 3, attribution: a("life.companion.map.attribution") });
           u.on("tileerror", () => {
-            j.value = !0;
+            wt.value = !0;
           }), u.on("load", () => {
-            j.value = !1;
-          }), u.addTo(q);
+            wt.value = !1;
+          }), u.addTo(le);
         } else {
-          j.value = !1;
-          const { w: u, h: l } = yt();
-          q = R.map($t.value, { crs: R.CRS.Simple, zoomControl: !0, attributionControl: !1, minZoom: -3, maxZoom: 3 }).setView([l / 2, u / 2], -1.5);
-          for (const [z, W] of [["pWater", 350], ["pParks", 360], ["pBlocks", 370], ["pRoads", 380], ["pMetro", 400], ["pBus", 410], ["pLabels", 620]])
-            q.createPane(z), q.getPane(z).style.zIndex = String(W);
-          const O = () => q.getContainer().classList.toggle("wm-zoom-low", q.getZoom() < 0);
-          q.on("zoomend", O), setTimeout(O, 0);
+          wt.value = !1;
+          const { w: u, h: l } = Mt();
+          le = R.map(Ft.value, { crs: R.CRS.Simple, zoomControl: !0, attributionControl: !1, minZoom: -3, maxZoom: 3 }).setView([l / 2, u / 2], -1.5);
+          for (const [C, oe] of [["pWater", 350], ["pParks", 360], ["pBlocks", 370], ["pRoads", 380], ["pMetro", 400], ["pBus", 410], ["pLabels", 620]])
+            le.createPane(C), le.getPane(C).style.zIndex = String(oe);
+          const B = () => le.getContainer().classList.toggle("wm-zoom-low", le.getZoom() < 0);
+          le.on("zoomend", B), setTimeout(B, 0);
         }
-        Ut = h, D = R.layerGroup().addTo(q);
+        Wt = d, U = R.layerGroup().addTo(le);
       }
     }
-    function Ci(h = !1) {
-      if (!q || !D) return;
-      D.clearLayers();
-      for (const z of Object.keys(_e)) delete _e[z];
-      gt = "";
-      const u = te.value.locations || [];
+    function j(d = !1) {
+      if (!le || !U) return;
+      U.clearLayers();
+      for (const C of Object.keys(lt)) delete lt[C];
+      it = "";
+      const u = I.value.locations || [];
       if (!u.length) return;
-      const l = Ut !== "real", O = {};
-      for (const z of u) O[z.id] = z;
+      const l = Wt !== "real", B = {};
+      for (const C of u) B[C.id] = C;
       if (l) {
-        const { w: z, h: W } = yt(), ue = (k) => k.map((ce) => Ne(ce[0], ce[1])), ke = te.value.nation;
-        if (qe.value === "nation" && ke) {
-          R.rectangle([[0, 0], [W, z]], { pane: "pWater", stroke: !1, fillColor: "#d9e6f0", fillOpacity: 1 }).addTo(D), R.polygon(ue(ke.land), { pane: "pWater", color: "#8fbfe6", weight: 1.5, fillColor: "#f4efe1", fillOpacity: 1 }).addTo(D), (ke.provinces || []).forEach((k, ce) => {
-            R.polygon(ue(k.points), { pane: "pParks", color: "#c9b98f", weight: 1, fillColor: ce % 2 ? "#ece2c8" : "#e4d7b4", fillOpacity: 0.55 }).addTo(D), R.marker(ue([k.label])[0], { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#8a7a5c") }).addTo(D);
-          }), (ke.routes || []).forEach((k) => R.polyline(ue(k.points), { pane: "pRoads", color: "#b98a4a", weight: 2.5, dashArray: "2 7" }).addTo(D)), (ke.cities || []).forEach((k) => {
-            const ce = Ne(k.x, k.y);
-            R.circleMarker(ce, { pane: "pLabels", radius: k.capital ? 9 : 6, color: "#ffffff", weight: 2, fillColor: k.capital ? "#d64545" : "#3a6ea5", fillOpacity: 1 }).bindPopup(Ce(k.name)).addTo(D), R.marker(ce, { pane: "pLabels", interactive: !1, icon: Ye(k.name, k.capital ? "#d64545" : "#3a6ea5") }).addTo(D);
-          }), q.fitBounds([[0, 0], [W, z]], { padding: [6, 6] });
+        const { w: C, h: oe } = Mt(), pe = (x) => x.map((ae) => De(ae[0], ae[1])), we = I.value.nation;
+        if (rt.value === "nation" && we) {
+          R.rectangle([[0, 0], [oe, C]], { pane: "pWater", stroke: !1, fillColor: "#d9e6f0", fillOpacity: 1 }).addTo(U), R.polygon(pe(we.land), { pane: "pWater", color: "#8fbfe6", weight: 1.5, fillColor: "#f4efe1", fillOpacity: 1 }).addTo(U), (we.provinces || []).forEach((x, ae) => {
+            R.polygon(pe(x.points), { pane: "pParks", color: "#c9b98f", weight: 1, fillColor: ae % 2 ? "#ece2c8" : "#e4d7b4", fillOpacity: 0.55 }).addTo(U), R.marker(pe([x.label])[0], { pane: "pLabels", interactive: !1, icon: Ye(x.name, "#8a7a5c") }).addTo(U);
+          }), (we.routes || []).forEach((x) => R.polyline(pe(x.points), { pane: "pRoads", color: "#b98a4a", weight: 2.5, dashArray: "2 7" }).addTo(U)), (we.cities || []).forEach((x) => {
+            const ae = De(x.x, x.y);
+            R.circleMarker(ae, { pane: "pLabels", radius: x.capital ? 9 : 6, color: "#ffffff", weight: 2, fillColor: x.capital ? "#d64545" : "#3a6ea5", fillOpacity: 1 }).bindPopup(re(x.name)).addTo(U), R.marker(ae, { pane: "pLabels", interactive: !1, icon: Ye(x.name, x.capital ? "#d64545" : "#3a6ea5") }).addTo(U);
+          }), le.fitBounds([[0, 0], [oe, C]], { padding: [6, 6] });
           return;
         }
-        R.rectangle([[0, 0], [W, z]], { pane: "pWater", stroke: !1, fillColor: "#eef1f4", fillOpacity: 1 }).addTo(D), (te.value.compounds || []).forEach((k) => {
-          R.polygon(ue(k.points), { pane: "pParks", color: "#c9b98f", weight: 1.2, dashArray: "7 5", fillColor: "#f3ead0", fillOpacity: 0.5 }).addTo(D), R.marker(ue(k.points)[0], { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#a9884a") }).addTo(D);
-        }), (te.value.lakes || []).forEach((k) => {
-          R.polygon(ue(k.points), { pane: "pWater", color: "#8fbfe6", weight: 1.5, fillColor: "#bcd9f0", fillOpacity: 1 }).addTo(D), k.name && k.name !== "" && R.marker(Ne(k.label[0], k.label[1]), { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#3d7fb5") }).addTo(D);
-        }), (te.value.rivers || []).forEach((k) => {
-          R.polyline(ue(k.points), { pane: "pWater", color: "#8fbfe6", weight: 16, lineCap: "round", lineJoin: "round" }).addTo(D), R.polyline(ue(k.points), { pane: "pWater", color: "#bcd9f0", weight: 11, lineCap: "round", lineJoin: "round" }).addTo(D), k.name && k.name !== "" && R.marker(ue(k.points)[Math.floor(k.points.length / 2)], { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#3d7fb5") }).addTo(D);
-        }), (te.value.parks || []).forEach((k) => {
-          R.polygon(ue(k.points), { pane: "pParks", color: "#a9d3a0", weight: 1, fillColor: "#c9e6c4", fillOpacity: 1 }).addTo(D), (k.trees || []).forEach((ce) => R.circleMarker(Ne(ce[0], ce[1]), { pane: "pParks", radius: 2.6, stroke: !1, fillColor: "#82bd79", fillOpacity: 1 }).addTo(D)), k.name && k.name !== re("life.companion.val.park") && R.marker(ue(k.points)[0], { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#5a9e52") }).addTo(D);
+        R.rectangle([[0, 0], [oe, C]], { pane: "pWater", stroke: !1, fillColor: "#eef1f4", fillOpacity: 1 }).addTo(U), (I.value.compounds || []).forEach((x) => {
+          R.polygon(pe(x.points), { pane: "pParks", color: "#c9b98f", weight: 1.2, dashArray: "7 5", fillColor: "#f3ead0", fillOpacity: 0.5 }).addTo(U), R.marker(pe(x.points)[0], { pane: "pLabels", interactive: !1, icon: Ye(x.name, "#a9884a") }).addTo(U);
+        }), (I.value.lakes || []).forEach((x) => {
+          R.polygon(pe(x.points), { pane: "pWater", color: "#8fbfe6", weight: 1.5, fillColor: "#bcd9f0", fillOpacity: 1 }).addTo(U), x.name && x.name !== "" && R.marker(De(x.label[0], x.label[1]), { pane: "pLabels", interactive: !1, icon: Ye(x.name, "#3d7fb5") }).addTo(U);
+        }), (I.value.rivers || []).forEach((x) => {
+          R.polyline(pe(x.points), { pane: "pWater", color: "#8fbfe6", weight: 16, lineCap: "round", lineJoin: "round" }).addTo(U), R.polyline(pe(x.points), { pane: "pWater", color: "#bcd9f0", weight: 11, lineCap: "round", lineJoin: "round" }).addTo(U), x.name && x.name !== "" && R.marker(pe(x.points)[Math.floor(x.points.length / 2)], { pane: "pLabels", interactive: !1, icon: Ye(x.name, "#3d7fb5") }).addTo(U);
+        }), (I.value.parks || []).forEach((x) => {
+          R.polygon(pe(x.points), { pane: "pParks", color: "#a9d3a0", weight: 1, fillColor: "#c9e6c4", fillOpacity: 1 }).addTo(U), (x.trees || []).forEach((ae) => R.circleMarker(De(ae[0], ae[1]), { pane: "pParks", radius: 2.6, stroke: !1, fillColor: "#82bd79", fillOpacity: 1 }).addTo(U)), x.name && x.name !== O("life.companion.val.park") && R.marker(pe(x.points)[0], { pane: "pLabels", interactive: !1, icon: Ye(x.name, "#5a9e52") }).addTo(U);
         });
-        const ft = [];
-        (te.value.blocks || []).forEach((k) => {
-          const ce = ue(k.points);
-          if (R.polygon(ce.map((ve) => [ve[0] - 3, ve[1] + 3]), { pane: "pBlocks", stroke: !1, fillColor: "#5b6b7a", fillOpacity: 0.16 }).addTo(D), R.polygon(ce, { pane: "pBlocks", color: "#b9c3cd", weight: 1, fillColor: Tn[(k.shade || 0) % Tn.length], fillOpacity: 1 }).addTo(D), k.tower) {
-            const ve = ce.reduce((ze, Ee) => ze + Ee[0], 0) / ce.length, Me = ce.reduce((ze, Ee) => ze + Ee[1], 0) / ce.length;
+        const Oi = [];
+        (I.value.blocks || []).forEach((x) => {
+          const ae = pe(x.points);
+          if (R.polygon(ae.map((ve) => [ve[0] - 3, ve[1] + 3]), { pane: "pBlocks", stroke: !1, fillColor: "#5b6b7a", fillOpacity: 0.16 }).addTo(U), R.polygon(ae, { pane: "pBlocks", color: "#b9c3cd", weight: 1, fillColor: Pe[(x.shade || 0) % Pe.length], fillOpacity: 1 }).addTo(U), x.tower) {
+            const ve = ae.reduce((fe, ze) => fe + ze[0], 0) / ae.length, xe = ae.reduce((fe, ze) => fe + ze[1], 0) / ae.length;
             R.polygon(
-              ce.map((ze) => [ve + (ze[0] - ve) * 0.5, Me + (ze[1] - Me) * 0.5]),
+              ae.map((fe) => [ve + (fe[0] - ve) * 0.5, xe + (fe[1] - xe) * 0.5]),
               { pane: "pBlocks", color: "#aab4c0", weight: 1, fillColor: "#eef2f6", fillOpacity: 1 }
-            ).addTo(D);
+            ).addTo(U);
           }
-          if (k.name) {
-            const ve = k.points.reduce((ze, Ee) => ze + Ee[0], 0) / k.points.length, Me = k.points.reduce((ze, Ee) => ze + Ee[1], 0) / k.points.length;
-            ft.push({ x: ve, y: Me, text: k.name, color: k.tower ? "#6b5b8a" : "#7a8794" });
+          if (x.name) {
+            const ve = x.points.reduce((fe, ze) => fe + ze[0], 0) / x.points.length, xe = x.points.reduce((fe, ze) => fe + ze[1], 0) / x.points.length;
+            Oi.push({ x: ve, y: xe, text: x.name, color: x.tower ? "#6b5b8a" : "#7a8794" });
           }
-        }), (te.value.named_buildings || []).forEach((k) => {
-          R.circleMarker(Ne(k.x, k.y), { pane: "pLabels", radius: 4, color: "#ffffff", weight: 1.5, fillColor: "#8a5a2b", fillOpacity: 1 }).addTo(D), R.marker(Ne(k.x, k.y), { pane: "pLabels", interactive: !1, icon: Ye(k.name, "#8a5a2b") }).addTo(D);
+        }), (I.value.named_buildings || []).forEach((x) => {
+          R.circleMarker(De(x.x, x.y), { pane: "pLabels", radius: 4, color: "#ffffff", weight: 1.5, fillColor: "#8a5a2b", fillOpacity: 1 }).addTo(U), R.marker(De(x.x, x.y), { pane: "pLabels", interactive: !1, icon: Ye(x.name, "#8a5a2b") }).addTo(U);
         });
-        for (const k of Ti(ft))
-          R.marker(Ne(k.x, k.y), { pane: "pLabels", interactive: !1, icon: Li(k.text, k.color) }).addTo(D);
-        const tn = {
+        for (const x of Cn(Oi))
+          R.marker(De(x.x, x.y), { pane: "pLabels", interactive: !1, icon: Sn(x.text, x.color) }).addTo(U);
+        const ii = {
           highway: { casing: 13, fill: 6.5, color: "#f08c2e" },
           arterial: { casing: 10, fill: 4.5, color: "#f7cf8a" },
           street: { casing: 5, fill: 2.4, color: "#ffffff" }
         };
-        (te.value.streets || []).forEach((k) => {
-          const ce = tn[k.kind] || tn.street, ve = ue(k.points);
-          R.polyline(ve, { pane: "pRoads", color: "#ffffff", weight: ce.casing, lineCap: "round", lineJoin: "round" }).addTo(D), R.polyline(ve, { pane: "pRoads", color: ce.color, weight: ce.fill, lineCap: "round", lineJoin: "round" }).addTo(D);
-        }), (te.value.roads || []).forEach((k, ce) => {
-          if (!k.name) return;
-          const ve = ue(k.points), Me = "road:" + ce;
-          R.polyline(ve, { pane: "pRoads", color: "#ffffff", weight: 11, lineCap: "round", lineJoin: "round" }).addTo(D);
-          const ze = { pane: "pRoads", color: "#f6c56b", weight: 5, opacity: 1, lineCap: "round", lineJoin: "round" };
-          pt(Me, R.polyline(ve, ze).on("click", () => Ke(Me)).addTo(D), ze), R.marker(ve[Math.floor(ve.length / 2)], { pane: "pLabels", interactive: !0, icon: Ye(k.name, "#9a8358") }).on("click", () => Ke(Me)).addTo(D);
-        }), (te.value.districts || []).forEach((k, ce) => {
-          R.circle(Ne(k.x, k.y), { pane: "pRoads", radius: k.r || 200, color: "#93a2b0", weight: 1, dashArray: "4 7", fillColor: We[ce % We.length], fillOpacity: 0.08 }).addTo(D), R.marker(Ne(k.x, k.y), { pane: "pLabels", interactive: !1, icon: R.divIcon({ className: "wm-district", html: `<span class="wm-district-inner">${Ce(k.name)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] }) }).addTo(D);
+        (I.value.streets || []).forEach((x) => {
+          const ae = ii[x.kind] || ii.street, ve = pe(x.points);
+          R.polyline(ve, { pane: "pRoads", color: "#ffffff", weight: ae.casing, lineCap: "round", lineJoin: "round" }).addTo(U), R.polyline(ve, { pane: "pRoads", color: ae.color, weight: ae.fill, lineCap: "round", lineJoin: "round" }).addTo(U);
+        }), (I.value.roads || []).forEach((x, ae) => {
+          if (!x.name) return;
+          const ve = pe(x.points), xe = "road:" + ae;
+          R.polyline(ve, { pane: "pRoads", color: "#ffffff", weight: 11, lineCap: "round", lineJoin: "round" }).addTo(U);
+          const fe = { pane: "pRoads", color: "#f6c56b", weight: 5, opacity: 1, lineCap: "round", lineJoin: "round" };
+          cn(xe, R.polyline(ve, fe).on("click", () => Ke(xe)).addTo(U), fe), R.marker(ve[Math.floor(ve.length / 2)], { pane: "pLabels", interactive: !0, icon: Ye(x.name, "#9a8358") }).on("click", () => Ke(xe)).addTo(U);
+        }), (I.value.districts || []).forEach((x, ae) => {
+          R.circle(De(x.x, x.y), { pane: "pRoads", radius: x.r || 200, color: "#93a2b0", weight: 1, dashArray: "4 7", fillColor: xt[ae % xt.length], fillOpacity: 0.08 }).addTo(U), R.marker(De(x.x, x.y), { pane: "pLabels", interactive: !1, icon: R.divIcon({ className: "wm-district", html: `<span class="wm-district-inner">${re(x.name)}</span>`, iconSize: [0, 0], iconAnchor: [0, 0] }) }).addTo(U);
         });
-        const nn = [];
-        (te.value.metro || []).forEach((k, ce) => {
-          const ve = ue(k.points), Me = "metro:" + ce;
-          R.polyline(ve, { pane: "pMetro", color: "#ffffff", weight: 8, lineCap: "round", lineJoin: "round" }).addTo(D);
-          const ze = { pane: "pMetro", color: k.color, weight: 4.5, opacity: 0.92, lineCap: "round", lineJoin: "round" };
-          pt(Me, R.polyline(ve, ze).on("click", () => Ke(Me)).addTo(D), ze), (k.stations || []).forEach((Ee) => {
-            R.circleMarker(Ne(Ee.x, Ee.y), { pane: "pMetro", radius: 5, color: "#ffffff", weight: 2.5, fillColor: k.color, fillOpacity: 1 }).bindPopup(Ce(Ee.name || k.name)).on("click", () => Ke(Me)).addTo(D), Ee.name && nn.push({ x: Ee.x, y: Ee.y, text: Ee.name, color: k.color });
-          }), R.marker(ve[Math.floor(ve.length / 2)], { pane: "pLabels", interactive: !0, icon: Ye(k.name, k.color) }).on("click", () => Ke(Me)).addTo(D);
-        }), (te.value.bus || []).forEach((k, ce) => {
-          const ve = ue(k.points), Me = "bus:" + ce, ze = { pane: "pBus", color: k.color, weight: 3, opacity: 0.95, dashArray: "7 7", lineCap: "round" };
-          pt(Me, R.polyline(ve, ze).on("click", () => Ke(Me)).addTo(D), ze), (k.stops || []).forEach((Ee) => R.circleMarker(Ne(Ee.x, Ee.y), { pane: "pBus", radius: 3.2, color: "#ffffff", weight: 1.5, fillColor: k.color, fillOpacity: 1 }).bindPopup(Ce(Ee.name || k.name)).on("click", () => Ke(Me)).addTo(D)), R.marker(ve[Math.floor(ve.length / 2)], { pane: "pLabels", interactive: !0, icon: Ye(k.name, k.color) }).on("click", () => Ke(Me)).addTo(D);
+        const oi = [];
+        (I.value.metro || []).forEach((x, ae) => {
+          const ve = pe(x.points), xe = "metro:" + ae;
+          R.polyline(ve, { pane: "pMetro", color: "#ffffff", weight: 8, lineCap: "round", lineJoin: "round" }).addTo(U);
+          const fe = { pane: "pMetro", color: x.color, weight: 4.5, opacity: 0.92, lineCap: "round", lineJoin: "round" };
+          cn(xe, R.polyline(ve, fe).on("click", () => Ke(xe)).addTo(U), fe), (x.stations || []).forEach((ze) => {
+            R.circleMarker(De(ze.x, ze.y), { pane: "pMetro", radius: 5, color: "#ffffff", weight: 2.5, fillColor: x.color, fillOpacity: 1 }).bindPopup(re(ze.name || x.name)).on("click", () => Ke(xe)).addTo(U), ze.name && oi.push({ x: ze.x, y: ze.y, text: ze.name, color: x.color });
+          }), R.marker(ve[Math.floor(ve.length / 2)], { pane: "pLabels", interactive: !0, icon: Ye(x.name, x.color) }).on("click", () => Ke(xe)).addTo(U);
+        }), (I.value.bus || []).forEach((x, ae) => {
+          const ve = pe(x.points), xe = "bus:" + ae, fe = { pane: "pBus", color: x.color, weight: 3, opacity: 0.95, dashArray: "7 7", lineCap: "round" };
+          cn(xe, R.polyline(ve, fe).on("click", () => Ke(xe)).addTo(U), fe), (x.stops || []).forEach((ze) => R.circleMarker(De(ze.x, ze.y), { pane: "pBus", radius: 3.2, color: "#ffffff", weight: 1.5, fillColor: x.color, fillOpacity: 1 }).bindPopup(re(ze.name || x.name)).on("click", () => Ke(xe)).addTo(U)), R.marker(ve[Math.floor(ve.length / 2)], { pane: "pLabels", interactive: !0, icon: Ye(x.name, x.color) }).on("click", () => Ke(xe)).addTo(U);
         });
-        for (const k of Ti(nn))
-          R.marker(Ne(k.x, k.y), { pane: "pLabels", interactive: !1, icon: qi(k.text, k.color) }).addTo(D);
+        for (const x of Cn(oi))
+          R.marker(De(x.x, x.y), { pane: "pLabels", interactive: !1, icon: Li(x.text, x.color) }).addTo(U);
       } else
-        for (const z of te.value.edges || []) {
-          const W = O[z[0]], ue = O[z[1]];
-          W?.lat != null && ue?.lat != null && R.polyline([[W.lat, W.lng], [ue.lat, ue.lng]], { color: "#5b8def", weight: 3, opacity: 0.55, dashArray: "2 8", lineCap: "round" }).addTo(D);
+        for (const C of I.value.edges || []) {
+          const oe = B[C[0]], pe = B[C[1]];
+          oe?.lat != null && pe?.lat != null && R.polyline([[oe.lat, oe.lng], [pe.lat, pe.lng]], { color: "#5b8def", weight: 3, opacity: 0.55, dashArray: "2 8", lineCap: "round" }).addTo(U);
         }
-      for (const z of u) {
-        const W = ai[z.kind] || ai.other, ue = l ? Ne(z.x, z.y) : z.lat != null ? [z.lat, z.lng] : null;
-        if (!ue) continue;
-        const ke = R.divIcon({
+      for (const C of u) {
+        const oe = Tn[C.kind] || Tn.other, pe = l ? De(C.x, C.y) : C.lat != null ? [C.lat, C.lng] : null;
+        if (!pe) continue;
+        const we = R.divIcon({
           className: "wm-pin-holder",
-          html: `<span class="wm-pin" style="--c:${W}"></span><span class="wm-pin-label">${Ce(z.name)}</span>`,
+          html: `<span class="wm-pin" style="--c:${oe}"></span><span class="wm-pin-label">${re(C.name)}</span>`,
           iconSize: [0, 0],
           iconAnchor: [0, 0]
         });
-        R.marker(ue, { icon: ke }).bindPopup(`<b>${Ce(z.name)}</b>${z.desc ? "<br>" + Ce(z.desc) : ""}`).addTo(D);
+        R.marker(pe, { icon: we }).bindPopup(`<b>${re(C.name)}</b>${C.desc ? "<br>" + re(C.desc) : ""}`).addTo(U);
       }
-      for (const z of te.value.actors || []) {
-        const W = O[oi.value[z.id] || z.location];
-        if (!W) continue;
-        const ue = l ? Ne(W.x, W.y) : W.lat != null ? [W.lat, W.lng] : null;
-        if (!ue) continue;
-        const ke = R.divIcon({
+      for (const C of I.value.actors || []) {
+        const oe = B[Ln.value[C.id] || C.location];
+        if (!oe) continue;
+        const pe = l ? De(oe.x, oe.y) : oe.lat != null ? [oe.lat, oe.lng] : null;
+        if (!pe) continue;
+        const we = R.divIcon({
           className: "wm-actor-holder",
-          html: `<span class="wm-actor-badge">${Ce((z.name || "?").slice(0, 1))}</span><span class="wm-actor-name">${Ce(z.name)}</span>`,
+          html: `<span class="wm-actor-badge">${re((C.name || "?").slice(0, 1))}</span><span class="wm-actor-name">${re(C.name)}</span>`,
           iconSize: [0, 0],
           iconAnchor: [0, 0]
         });
-        R.marker(ue, { icon: ke }).bindPopup(`${Ce(z.name)} · ${Ce(W.name)}`).addTo(D);
+        R.marker(pe, { icon: we }).bindPopup(`${re(C.name)} · ${re(oe.name)}`).addTo(U);
       }
-      if (!h)
+      if (!d)
         if (l) {
-          const { w: z, h: W } = yt();
-          q.fitBounds([[0, 0], [W, z]], { padding: [0, 0] });
+          const { w: C, h: oe } = Mt();
+          le.fitBounds([[0, 0], [oe, C]], { padding: [0, 0] });
         } else {
-          const z = u.filter((W) => W.lat != null).map((W) => [W.lat, W.lng]);
-          z.length > 1 ? q.fitBounds(z, { padding: [56, 56], maxZoom: 15 }) : z.length === 1 && q.setView(z[0], 14);
+          const C = u.filter((oe) => oe.lat != null).map((oe) => [oe.lat, oe.lng]);
+          C.length > 1 ? le.fitBounds(C, { padding: [56, 56], maxZoom: 15 }) : C.length === 1 && le.setView(C[0], 14);
         }
     }
-    ui([Ae, () => ae.value.worldview], async () => {
-      Ae.value === "world" && (await Hn(), Si(), Ci(), q && setTimeout(() => q.invalidateSize(), 80));
-    }), Zo(() => {
-      q && (q.remove(), q = null, D = null);
+    pn([ce, () => N.value.worldview], async () => {
+      ce.value === "world" && (await Fi(), Qi(), j(), le && setTimeout(() => le.invalidateSize(), 80));
+    }), po(() => {
+      le && (le.remove(), le = null, U = null);
     });
-    function Ki() {
-      w.value = { ...Ue() }, gi.value = String(ae.value.settings?.world_density || "off"), yi.value = String(ae.value.settings?.world_fictional || "fictional"), ii.value = String(ae.value.settings?.world_country || ""), bi.value = String(ae.value.settings?.world_city || ""), Pt.value = String(ae.value.settings?.world_district || ""), wi.value = String(ae.value.settings?.world_premise || ""), xi.value = String(ae.value.settings?.persona_text || ""), ki.value = String(ae.value.settings?.world_actors || ""), Pi.value = String(ae.value.settings?.world_places || "");
+    function ut() {
+      _.value = { ...en() }, $t.value = String(N.value.settings?.world_density || "off"), bt.value = String(N.value.settings?.world_fictional || "fictional"), nn.value = String(N.value.settings?.world_country || ""), on.value = String(N.value.settings?.world_city || ""), an.value = String(N.value.settings?.world_district || ""), sn.value = String(N.value.settings?.world_premise || ""), rn.value = String(N.value.settings?.persona_text || ""), Ct.value = String(N.value.settings?.world_actors || ""), mt.value = String(N.value.settings?.world_places || ""), Gt.value = Mn();
     }
-    const Lt = G(!1);
-    async function H() {
-      if (!Lt.value) {
-        Lt.value = !0;
+    const ue = F(!1);
+    function Mn() {
+      return JSON.stringify({
+        ...$(),
+        world_density: $t.value,
+        world_fictional: bt.value,
+        world_country: nn.value,
+        world_city: on.value,
+        world_district: an.value,
+        world_premise: sn.value,
+        world_actors: Ct.value,
+        world_places: mt.value,
+        persona_text: rn.value
+      });
+    }
+    const Gt = F(""), jt = A(() => !Le.value && Gt.value !== "" && Mn() !== Gt.value);
+    function zn(d) {
+      jt.value && (d.preventDefault(), d.returnValue = "");
+    }
+    let ct = null;
+    function be(d) {
+      return _.value.cog_enabled ? d ? { cls: "ok", text: a("life.companion.badge.on") } : { cls: "", text: a("life.companion.badge.off") } : { cls: "core-off", text: a("life.companion.badge.coreOff") };
+    }
+    async function dn() {
+      if (await y({
+        title: a("life.companion.resetDefaults"),
+        message: a("life.companion.resetDefaultsConfirm"),
+        confirmLabel: a("life.companion.resetDefaults")
+      })) {
+        for (const [u, l] of Object.entries(ge))
+          _.value[u] = Ne.includes(u) ? l === "1" : Nt.includes(u) ? l : Number(l);
+        Te(a("life.companion.flash.resetDefaults"));
+      }
+    }
+    async function Me() {
+      if (!ue.value) {
+        ue.value = !0;
         try {
-          const h = {
-            ...xt(),
-            world_density: gi.value,
-            world_fictional: yi.value,
-            world_country: ii.value,
-            world_city: bi.value,
-            world_district: Pt.value,
-            world_premise: wi.value,
-            world_actors: ki.value,
-            world_places: Pi.value,
-            persona_text: xi.value
-          }, u = await xe("settings_set", { settings: h });
-          u?.rejected?.length ? B(a("life.companion.flash.settingsSavedIgnored", { items: u.rejected.join(a("life.companion.listSeparator")) })) : B(a("life.companion.flash.settingsSaved"));
+          const d = {
+            ...$(),
+            world_density: $t.value,
+            world_fictional: bt.value,
+            world_country: nn.value,
+            world_city: on.value,
+            world_district: an.value,
+            world_premise: sn.value,
+            world_actors: Ct.value,
+            world_places: mt.value,
+            persona_text: rn.value
+          }, u = await ee("settings_set", { settings: d });
+          u?.rejected?.length ? Te(a("life.companion.flash.settingsSavedIgnored", { items: u.rejected.join(a("life.companion.listSeparator")) })) : Te(a("life.companion.flash.settingsSaved")), Gt.value = Mn();
         } finally {
-          Lt.value = !1;
+          ue.value = !1;
         }
       }
     }
-    const st = G([]), pe = G([]);
-    G(!1);
-    async function Sn() {
-      const h = await xe("adapter_list", {});
-      h && (st.value = h.instances || [], pe.value = h.runtime || []);
+    const zt = F([]), Ti = F([]);
+    F(!1);
+    async function Si() {
+      const d = await ee("adapter_list", {});
+      d && (zt.value = d.instances || [], Ti.value = d.runtime || []);
     }
-    async function Yi() {
-      if (!(ot.value || !await g({
+    async function eo() {
+      if (!(nt.value || !await y({
         title: a("life.companion.world.rewriteTitle"),
         message: a("life.companion.world.rewriteMessage"),
         confirmLabel: a("life.companion.world.overwriteConfirm"),
         danger: !0
       }))) {
-        ot.value = !0;
+        nt.value = !0;
         try {
-          (await xe("world_generate", { instructions: "" }))?.worldview && B(a("life.companion.flash.worldGenerated"));
+          (await ee("world_generate", { instructions: "" }))?.worldview && Te(a("life.companion.flash.worldGenerated"));
         } finally {
-          ot.value = !1;
+          nt.value = !1;
         }
       }
     }
-    async function Ji() {
-      if (!ot.value) {
-        ot.value = !0;
+    async function Ci() {
+      if (!nt.value) {
+        nt.value = !0;
         try {
-          (await xe("world_map_generate", { instructions: "" }))?.worldview && B(a("life.companion.flash.mapRegenerated"));
+          (await ee("world_map_generate", { instructions: "" }))?.worldview && Te(a("life.companion.flash.mapRegenerated"));
         } finally {
-          ot.value = !1;
+          nt.value = !1;
         }
       }
     }
-    async function Xi() {
-      if (!await g({
+    async function Xn() {
+      if (!await y({
         title: a("life.companion.world.clearTitle"),
         message: a("life.companion.world.clearMessage"),
         confirmLabel: a("life.companion.world.clearConfirm"),
         danger: !0
       })) return;
-      await xe("world_clear", {}) && B(a("life.companion.flash.worldCleared"));
+      await ee("world_clear", {}) && Te(a("life.companion.flash.worldCleared"));
     }
-    async function Tt() {
-      if (!(!await g({
+    async function to() {
+      if (!(!await y({
         title: a("life.companion.reset.title"),
         message: a("life.companion.reset.message"),
         confirmLabel: a("life.companion.reset.continue"),
         danger: !0
-      }) || !await g({
+      }) || !await y({
         title: a("life.companion.reset.confirmTitle"),
         message: a("life.companion.reset.confirmMessage"),
         confirmLabel: a("life.companion.reset.confirm"),
         danger: !0
       }))) {
-        Vt.value = !0;
+        ln.value = !0;
         try {
-          await xe("reset_person", {}), B(a("life.companion.flash.personReset")), await Xe();
+          await ee("reset_person", {}), Te(a("life.companion.flash.personReset")), await Ze();
         } finally {
-          Vt.value = !1;
+          ln.value = !1;
         }
       }
     }
-    const Ft = () => ({ name: "", avatar: "", birthDate: "", gender: "", description: "", personality: "", greeting: "", customPrompt: "" }), bt = A(() => [
+    const hn = () => ({ name: "", avatar: "", birthDate: "", gender: "", description: "", personality: "", greeting: "", customPrompt: "" }), te = A(() => [
       { value: "", label: a("life.companion.gender.none") },
       { value: "female", label: a("life.companion.gender.female") },
       { value: "male", label: a("life.companion.gender.male") },
       { value: "other", label: a("life.companion.gender.other") }
     ]);
-    function Ze(h) {
-      return (bt.value.find((u) => u.value === h) || bt.value[0]).label;
+    function no(d) {
+      return (te.value.find((u) => u.value === d) || te.value[0]).label;
     }
-    const ie = G(Ft()), Mi = G(!1);
-    function Qi() {
+    const X = F(hn()), Et = F(!1);
+    function Qn() {
       return globalThis.__0KAY_HOST__;
     }
-    function Cn() {
-      const h = Qi();
-      if (h?.getPersona) {
-        ie.value = { ...Ft(), ...h.getPersona() || {} };
+    function Mi() {
+      const d = Qn();
+      if (d?.getPersona) {
+        X.value = { ...hn(), ...d.getPersona() || {} };
         return;
       }
       try {
         const u = JSON.parse(localStorage.getItem("0kay_config") || "{}");
-        ie.value = { ...Ft(), ...u.persona || {} };
+        X.value = { ...hn(), ...u.persona || {} };
       } catch {
-        ie.value = Ft();
+        X.value = hn();
       }
     }
-    const b = G(null), Ht = G(!1), Jn = A(() => [
+    const w = F(null), En = F(!1), zi = A(() => [
       { value: "", label: a("life.companion.gender.undecidedBracket") },
-      ...(b.value?.options?.character || []).map((h) => ({ value: h.key, label: h.label }))
-    ]), Mn = A(() => [
+      ...(w.value?.options?.character || []).map((d) => ({ value: d.key, label: d.label }))
+    ]), io = A(() => [
       { value: "", label: a("life.companion.gender.undecidedBracket") },
-      ...(b.value?.options?.relationship || []).map((h) => ({
-        value: h.key,
-        label: h.label + (h.pathological ? a("life.companion.relationship.pathologicalSuffix") : "")
+      ...(w.value?.options?.relationship || []).map((d) => ({
+        value: d.key,
+        label: d.label + (d.pathological ? a("life.companion.relationship.pathologicalSuffix") : "")
       }))
     ]);
-    function oe() {
-      return { text: [ie.value.description, ie.value.personality].filter((h) => String(h || "").trim()).join(`
+    function Ei() {
+      return { text: [X.value.description, X.value.personality].filter((d) => String(d || "").trim()).join(`
 `) };
     }
-    ui(() => [ie.value.description, ie.value.personality, ie.value.customPrompt], () => {
-      b.value = null;
+    pn(() => [X.value.description, X.value.personality, X.value.customPrompt], () => {
+      w.value = null;
     });
-    function Xn(h) {
-      return (b.value?.options?.relationship || []).find((u) => u.key === h);
+    function ei(d) {
+      return (w.value?.options?.relationship || []).find((u) => u.key === d);
     }
-    ui(() => b.value?.relationship?.key, (h) => {
-      const u = b.value?.attachment;
+    pn(() => w.value?.relationship?.key, (d) => {
+      const u = w.value?.attachment;
       if (!u) return;
-      const l = Xn(h);
+      const l = ei(d);
       u.type = l?.pathological && l.attachment_type || "";
-    }, { immediate: !0 }), ui(() => b.value?.attachment?.type, (h) => {
-      const u = b.value?.attachment;
-      if (!(!h || !u)) {
+    }, { immediate: !0 }), pn(() => w.value?.attachment?.type, (d) => {
+      const u = w.value?.attachment;
+      if (!(!d || !u)) {
         (!u.initial || typeof u.initial != "object") && (u.initial = {});
-        for (const [l, O] of Object.entries({ A: 0.05, Am: 0, Tr: 0.5, J: 0, X: 0.05, S: 0.6, O: 0 }))
-          u.initial[l] == null && (u.initial[l] = O);
+        for (const [l, B] of Object.entries({ A: 0.05, Am: 0, Tr: 0.5, J: 0, X: 0.05, S: 0.6, O: 0 }))
+          u.initial[l] == null && (u.initial[l] = B);
       }
     });
-    async function Qe() {
-      const h = oe();
-      if (!h.text.trim()) {
-        B(a("life.companion.flash.needDescriptionOrPersonality"));
+    async function oo() {
+      const d = Ei();
+      if (!d.text.trim()) {
+        Te(a("life.companion.flash.needDescriptionOrPersonality"));
         return;
       }
-      Ht.value = !0;
+      En.value = !0;
       try {
-        const u = await xe("persona_analyze", { text: h.text, gender: ie.value.gender });
-        u && (b.value = u, b.value.personadynGender = u.personadyn?.gender || w.cog_personadyn_gender || re("life.companion.pdGender.unspecified"), !ie.value.gender && u.gender && (ie.value.gender = u.gender), B(u.source === "llm" ? a("life.companion.flash.analyzedLlm") : a("life.companion.flash.analyzedLocal")));
+        const u = await ee("persona_analyze", { text: d.text, gender: X.value.gender });
+        u && (w.value = u, w.value.personadynGender = u.personadyn?.gender || W(_.cog_personadyn_gender) || O("life.companion.pdGender.unspecified"), !X.value.gender && u.gender && (X.value.gender = u.gender), Te(u.source === "llm" ? a("life.companion.flash.analyzedLlm") : a("life.companion.flash.analyzedLocal")));
       } finally {
-        Ht.value = !1;
+        En.value = !1;
       }
     }
-    async function ri() {
-      if (!b.value) {
-        B(a("life.companion.flash.needLlmFirst"));
+    async function dt() {
+      if (!w.value) {
+        Te(a("life.companion.flash.needLlmFirst"));
         return;
       }
-      Mi.value = !0;
+      Et.value = !0;
       try {
-        const h = oe(), u = { ...b.value.traits || {} };
-        if (u.gender = b.value.gender || ie.value.gender || null, u.character = b.value.character?.key || null, u.relationship = b.value.relationship?.key || null, u.expression = b.value.character?.expression || b.value.expression || null, delete u.axes, !await xe("persona_apply", {
-          text: h.text,
+        const d = Ei(), u = { ...w.value.traits || {} };
+        if (u.gender = w.value.gender || X.value.gender || null, u.character = w.value.character?.key || null, u.relationship = w.value.relationship?.key || null, u.expression = w.value.character?.expression || w.value.expression || null, delete u.axes, !await ee("persona_apply", {
+          text: d.text,
           traits: u,
-          attachment: b.value.attachment || {},
-          tsundere: b.value.tsundere || {},
+          attachment: w.value.attachment || {},
+          tsundere: w.value.tsundere || {},
           personadyn: {
-            ...b.value.personadyn || {},
-            gender: b.value.personadynGender || w.cog_personadyn_gender || re("life.companion.pdGender.unspecified")
+            ...w.value.personadyn || {},
+            gender: w.value.personadynGender || W(_.cog_personadyn_gender) || O("life.companion.pdGender.unspecified")
           }
         })) return;
-        const O = Qi();
-        if (O?.setPersona)
-          O.setPersona({ ...ie.value }), O.saveConfig?.();
+        const B = Qn();
+        if (B?.setPersona)
+          B.setPersona({ ...X.value }), B.saveConfig?.();
         else {
-          const z = JSON.parse(localStorage.getItem("0kay_config") || "{}");
-          z.persona = { ...z.persona || {}, ...ie.value }, localStorage.setItem("0kay_config", JSON.stringify(z));
+          const C = JSON.parse(localStorage.getItem("0kay_config") || "{}");
+          C.persona = { ...C.persona || {}, ...X.value }, localStorage.setItem("0kay_config", JSON.stringify(C));
         }
-        B(a("life.companion.flash.personaSaved"));
+        Te(a("life.companion.flash.personaSaved"));
       } finally {
-        Mi.value = !1;
+        Et.value = !1;
       }
     }
-    Fn(Cn), ui(Ae, (h) => {
-      h === "persona" && Cn();
-    }), Fn(Xe);
-    const zi = G("");
-    let en;
-    async function Ei() {
+    ci(Mi), pn(ce, (d) => {
+      d === "persona" && Mi();
+    }), ci(Ze), ci(() => {
+      window.addEventListener("beforeunload", zn), Be && (ct = Be.beforeEach(() => jt.value ? !!window.confirm(a("life.companion.unsavedLeave")) : !0));
+    }), po(() => {
+      window.removeEventListener("beforeunload", zn), ct && (ct(), ct = null);
+    });
+    const ti = F("");
+    let On;
+    async function _t() {
       if (document.visibilityState === "visible")
         try {
-          ae.value = await Vo("/api/life/companion"), zi.value = (/* @__PURE__ */ new Date()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          N.value = await $o("/api/life/companion"), ti.value = (/* @__PURE__ */ new Date()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
         } catch {
         }
     }
-    function zn() {
-      document.visibilityState === "visible" && Ei();
+    function ni() {
+      document.visibilityState === "visible" && _t();
     }
-    return Fn(() => {
-      en = setInterval(() => {
-        Ei();
-      }, 12e3), document.addEventListener("visibilitychange", zn);
-    }), Zo(() => {
-      en && clearInterval(en), document.removeEventListener("visibilitychange", zn);
-    }), Ba("life-plugin-kit", Go("pcp")), (h, u) => (_(), v(
+    return ci(() => {
+      On = setInterval(() => {
+        _t();
+      }, 12e3), document.addEventListener("visibilitychange", ni);
+    }), po(() => {
+      On && clearInterval(On), document.removeEventListener("visibilitychange", ni);
+    }), Ba("life-plugin-kit", qo("pcp")), (d, u) => (v(), g(
       "main",
       {
         class: "pcp",
         ref_key: "pageEl",
-        ref: we
+        ref: de
       },
       [
-        n("header", Rs, [
-          n("div", Vs, [
-            n("div", Ds, [
-              u[100] || (u[100] = n(
+        i("header", Rs, [
+          i("div", Ds, [
+            i("div", Vs, [
+              u[100] || (u[100] = i(
                 "p",
                 { class: "eyebrow" },
                 [
-                  n("b", null, "◉"),
-                  N(" L.I.F.E / COGNITION")
+                  i("b", null, "◉"),
+                  z(" L.I.F.E / COGNITION")
                 ],
                 -1
                 /* CACHED */
               )),
-              n(
-                "h1",
-                null,
-                r(a("life.companion.title")),
-                1
-                /* TEXT */
-              ),
-              n(
+              i("h1", null, [
+                z(
+                  r(a("life.companion.title")) + " ",
+                  1
+                  /* TEXT */
+                ),
+                jt.value ? (v(), g(
+                  "span",
+                  $s,
+                  r(a("life.companion.unsavedChanges")),
+                  1
+                  /* TEXT */
+                )) : E("v-if", !0)
+              ]),
+              i(
                 "p",
-                $s,
+                Us,
                 r(a("life.companion.subtitle")),
                 1
                 /* TEXT */
               )
             ]),
-            n("div", Us, [
-              n("button", {
-                class: Y(["btn", { tonic: !ye.value?.alive }]),
-                disabled: vt.value || J.value,
-                onClick: u[0] || (u[0] = (l) => ye.value?.alive ? mn() : fn())
-              }, r(vt.value ? $i() : ye.value?.alive ? a("life.companion.life.pause") : a("life.companion.life.start")), 11, Fs),
-              n("button", {
-                class: "fab",
-                disabled: Lt.value || J.value,
-                onClick: H
+            i("div", Hs, [
+              i("button", {
+                class: D(["btn", { tonic: !ye.value?.alive }]),
+                disabled: pt.value || Le.value,
+                onClick: u[0] || (u[0] = (l) => ye.value?.alive ? Fn() : Hn())
+              }, r(pt.value ? yn() : ye.value?.alive ? a("life.companion.life.pause") : a("life.companion.life.start")), 11, Fs),
+              i("button", {
+                class: D(["fab", { dirty: jt.value }]),
+                disabled: ue.value || Le.value,
+                onClick: Me
               }, [
-                u[101] || (u[101] = n(
+                u[101] || (u[101] = i(
                   "span",
                   { class: "fab-ic" },
                   "✦",
                   -1
                   /* CACHED */
                 )),
-                N(
-                  r(Lt.value ? a("life.companion.saving") : a("life.companion.saveSettings")),
+                z(
+                  r(ue.value ? a("life.companion.saving") : a("life.companion.saveSettings")),
                   1
                   /* TEXT */
                 )
-              ], 8, Hs),
-              n("button", {
+              ], 10, Ws),
+              i("button", {
+                class: "btn",
+                disabled: ue.value || Le.value,
+                onClick: dn
+              }, r(a("life.companion.resetDefaults")), 9, Gs),
+              i("button", {
                 class: "btn tonic",
-                disabled: J.value,
-                onClick: Xe
-              }, r(J.value ? a("life.companion.refreshing") : a("life.companion.refresh")), 9, Ws)
+                disabled: Le.value,
+                onClick: Ze
+              }, r(Le.value ? a("life.companion.refreshing") : a("life.companion.refresh")), 9, js)
             ])
           ]),
-          n("div", Gs, [
-            n(
+          i("div", qs, [
+            i(
               "span",
               {
-                class: Y(["pill", { bad: M.value && !M.value.enabled }])
+                class: D(["pill", { bad: m.value && !m.value.enabled }])
               },
-              r(a("life.companion.cognitionCore")) + " " + r(M.value?.available === !1 ? a("life.companion.status.unavailable") : M.value?.enabled ? a("life.companion.status.running") : a("life.companion.status.stopped")),
+              r(a("life.companion.cognitionCore")) + " " + r(m.value?.available === !1 ? a("life.companion.status.unavailable") : m.value?.enabled ? a("life.companion.status.running") : a("life.companion.status.stopped")),
               3
               /* TEXT, CLASS */
             ),
-            n(
-              "span",
-              js,
-              r(a("life.companion.state.decidedTurns", { n: V.value?.turns ?? 0 })),
-              1
-              /* TEXT */
-            ),
-            n(
-              "span",
-              qs,
-              r(a("life.companion.state.engrams", { n: V.value?.engrams ?? 0 })),
-              1
-              /* TEXT */
-            ),
-            n(
+            i(
               "span",
               Ks,
-              r(a("life.companion.state.lexicon", { n: T.value?.lexicon_size ?? 0 })),
+              r(a("life.companion.state.decidedTurns", { n: b.value?.turns ?? 0 })),
+              1
+              /* TEXT */
+            ),
+            i(
+              "span",
+              Ys,
+              r(a("life.companion.state.engrams", { n: b.value?.engrams ?? 0 })),
+              1
+              /* TEXT */
+            ),
+            i(
+              "span",
+              Js,
+              r(a("life.companion.state.lexicon", { n: ne.value?.lexicon_size ?? 0 })),
               1
               /* TEXT */
             )
           ])
         ]),
-        Fe.value ? (_(), v(
+        K.value ? (v(), g(
           "p",
-          Ys,
-          r(Fe.value),
-          1
-          /* TEXT */
-        )) : E("v-if", !0),
-        K.value ? (_(), v(
-          "p",
-          Js,
+          Xs,
           r(K.value),
           1
           /* TEXT */
         )) : E("v-if", !0),
-        n("nav", {
+        Xe.value ? (v(), g(
+          "p",
+          Qs,
+          r(Xe.value),
+          1
+          /* TEXT */
+        )) : E("v-if", !0),
+        i("nav", {
           class: "tabs",
           "aria-label": a("life.companion.view")
         }, [
-          (_(), v(
+          (v(), g(
             Q,
             null,
-            Te(de, (l) => n("button", {
+            Ee(q, (l) => i("button", {
               key: l.key,
-              class: Y(["tab", { active: Ae.value === l.key }]),
-              onClick: (O) => he(l.key)
+              class: D(["tab", { active: ce.value === l.key }]),
+              onClick: (B) => Yt(l.key)
             }, [
-              n(
+              i(
                 "i",
                 null,
                 r(l.i),
                 1
                 /* TEXT */
               ),
-              n(
+              i(
                 "span",
-                er,
+                nr,
                 r(l.icon),
                 1
                 /* TEXT */
               ),
-              N(
+              z(
                 r(a(l.labelKey)),
                 1
                 /* TEXT */
               )
-            ], 10, Qs)),
+            ], 10, tr)),
             64
             /* STABLE_FRAGMENT */
           ))
-        ], 8, Xs),
-        P(n(
+        ], 8, er),
+        P(i(
           "section",
-          tr,
+          ir,
           [
-            n("div", ir, [
-              n("div", null, [
-                n(
+            i("div", or, [
+              i("div", null, [
+                i(
                   "h2",
                   null,
                   r(a("life.companion.persona.title")),
                   1
                   /* TEXT */
                 ),
-                n(
+                i(
                   "p",
-                  nr,
+                  ar,
                   r(a("life.companion.persona.desc")),
                   1
                   /* TEXT */
                 )
               ]),
-              n("div", or, [
-                n("button", {
+              i("div", sr, [
+                i("button", {
                   class: "btn tonic sm",
-                  disabled: Ht.value || J.value,
-                  onClick: Qe
-                }, r(Ht.value ? a("life.companion.persona.analyzing") : a("life.companion.persona.analyze")), 9, ar),
-                n("button", {
+                  disabled: En.value || Le.value,
+                  onClick: oo
+                }, r(En.value ? a("life.companion.persona.analyzing") : a("life.companion.persona.analyze")), 9, rr),
+                i("button", {
                   class: "btn filled sm",
-                  disabled: Mi.value || !b.value,
-                  onClick: ri
-                }, r(a("life.companion.persona.save")), 9, sr)
+                  disabled: Et.value || !w.value,
+                  onClick: dt
+                }, r(a("life.companion.persona.save")), 9, lr)
               ])
             ]),
-            n("article", rr, [
-              n("div", lr, [
-                n("label", null, [
-                  n(
+            i("article", ur, [
+              i("div", cr, [
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.name")),
                     1
                     /* TEXT */
                   ),
-                  P(n(
+                  P(i(
                     "input",
                     {
-                      "onUpdate:modelValue": u[1] || (u[1] = (l) => ie.value.name = l),
+                      "onUpdate:modelValue": u[1] || (u[1] = (l) => X.value.name = l),
                       class: "field"
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [C, ie.value.name]
+                    [M, X.value.name]
                   ])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.gender")),
                     1
                     /* TEXT */
                   ),
-                  Oe(Ve(De), {
-                    modelValue: ie.value.gender,
-                    "onUpdate:modelValue": u[2] || (u[2] = (l) => ie.value.gender = l),
-                    options: bt.value,
+                  Oe($e(Ue), {
+                    modelValue: X.value.gender,
+                    "onUpdate:modelValue": u[2] || (u[2] = (l) => X.value.gender = l),
+                    options: te.value,
                     "aria-label": a("life.companion.persona.gender")
                   }, null, 8, ["modelValue", "options", "aria-label"])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.avatarUrl")),
                     1
                     /* TEXT */
                   ),
-                  P(n(
+                  P(i(
                     "input",
                     {
-                      "onUpdate:modelValue": u[3] || (u[3] = (l) => ie.value.avatar = l),
+                      "onUpdate:modelValue": u[3] || (u[3] = (l) => X.value.avatar = l),
                       class: "field"
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [C, ie.value.avatar]
+                    [M, X.value.avatar]
                   ])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.birthday")),
                     1
                     /* TEXT */
                   ),
-                  P(n(
+                  P(i(
                     "input",
                     {
-                      "onUpdate:modelValue": u[4] || (u[4] = (l) => ie.value.birthDate = l),
+                      "onUpdate:modelValue": u[4] || (u[4] = (l) => X.value.birthDate = l),
                       type: "date",
                       class: "field"
                     },
@@ -8726,22 +8777,22 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     512
                     /* NEED_PATCH */
                   ), [
-                    [C, ie.value.birthDate]
+                    [M, X.value.birthDate]
                   ])
                 ])
               ]),
-              n("label", ur, [
-                n(
+              i("label", dr, [
+                i(
                   "span",
                   null,
                   r(a("life.companion.persona.description")),
                   1
                   /* TEXT */
                 ),
-                P(n(
+                P(i(
                   "textarea",
                   {
-                    "onUpdate:modelValue": u[5] || (u[5] = (l) => ie.value.description = l),
+                    "onUpdate:modelValue": u[5] || (u[5] = (l) => X.value.description = l),
                     rows: "3",
                     class: "field"
                   },
@@ -8749,21 +8800,21 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   512
                   /* NEED_PATCH */
                 ), [
-                  [C, ie.value.description]
+                  [M, X.value.description]
                 ])
               ]),
-              n("label", cr, [
-                n(
+              i("label", hr, [
+                i(
                   "span",
                   null,
                   r(a("life.companion.persona.personality")),
                   1
                   /* TEXT */
                 ),
-                P(n(
+                P(i(
                   "textarea",
                   {
-                    "onUpdate:modelValue": u[6] || (u[6] = (l) => ie.value.personality = l),
+                    "onUpdate:modelValue": u[6] || (u[6] = (l) => X.value.personality = l),
                     rows: "3",
                     class: "field"
                   },
@@ -8771,21 +8822,21 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   512
                   /* NEED_PATCH */
                 ), [
-                  [C, ie.value.personality]
+                  [M, X.value.personality]
                 ])
               ]),
-              n("label", dr, [
-                n(
+              i("label", pr, [
+                i(
                   "span",
                   null,
                   r(a("life.companion.persona.greeting")),
                   1
                   /* TEXT */
                 ),
-                P(n(
+                P(i(
                   "textarea",
                   {
-                    "onUpdate:modelValue": u[7] || (u[7] = (l) => ie.value.greeting = l),
+                    "onUpdate:modelValue": u[7] || (u[7] = (l) => X.value.greeting = l),
                     rows: "2",
                     class: "field"
                   },
@@ -8793,21 +8844,21 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   512
                   /* NEED_PATCH */
                 ), [
-                  [C, ie.value.greeting]
+                  [M, X.value.greeting]
                 ])
               ]),
-              n("label", hr, [
-                n(
+              i("label", fr, [
+                i(
                   "span",
                   null,
                   r(a("life.companion.persona.customPrompt")),
                   1
                   /* TEXT */
                 ),
-                P(n(
+                P(i(
                   "textarea",
                   {
-                    "onUpdate:modelValue": u[8] || (u[8] = (l) => ie.value.customPrompt = l),
+                    "onUpdate:modelValue": u[8] || (u[8] = (l) => X.value.customPrompt = l),
                     rows: "5",
                     class: "field"
                   },
@@ -8815,99 +8866,99 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   512
                   /* NEED_PATCH */
                 ), [
-                  [C, ie.value.customPrompt]
+                  [M, X.value.customPrompt]
                 ])
               ]),
-              n(
+              i(
                 "p",
-                pr,
+                mr,
                 r(a("life.companion.persona.hint")),
                 1
                 /* TEXT */
               )
             ]),
-            b.value ? (_(), v("article", fr, [
-              n("h3", null, [
-                N(
+            w.value ? (v(), g("article", _r, [
+              i("h3", null, [
+                z(
                   r(a("life.companion.persona.analysisResult")) + " ",
                   1
                   /* TEXT */
                 ),
-                n(
+                i(
                   "span",
-                  mr,
-                  r(b.value.source === "llm" ? a("life.companion.persona.sourceLlm") : a("life.companion.persona.sourceLocal")),
+                  vr,
+                  r(w.value.source === "llm" ? a("life.companion.persona.sourceLlm") : a("life.companion.persona.sourceLocal")),
                   1
                   /* TEXT */
                 )
               ]),
-              n("div", _r, [
-                n("label", null, [
-                  n(
+              i("div", gr, [
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.gender")),
                     1
                     /* TEXT */
                   ),
-                  Oe(Ve(De), {
-                    modelValue: b.value.gender,
-                    "onUpdate:modelValue": u[9] || (u[9] = (l) => b.value.gender = l),
-                    options: bt.value,
+                  Oe($e(Ue), {
+                    modelValue: w.value.gender,
+                    "onUpdate:modelValue": u[9] || (u[9] = (l) => w.value.gender = l),
+                    options: te.value,
                     "aria-label": a("life.companion.persona.gender")
                   }, null, 8, ["modelValue", "options", "aria-label"])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.characterArchetype")),
                     1
                     /* TEXT */
                   ),
-                  Oe(Ve(De), {
-                    modelValue: b.value.character.key,
-                    "onUpdate:modelValue": u[10] || (u[10] = (l) => b.value.character.key = l),
-                    options: Jn.value,
+                  Oe($e(Ue), {
+                    modelValue: w.value.character.key,
+                    "onUpdate:modelValue": u[10] || (u[10] = (l) => w.value.character.key = l),
+                    options: zi.value,
                     "aria-label": a("life.companion.persona.characterArchetype")
                   }, null, 8, ["modelValue", "options", "aria-label"])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.relationshipType")),
                     1
                     /* TEXT */
                   ),
-                  Oe(Ve(De), {
-                    modelValue: b.value.relationship.key,
-                    "onUpdate:modelValue": u[11] || (u[11] = (l) => b.value.relationship.key = l),
-                    options: Mn.value,
+                  Oe($e(Ue), {
+                    modelValue: w.value.relationship.key,
+                    "onUpdate:modelValue": u[11] || (u[11] = (l) => w.value.relationship.key = l),
+                    options: io.value,
                     "aria-label": a("life.companion.persona.relationshipTypeAria")
                   }, null, 8, ["modelValue", "options", "aria-label"])
                 ])
               ]),
-              n("p", vr, [
-                N(
-                  r(a("life.companion.persona.genderLine", { gender: Ze(b.value.gender) })) + " ",
+              i("p", yr, [
+                z(
+                  r(a("life.companion.persona.genderLine", { gender: no(w.value.gender) })) + " ",
                   1
                   /* TEXT */
                 ),
-                b.value.relationship?.label ? (_(), v(
+                w.value.relationship?.label ? (v(), g(
                   Q,
                   { key: 0 },
                   [
-                    N(
-                      r(a("life.companion.persona.relationshipLine", { label: b.value.relationship.label })) + " ",
+                    z(
+                      r(a("life.companion.persona.relationshipLine", { label: w.value.relationship.label })) + " ",
                       1
                       /* TEXT */
                     ),
-                    b.value.relationship.pathological ? (_(), v(
+                    w.value.relationship.pathological ? (v(), g(
                       Q,
                       { key: 0 },
                       [
-                        N(
+                        z(
                           r(a("life.companion.persona.pathologicalNote")),
                           1
                           /* TEXT */
@@ -8915,11 +8966,11 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       ],
                       64
                       /* STABLE_FRAGMENT */
-                    )) : (_(), v(
+                    )) : (v(), g(
                       Q,
                       { key: 1 },
                       [
-                        N(
+                        z(
                           r(a("life.companion.persona.healthyNote")),
                           1
                           /* TEXT */
@@ -8933,33 +8984,33 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   /* STABLE_FRAGMENT */
                 )) : E("v-if", !0)
               ]),
-              b.value.character?.expression || b.value.expression ? (_(), v(
+              w.value.character?.expression || w.value.expression ? (v(), g(
                 "p",
-                gr,
-                r(a("life.companion.persona.speakingStyle", { style: b.value.character?.expression || b.value.expression })),
+                br,
+                r(a("life.companion.persona.speakingStyle", { style: w.value.character?.expression || w.value.expression })),
                 1
                 /* TEXT */
               )) : E("v-if", !0),
-              n(
+              i(
                 "h4",
                 null,
                 r(a("life.companion.persona.emotionSomatic")),
                 1
                 /* TEXT */
               ),
-              n("div", yr, [
-                n("label", null, [
-                  n(
+              i("div", wr, [
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.threatBaseline")),
                     1
                     /* TEXT */
                   ),
-                  P(n(
+                  P(i(
                     "input",
                     {
-                      "onUpdate:modelValue": u[12] || (u[12] = (l) => b.value.traits.threat_baseline = l),
+                      "onUpdate:modelValue": u[12] || (u[12] = (l) => w.value.traits.threat_baseline = l),
                       type: "number",
                       step: "0.05",
                       min: "0",
@@ -8971,25 +9022,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      C,
-                      b.value.traits.threat_baseline,
+                      M,
+                      w.value.traits.threat_baseline,
                       void 0,
                       { number: !0 }
                     ]
                   ])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.rewardBaseline")),
                     1
                     /* TEXT */
                   ),
-                  P(n(
+                  P(i(
                     "input",
                     {
-                      "onUpdate:modelValue": u[13] || (u[13] = (l) => b.value.traits.reward_baseline = l),
+                      "onUpdate:modelValue": u[13] || (u[13] = (l) => w.value.traits.reward_baseline = l),
                       type: "number",
                       step: "0.1",
                       min: "0",
@@ -9001,25 +9052,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      C,
-                      b.value.traits.reward_baseline,
+                      M,
+                      w.value.traits.reward_baseline,
                       void 0,
                       { number: !0 }
                     ]
                   ])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.catastrophizing")),
                     1
                     /* TEXT */
                   ),
-                  P(n(
+                  P(i(
                     "input",
                     {
-                      "onUpdate:modelValue": u[14] || (u[14] = (l) => b.value.traits.catastrophizing = l),
+                      "onUpdate:modelValue": u[14] || (u[14] = (l) => w.value.traits.catastrophizing = l),
                       type: "number",
                       step: "0.05",
                       min: "0",
@@ -9031,40 +9082,40 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      C,
-                      b.value.traits.catastrophizing,
+                      M,
+                      w.value.traits.catastrophizing,
                       void 0,
                       { number: !0 }
                     ]
                   ])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.erqProfile")),
                     1
                     /* TEXT */
                   ),
-                  Oe(Ve(De), {
-                    modelValue: b.value.traits.erq_profile,
-                    "onUpdate:modelValue": u[15] || (u[15] = (l) => b.value.traits.erq_profile = l),
-                    options: $e.value,
+                  Oe($e(Ue), {
+                    modelValue: w.value.traits.erq_profile,
+                    "onUpdate:modelValue": u[15] || (u[15] = (l) => w.value.traits.erq_profile = l),
+                    options: Se.value,
                     "aria-label": a("life.companion.persona.erqProfile")
                   }, null, 8, ["modelValue", "options", "aria-label"])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.sleepHour")),
                     1
                     /* TEXT */
                   ),
-                  P(n(
+                  P(i(
                     "input",
                     {
-                      "onUpdate:modelValue": u[16] || (u[16] = (l) => b.value.traits.sleep_hour = l),
+                      "onUpdate:modelValue": u[16] || (u[16] = (l) => w.value.traits.sleep_hour = l),
                       type: "number",
                       min: "0",
                       max: "23",
@@ -9075,34 +9126,34 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      C,
-                      b.value.traits.sleep_hour,
+                      M,
+                      w.value.traits.sleep_hour,
                       void 0,
                       { number: !0 }
                     ]
                   ])
                 ])
               ]),
-              n(
+              i(
                 "h4",
                 null,
                 r(a("life.companion.persona.personalityDims")),
                 1
                 /* TEXT */
               ),
-              n("div", br, [
-                n("label", null, [
-                  n(
+              i("div", xr, [
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.extraversion")),
                     1
                     /* TEXT */
                   ),
-                  P(n(
+                  P(i(
                     "input",
                     {
-                      "onUpdate:modelValue": u[17] || (u[17] = (l) => b.value.traits.extraversion = l),
+                      "onUpdate:modelValue": u[17] || (u[17] = (l) => w.value.traits.extraversion = l),
                       type: "number",
                       step: "0.05",
                       min: "0",
@@ -9114,25 +9165,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      C,
-                      b.value.traits.extraversion,
+                      M,
+                      w.value.traits.extraversion,
                       void 0,
                       { number: !0 }
                     ]
                   ])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.agreeableness")),
                     1
                     /* TEXT */
                   ),
-                  P(n(
+                  P(i(
                     "input",
                     {
-                      "onUpdate:modelValue": u[18] || (u[18] = (l) => b.value.traits.agreeableness = l),
+                      "onUpdate:modelValue": u[18] || (u[18] = (l) => w.value.traits.agreeableness = l),
                       type: "number",
                       step: "0.05",
                       min: "0",
@@ -9144,25 +9195,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      C,
-                      b.value.traits.agreeableness,
+                      M,
+                      w.value.traits.agreeableness,
                       void 0,
                       { number: !0 }
                     ]
                   ])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.conscientiousness")),
                     1
                     /* TEXT */
                   ),
-                  P(n(
+                  P(i(
                     "input",
                     {
-                      "onUpdate:modelValue": u[19] || (u[19] = (l) => b.value.traits.conscientiousness = l),
+                      "onUpdate:modelValue": u[19] || (u[19] = (l) => w.value.traits.conscientiousness = l),
                       type: "number",
                       step: "0.05",
                       min: "0",
@@ -9174,25 +9225,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      C,
-                      b.value.traits.conscientiousness,
+                      M,
+                      w.value.traits.conscientiousness,
                       void 0,
                       { number: !0 }
                     ]
                   ])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.openness")),
                     1
                     /* TEXT */
                   ),
-                  P(n(
+                  P(i(
                     "input",
                     {
-                      "onUpdate:modelValue": u[20] || (u[20] = (l) => b.value.traits.openness = l),
+                      "onUpdate:modelValue": u[20] || (u[20] = (l) => w.value.traits.openness = l),
                       type: "number",
                       step: "0.05",
                       min: "0",
@@ -9204,25 +9255,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      C,
-                      b.value.traits.openness,
+                      M,
+                      w.value.traits.openness,
                       void 0,
                       { number: !0 }
                     ]
                   ])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.attachAnxiety")),
                     1
                     /* TEXT */
                   ),
-                  P(n(
+                  P(i(
                     "input",
                     {
-                      "onUpdate:modelValue": u[21] || (u[21] = (l) => b.value.traits.attach_anxiety = l),
+                      "onUpdate:modelValue": u[21] || (u[21] = (l) => w.value.traits.attach_anxiety = l),
                       type: "number",
                       step: "0.05",
                       min: "0",
@@ -9234,25 +9285,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      C,
-                      b.value.traits.attach_anxiety,
+                      M,
+                      w.value.traits.attach_anxiety,
                       void 0,
                       { number: !0 }
                     ]
                   ])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.persona.attachAvoidance")),
                     1
                     /* TEXT */
                   ),
-                  P(n(
+                  P(i(
                     "input",
                     {
-                      "onUpdate:modelValue": u[22] || (u[22] = (l) => b.value.traits.attach_avoidance = l),
+                      "onUpdate:modelValue": u[22] || (u[22] = (l) => w.value.traits.attach_avoidance = l),
                       type: "number",
                       step: "0.05",
                       min: "0",
@@ -9264,35 +9315,35 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* NEED_PATCH */
                   ), [
                     [
-                      C,
-                      b.value.traits.attach_avoidance,
+                      M,
+                      w.value.traits.attach_avoidance,
                       void 0,
                       { number: !0 }
                     ]
                   ])
                 ])
               ]),
-              n("details", wr, [
-                n(
+              i("details", kr, [
+                i(
                   "summary",
                   null,
                   r(a("life.companion.persona.moreStyle")),
                   1
                   /* TEXT */
                 ),
-                n("div", xr, [
-                  n("label", null, [
-                    n(
+                i("div", Pr, [
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.persona.expressiveness")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[23] || (u[23] = (l) => b.value.traits.expressiveness = l),
+                        "onUpdate:modelValue": u[23] || (u[23] = (l) => w.value.traits.expressiveness = l),
                         type: "number",
                         step: "0.05",
                         min: "0",
@@ -9304,25 +9355,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        b.value.traits.expressiveness,
+                        M,
+                        w.value.traits.expressiveness,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.persona.initiative")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[24] || (u[24] = (l) => b.value.traits.initiative = l),
+                        "onUpdate:modelValue": u[24] || (u[24] = (l) => w.value.traits.initiative = l),
                         type: "number",
                         step: "0.05",
                         min: "0",
@@ -9334,25 +9385,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        b.value.traits.initiative,
+                        M,
+                        w.value.traits.initiative,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.persona.humor")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[25] || (u[25] = (l) => b.value.traits.humor = l),
+                        "onUpdate:modelValue": u[25] || (u[25] = (l) => w.value.traits.humor = l),
                         type: "number",
                         step: "0.05",
                         min: "0",
@@ -9364,25 +9415,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        b.value.traits.humor,
+                        M,
+                        w.value.traits.humor,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.persona.warmth")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[26] || (u[26] = (l) => b.value.traits.warmth = l),
+                        "onUpdate:modelValue": u[26] || (u[26] = (l) => w.value.traits.warmth = l),
                         type: "number",
                         step: "0.05",
                         min: "0",
@@ -9394,25 +9445,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        b.value.traits.warmth,
+                        M,
+                        w.value.traits.warmth,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.persona.formality")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[27] || (u[27] = (l) => b.value.traits.formality = l),
+                        "onUpdate:modelValue": u[27] || (u[27] = (l) => w.value.traits.formality = l),
                         type: "number",
                         step: "0.05",
                         min: "0",
@@ -9424,25 +9475,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        b.value.traits.formality,
+                        M,
+                        w.value.traits.formality,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.persona.assertiveness")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[28] || (u[28] = (l) => b.value.traits.assertiveness = l),
+                        "onUpdate:modelValue": u[28] || (u[28] = (l) => w.value.traits.assertiveness = l),
                         type: "number",
                         step: "0.05",
                         min: "0",
@@ -9454,8 +9505,8 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        b.value.traits.assertiveness,
+                        M,
+                        w.value.traits.assertiveness,
                         void 0,
                         { number: !0 }
                       ]
@@ -9463,44 +9514,44 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   ])
                 ])
               ]),
-              b.value.attachment.type ? (_(), v(
+              w.value.attachment.type ? (v(), g(
                 Q,
                 { key: 1 },
                 [
-                  n(
+                  i(
                     "h4",
                     null,
-                    r(a("life.companion.persona.attachmentHeading", { label: b.value.relationship.label })),
+                    r(a("life.companion.persona.attachmentHeading", { label: w.value.relationship.label })),
                     1
                     /* TEXT */
                   ),
-                  n("div", kr, [
-                    n("label", null, [
-                      n(
+                  i("div", Lr, [
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.companion.persona.attachTypeByRelationship")),
                         1
                         /* TEXT */
                       ),
-                      n("input", {
+                      i("input", {
                         class: "field",
-                        value: a("life.companion.attachmentTypeValue", { type: b.value.attachment.type, label: b.value.relationship.label || "" }),
+                        value: a("life.companion.attachmentTypeValue", { type: w.value.attachment.type, label: w.value.relationship.label || "" }),
                         disabled: ""
-                      }, null, 8, Pr)
+                      }, null, 8, Tr)
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.companion.persona.initialAnxietyX")),
                         1
                         /* TEXT */
                       ),
-                      P(n(
+                      P(i(
                         "input",
                         {
-                          "onUpdate:modelValue": u[29] || (u[29] = (l) => b.value.attachment.initial.X = l),
+                          "onUpdate:modelValue": u[29] || (u[29] = (l) => w.value.attachment.initial.X = l),
                           type: "number",
                           step: "0.05",
                           min: "0",
@@ -9512,25 +9563,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          C,
-                          b.value.attachment.initial.X,
+                          M,
+                          w.value.attachment.initial.X,
                           void 0,
                           { number: !0 }
                         ]
                       ])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.companion.persona.initialSecurityS")),
                         1
                         /* TEXT */
                       ),
-                      P(n(
+                      P(i(
                         "input",
                         {
-                          "onUpdate:modelValue": u[30] || (u[30] = (l) => b.value.attachment.initial.S = l),
+                          "onUpdate:modelValue": u[30] || (u[30] = (l) => w.value.attachment.initial.S = l),
                           type: "number",
                           step: "0.05",
                           min: "0",
@@ -9542,17 +9593,17 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          C,
-                          b.value.attachment.initial.S,
+                          M,
+                          w.value.attachment.initial.S,
                           void 0,
                           { number: !0 }
                         ]
                       ])
                     ])
                   ]),
-                  n(
+                  i(
                     "p",
-                    Lr,
+                    Sr,
                     r(a("life.companion.persona.attachmentHint")),
                     1
                     /* TEXT */
@@ -9560,51 +9611,51 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 ],
                 64
                 /* STABLE_FRAGMENT */
-              )) : (_(), v(
+              )) : (v(), g(
                 "p",
-                Tr,
+                Cr,
                 r(a("life.companion.persona.attachmentDisabled")),
                 1
                 /* TEXT */
               )),
-              b.value.tsundere && b.value.tsundere.type ? (_(), v(
+              w.value.tsundere && w.value.tsundere.type ? (v(), g(
                 Q,
                 { key: 3 },
                 [
-                  n(
+                  i(
                     "h4",
                     null,
                     r(a("life.companion.persona.tsundereHeading")),
                     1
                     /* TEXT */
                   ),
-                  n("div", Sr, [
-                    n("label", null, [
-                      n(
+                  i("div", Mr, [
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.companion.persona.tsundereType")),
                         1
                         /* TEXT */
                       ),
-                      n("input", {
+                      i("input", {
                         class: "field",
-                        value: b.value.tsundere.type,
+                        value: w.value.tsundere.type,
                         disabled: ""
-                      }, null, 8, Cr)
+                      }, null, 8, zr)
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.companion.persona.initialAffectionA")),
                         1
                         /* TEXT */
                       ),
-                      P(n(
+                      P(i(
                         "input",
                         {
-                          "onUpdate:modelValue": u[31] || (u[31] = (l) => b.value.tsundere.initial.A = l),
+                          "onUpdate:modelValue": u[31] || (u[31] = (l) => w.value.tsundere.initial.A = l),
                           type: "number",
                           step: "0.05",
                           min: "0",
@@ -9616,25 +9667,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          C,
-                          b.value.tsundere.initial.A,
+                          M,
+                          w.value.tsundere.initial.A,
                           void 0,
                           { number: !0 }
                         ]
                       ])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.companion.persona.initialTsunExpressionT")),
                         1
                         /* TEXT */
                       ),
-                      P(n(
+                      P(i(
                         "input",
                         {
-                          "onUpdate:modelValue": u[32] || (u[32] = (l) => b.value.tsundere.initial.T = l),
+                          "onUpdate:modelValue": u[32] || (u[32] = (l) => w.value.tsundere.initial.T = l),
                           type: "number",
                           step: "0.05",
                           min: "0",
@@ -9646,25 +9697,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          C,
-                          b.value.tsundere.initial.T,
+                          M,
+                          w.value.tsundere.initial.T,
                           void 0,
                           { number: !0 }
                         ]
                       ])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.companion.persona.initialYandereY")),
                         1
                         /* TEXT */
                       ),
-                      P(n(
+                      P(i(
                         "input",
                         {
-                          "onUpdate:modelValue": u[33] || (u[33] = (l) => b.value.tsundere.initial.Y = l),
+                          "onUpdate:modelValue": u[33] || (u[33] = (l) => w.value.tsundere.initial.Y = l),
                           type: "number",
                           step: "0.05",
                           min: "0",
@@ -9676,17 +9727,17 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          C,
-                          b.value.tsundere.initial.Y,
+                          M,
+                          w.value.tsundere.initial.Y,
                           void 0,
                           { number: !0 }
                         ]
                       ])
                     ])
                   ]),
-                  n(
+                  i(
                     "p",
-                    Mr,
+                    Er,
                     r(a("life.companion.persona.tsundereHint")),
                     1
                     /* TEXT */
@@ -9694,51 +9745,51 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 ],
                 64
                 /* STABLE_FRAGMENT */
-              )) : (_(), v(
+              )) : (v(), g(
                 "p",
-                zr,
+                Or,
                 r(a("life.companion.persona.tsundereDisabled")),
                 1
                 /* TEXT */
               )),
-              b.value.personadyn && b.value.personadyn.type ? (_(), v(
+              w.value.personadyn && w.value.personadyn.type ? (v(), g(
                 Q,
                 { key: 5 },
                 [
-                  n(
+                  i(
                     "h4",
                     null,
                     r(a("life.companion.persona.personadynHeading")),
                     1
                     /* TEXT */
                   ),
-                  n("div", Er, [
-                    n("label", null, [
-                      n(
+                  i("div", Ar, [
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.companion.persona.personaArchetype")),
                         1
                         /* TEXT */
                       ),
-                      n("input", {
+                      i("input", {
                         class: "field",
-                        value: b.value.personadyn.type,
+                        value: w.value.personadyn.type,
                         disabled: ""
-                      }, null, 8, Or)
+                      }, null, 8, Ir)
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.companion.persona.initialAffectionA")),
                         1
                         /* TEXT */
                       ),
-                      P(n(
+                      P(i(
                         "input",
                         {
-                          "onUpdate:modelValue": u[34] || (u[34] = (l) => b.value.personadyn.initial.A = l),
+                          "onUpdate:modelValue": u[34] || (u[34] = (l) => w.value.personadyn.initial.A = l),
                           type: "number",
                           step: "0.05",
                           min: "0",
@@ -9750,25 +9801,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          C,
-                          b.value.personadyn.initial.A,
+                          M,
+                          w.value.personadyn.initial.A,
                           void 0,
                           { number: !0 }
                         ]
                       ])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.companion.persona.initialAnxietyX")),
                         1
                         /* TEXT */
                       ),
-                      P(n(
+                      P(i(
                         "input",
                         {
-                          "onUpdate:modelValue": u[35] || (u[35] = (l) => b.value.personadyn.initial.X = l),
+                          "onUpdate:modelValue": u[35] || (u[35] = (l) => w.value.personadyn.initial.X = l),
                           type: "number",
                           step: "0.05",
                           min: "0",
@@ -9780,25 +9831,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          C,
-                          b.value.personadyn.initial.X,
+                          M,
+                          w.value.personadyn.initial.X,
                           void 0,
                           { number: !0 }
                         ]
                       ])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.companion.persona.initialPossessionO")),
                         1
                         /* TEXT */
                       ),
-                      P(n(
+                      P(i(
                         "input",
                         {
-                          "onUpdate:modelValue": u[36] || (u[36] = (l) => b.value.personadyn.initial.O = l),
+                          "onUpdate:modelValue": u[36] || (u[36] = (l) => w.value.personadyn.initial.O = l),
                           type: "number",
                           step: "0.05",
                           min: "0",
@@ -9810,25 +9861,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          C,
-                          b.value.personadyn.initial.O,
+                          M,
+                          w.value.personadyn.initial.O,
                           void 0,
                           { number: !0 }
                         ]
                       ])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.companion.persona.initialTrustTr")),
                         1
                         /* TEXT */
                       ),
-                      P(n(
+                      P(i(
                         "input",
                         {
-                          "onUpdate:modelValue": u[37] || (u[37] = (l) => b.value.personadyn.initial.Tr = l),
+                          "onUpdate:modelValue": u[37] || (u[37] = (l) => w.value.personadyn.initial.Tr = l),
                           type: "number",
                           step: "0.05",
                           min: "0",
@@ -9840,25 +9891,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          C,
-                          b.value.personadyn.initial.Tr,
+                          M,
+                          w.value.personadyn.initial.Tr,
                           void 0,
                           { number: !0 }
                         ]
                       ])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.companion.persona.initialSelfControlK")),
                         1
                         /* TEXT */
                       ),
-                      P(n(
+                      P(i(
                         "input",
                         {
-                          "onUpdate:modelValue": u[38] || (u[38] = (l) => b.value.personadyn.initial.K = l),
+                          "onUpdate:modelValue": u[38] || (u[38] = (l) => w.value.personadyn.initial.K = l),
                           type: "number",
                           step: "0.05",
                           min: "0",
@@ -9870,32 +9921,32 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                         /* NEED_PATCH */
                       ), [
                         [
-                          C,
-                          b.value.personadyn.initial.K,
+                          M,
+                          w.value.personadyn.initial.K,
                           void 0,
                           { number: !0 }
                         ]
                       ])
                     ]),
-                    n("label", null, [
-                      n(
+                    i("label", null, [
+                      i(
                         "span",
                         null,
                         r(a("life.companion.persona.genderSocialScript")),
                         1
                         /* TEXT */
                       ),
-                      Oe(Ve(De), {
-                        modelValue: b.value.personadynGender,
-                        "onUpdate:modelValue": u[39] || (u[39] = (l) => b.value.personadynGender = l),
-                        options: It.value,
+                      Oe($e(Ue), {
+                        modelValue: w.value.personadynGender,
+                        "onUpdate:modelValue": u[39] || (u[39] = (l) => w.value.personadynGender = l),
+                        options: Fe.value,
                         "aria-label": a("life.companion.persona.genderSocialScriptAria")
                       }, null, 8, ["modelValue", "options", "aria-label"])
                     ])
                   ]),
-                  n(
+                  i(
                     "p",
-                    Ar,
+                    Br,
                     r(a("life.companion.persona.personadynHint")),
                     1
                     /* TEXT */
@@ -9903,9 +9954,9 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 ],
                 64
                 /* STABLE_FRAGMENT */
-              )) : (_(), v(
+              )) : (v(), g(
                 "p",
-                Ir,
+                Zr,
                 r(a("life.companion.persona.personadynDisabled")),
                 1
                 /* TEXT */
@@ -9915,64 +9966,64 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
           512
           /* NEED_PATCH */
         ), [
-          [un, Ae.value === "persona"]
+          [ui, ce.value === "persona"]
         ]),
-        P(n(
+        P(i(
           "section",
-          Br,
+          Nr,
           [
-            n("div", Zr, [
-              n("div", null, [
-                n(
+            i("div", Rr, [
+              i("div", null, [
+                i(
                   "h2",
                   null,
                   r(a("life.companion.cognition.title")),
                   1
                   /* TEXT */
                 ),
-                n(
+                i(
                   "p",
-                  Nr,
+                  Dr,
                   r(a("life.companion.cognition.desc")),
                   1
                   /* TEXT */
                 )
               ]),
-              n("div", Rr, [
-                n("button", {
+              i("div", Vr, [
+                i("button", {
                   class: "btn filled sm",
-                  disabled: Lt.value,
-                  onClick: H
-                }, r(Lt.value ? a("life.companion.saving") : a("life.companion.saveSettings")), 9, Vr)
+                  disabled: ue.value,
+                  onClick: Me
+                }, r(ue.value ? a("life.companion.saving") : a("life.companion.saveSettings")), 9, $r)
               ])
             ]),
-            n("article", Dr, [
-              n("h3", null, [
-                N(
+            i("article", Ur, [
+              i("h3", null, [
+                z(
                   r(a("life.companion.life.title")) + " ",
                   1
                   /* TEXT */
                 ),
-                n(
+                i(
                   "span",
                   {
-                    class: Y(["count-pill", { ok: ye.value?.alive }])
+                    class: D(["count-pill", { ok: ye.value?.alive }])
                   },
                   r(ye.value?.alive ? a("life.companion.life.alive") : a("life.companion.life.notStarted")),
                   3
                   /* TEXT, CLASS */
                 )
               ]),
-              n("div", $r, [
-                n("div", Ur, [
-                  n(
+              i("div", Hr, [
+                i("div", Fr, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.life.status")),
                     1
                     /* TEXT */
                   ),
-                  n(
+                  i(
                     "strong",
                     null,
                     r(ye.value?.alive ? a("life.companion.life.alive") : a("life.companion.life.notStarted")),
@@ -9980,31 +10031,31 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("div", Fr, [
-                  n(
+                i("div", Wr, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.life.livedFor")),
                     1
                     /* TEXT */
                   ),
-                  n(
+                  i(
                     "strong",
                     null,
-                    r(pn()),
+                    r(ji()),
                     1
                     /* TEXT */
                   )
                 ]),
-                n("div", Hr, [
-                  n(
+                i("div", Gr, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.life.ticks")),
                     1
                     /* TEXT */
                   ),
-                  n(
+                  i(
                     "strong",
                     null,
                     r(ye.value?.ticks ?? 0),
@@ -10012,15 +10063,15 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("div", Wr, [
-                  n(
+                i("div", jr, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.life.residentThinking")),
                     1
                     /* TEXT */
                   ),
-                  n(
+                  i(
                     "strong",
                     null,
                     r(ye.value?.resident_running ? a("life.companion.status.running") : a("life.companion.status.stopped")),
@@ -10028,15 +10079,15 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("div", Gr, [
-                  n(
+                i("div", qr, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.life.proactive")),
                     1
                     /* TEXT */
                   ),
-                  n(
+                  i(
                     "strong",
                     null,
                     r(ye.value?.proactive_enabled ? a("life.companion.on") : a("life.companion.off")),
@@ -10044,15 +10095,15 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("div", jr, [
-                  n(
+                i("div", Kr, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.life.lastThought")),
                     1
                     /* TEXT */
                   ),
-                  n(
+                  i(
                     "strong",
                     null,
                     r((ye.value?.last_tick || "").slice(0, 16).replace("T", " ") || "—"),
@@ -10061,42 +10112,42 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   )
                 ])
               ]),
-              ye.value?.last_thought ? (_(), v(
+              ye.value?.last_thought ? (v(), g(
                 "p",
-                qr,
+                Yr,
                 r(a("life.companion.life.currentThought", { text: ye.value.last_thought })),
                 1
                 /* TEXT */
               )) : E("v-if", !0),
-              ye.value?.focus ? (_(), v(
+              ye.value?.focus ? (v(), g(
                 "p",
-                Kr,
+                Jr,
                 r(a("life.companion.life.focus", { text: ye.value.focus })),
                 1
                 /* TEXT */
               )) : E("v-if", !0),
-              ye.value?.active_goal ? (_(), v(
+              ye.value?.active_goal ? (v(), g(
                 "p",
-                Yr,
+                Xr,
                 r(a("life.companion.life.goal", { text: ye.value.active_goal })),
                 1
                 /* TEXT */
               )) : E("v-if", !0),
-              n("div", Jr, [
-                n("label", Xr, [
-                  P(n(
+              i("div", Qr, [
+                i("label", el, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[40] || (u[40] = (l) => Jt.value = l)
+                      "onUpdate:modelValue": u[40] || (u[40] = (l) => Un.value = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, Jt.value]
+                    [me, Un.value]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.life.greetOnStart")),
@@ -10104,99 +10155,99 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("button", {
-                  class: Y(["btn sm", { filled: !ye.value?.alive }]),
-                  disabled: vt.value || J.value,
-                  onClick: u[41] || (u[41] = (l) => ye.value?.alive ? mn() : fn())
-                }, r(vt.value ? $i() : ye.value?.alive ? a("life.companion.life.pause") : a("life.companion.life.start")), 11, Qr)
+                i("button", {
+                  class: D(["btn sm", { filled: !ye.value?.alive }]),
+                  disabled: pt.value || Le.value,
+                  onClick: u[41] || (u[41] = (l) => ye.value?.alive ? Fn() : Hn())
+                }, r(pt.value ? yn() : ye.value?.alive ? a("life.companion.life.pause") : a("life.companion.life.start")), 11, tl)
               ]),
-              n(
+              i(
                 "p",
-                el,
+                nl,
                 r(a("life.companion.life.hint")),
                 1
                 /* TEXT */
               )
             ]),
-            n("article", tl, [
-              n("h3", null, [
-                N(
+            i("article", il, [
+              i("h3", null, [
+                z(
                   r(a("life.companion.realtime.title")) + " ",
                   1
                   /* TEXT */
                 ),
-                n(
+                i(
                   "span",
                   {
-                    class: Y(["count-pill", { ok: M.value?.enabled }])
+                    class: D(["count-pill", { ok: m.value?.enabled }])
                   },
-                  r(M.value?.enabled ? a("life.companion.status.running") : a("life.companion.status.stopped")),
+                  r(m.value?.enabled ? a("life.companion.status.running") : a("life.companion.status.stopped")),
                   3
                   /* TEXT, CLASS */
                 ),
-                zi.value ? (_(), v(
+                ti.value ? (v(), g(
                   "span",
-                  il,
-                  r(a("life.companion.realtime.updatedAt", { time: zi.value })),
+                  ol,
+                  r(a("life.companion.realtime.updatedAt", { time: ti.value })),
                   1
                   /* TEXT */
                 )) : E("v-if", !0)
               ]),
-              M.value ? (_(), v(
+              m.value ? (v(), g(
                 Q,
                 { key: 1 },
                 [
-                  n(
+                  i(
                     "div",
-                    ol,
+                    sl,
                     r(a("life.companion.realtime.atAGlance")),
                     1
                     /* TEXT */
                   ),
-                  n(
+                  i(
                     "p",
-                    al,
+                    rl,
                     r(a("life.companion.realtime.atAGlanceHint")),
                     1
                     /* TEXT */
                   ),
-                  n("div", sl, [
-                    fi.value ? (_(), v("div", {
+                  i("div", ll, [
+                    tn.value ? (v(), g("div", {
                       key: 0,
                       class: "mood-plot-wrap",
                       role: "img",
-                      "aria-label": a(wn.value)
+                      "aria-label": a(gi.value)
                     }, [
-                      n(
+                      i(
                         "span",
-                        ll,
+                        cl,
                         r(a("life.companion.axis.arousalHigh")),
                         1
                         /* TEXT */
                       ),
-                      n(
+                      i(
                         "span",
-                        ul,
+                        dl,
                         r(a("life.companion.axis.arousalLow")),
                         1
                         /* TEXT */
                       ),
-                      n(
+                      i(
                         "span",
-                        cl,
+                        hl,
                         r(a("life.companion.axis.valenceLow")),
                         1
                         /* TEXT */
                       ),
-                      n(
+                      i(
                         "span",
-                        dl,
+                        pl,
                         r(a("life.companion.axis.valenceHigh")),
                         1
                         /* TEXT */
                       ),
-                      (_(), v("svg", hl, [
-                        u[102] || (u[102] = n(
+                      (v(), g("svg", fl, [
+                        u[102] || (u[102] = i(
                           "rect",
                           {
                             class: "plot-frame",
@@ -10210,7 +10261,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                           -1
                           /* CACHED */
                         )),
-                        u[103] || (u[103] = n(
+                        u[103] || (u[103] = i(
                           "line",
                           {
                             class: "plot-grid",
@@ -10223,7 +10274,7 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                           -1
                           /* CACHED */
                         )),
-                        u[104] || (u[104] = n(
+                        u[104] || (u[104] = i(
                           "line",
                           {
                             class: "plot-grid",
@@ -10236,86 +10287,86 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                           -1
                           /* CACHED */
                         )),
-                        n("circle", {
+                        i("circle", {
                           class: "plot-halo",
-                          cx: ti.value.x,
-                          cy: ti.value.y,
+                          cx: kn.value.x,
+                          cy: kn.value.y,
                           r: "12"
-                        }, null, 8, pl),
-                        n("circle", {
+                        }, null, 8, ml),
+                        i("circle", {
                           class: "plot-dot",
-                          cx: ti.value.x,
-                          cy: ti.value.y,
+                          cx: kn.value.x,
+                          cy: kn.value.y,
                           r: "5"
-                        }, null, 8, fl)
+                        }, null, 8, _l)
                       ])),
-                      n(
+                      i(
                         "span",
-                        ml,
-                        r(a(wn.value)),
+                        vl,
+                        r(a(gi.value)),
                         1
                         /* TEXT */
                       )
-                    ], 8, rl)) : E("v-if", !0),
-                    n("div", _l, [
-                      n(
+                    ], 8, ul)) : E("v-if", !0),
+                    i("div", gl, [
+                      i(
                         "p",
-                        vl,
+                        yl,
                         r(a("life.companion.realtime.section.mood")),
                         1
                         /* TEXT */
                       ),
-                      (_(!0), v(
+                      (v(!0), g(
                         Q,
                         null,
-                        Te(Gn.value, (l) => (_(), v("div", {
+                        Ee(Ki.value, (l) => (v(), g("div", {
                           key: l.label,
                           class: "gauge",
                           title: l.effect
                         }, [
-                          n("span", yl, [
-                            n("span", bl, [
-                              N(
+                          i("span", wl, [
+                            i("span", xl, [
+                              z(
                                 r(l.label),
                                 1
                                 /* TEXT */
                               ),
-                              n(
+                              i(
                                 "em",
-                                wl,
+                                kl,
                                 r(l.alias),
                                 1
                                 /* TEXT */
                               )
                             ]),
-                            n("span", xl, [
-                              n(
+                            i("span", Pl, [
+                              i(
                                 "b",
                                 {
-                                  class: Y(["gauge-state", l.stateTone])
+                                  class: D(["gauge-state", l.stateTone])
                                 },
                                 r(l.state),
                                 3
                                 /* TEXT, CLASS */
                               ),
-                              N(
+                              z(
                                 " " + r(l.display),
                                 1
                                 /* TEXT */
                               )
                             ])
                           ]),
-                          n(
+                          i(
                             "span",
                             {
-                              class: Y(["gauge-bar", { signed: l.signed }])
+                              class: D(["gauge-bar", { signed: l.signed }])
                             },
                             [
-                              n(
+                              i(
                                 "i",
                                 {
-                                  class: Y(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ht(l)]),
-                                  style: et(l.signed ? tt(l.value) : { width: (dt(l) * 100).toFixed(1) + "%" })
+                                  class: D(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ft(l)]),
+                                  style: ot(l.signed ? at(l.value) : { width: (tt(l) * 100).toFixed(1) + "%" })
                                 },
                                 null,
                                 6
@@ -10325,86 +10376,86 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                             2
                             /* CLASS */
                           ),
-                          n(
+                          i(
                             "span",
-                            kl,
+                            Ll,
                             r(l.effect),
                             1
                             /* TEXT */
                           )
-                        ], 8, gl))),
+                        ], 8, bl))),
                         128
                         /* KEYED_FRAGMENT */
                       ))
                     ]),
-                    n("div", Pl, [
-                      n("p", Ll, [
-                        N(
+                    i("div", Tl, [
+                      i("p", Sl, [
+                        z(
                           r(a("life.companion.body.title")) + " ",
                           1
                           /* TEXT */
                         ),
-                        n(
+                        i(
                           "span",
                           {
-                            class: Y(["chip", { muted: Nt.value?.is_sleeping, ok: Nt.value && !Nt.value.is_sleeping }])
+                            class: D(["chip", { muted: Tt.value?.is_sleeping, ok: Tt.value && !Tt.value.is_sleeping }])
                           },
-                          r(Nt.value ? Nt.value.is_sleeping ? a("life.companion.body.sleeping") : a("life.companion.body.awake") : "—"),
+                          r(Tt.value ? Tt.value.is_sleeping ? a("life.companion.body.sleeping") : a("life.companion.body.awake") : "—"),
                           3
                           /* TEXT, CLASS */
                         )
                       ]),
-                      (_(!0), v(
+                      (v(!0), g(
                         Q,
                         null,
-                        Te(jn.value, (l) => (_(), v("div", {
+                        Ee(st.value, (l) => (v(), g("div", {
                           key: l.label,
                           class: "gauge",
                           title: l.effect
                         }, [
-                          n("span", Sl, [
-                            n("span", Cl, [
-                              N(
+                          i("span", Ml, [
+                            i("span", zl, [
+                              z(
                                 r(l.label),
                                 1
                                 /* TEXT */
                               ),
-                              n(
+                              i(
                                 "em",
-                                Ml,
+                                El,
                                 r(l.alias),
                                 1
                                 /* TEXT */
                               )
                             ]),
-                            n("span", zl, [
-                              n(
+                            i("span", Ol, [
+                              i(
                                 "b",
                                 {
-                                  class: Y(["gauge-state", l.stateTone])
+                                  class: D(["gauge-state", l.stateTone])
                                 },
                                 r(l.state),
                                 3
                                 /* TEXT, CLASS */
                               ),
-                              N(
+                              z(
                                 " " + r(l.display),
                                 1
                                 /* TEXT */
                               )
                             ])
                           ]),
-                          n(
+                          i(
                             "span",
                             {
-                              class: Y(["gauge-bar", { signed: l.signed }])
+                              class: D(["gauge-bar", { signed: l.signed }])
                             },
                             [
-                              n(
+                              i(
                                 "i",
                                 {
-                                  class: Y(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ht(l)]),
-                                  style: et(l.signed ? tt(l.value) : { width: (dt(l) * 100).toFixed(1) + "%" })
+                                  class: D(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ft(l)]),
+                                  style: ot(l.signed ? at(l.value) : { width: (tt(l) * 100).toFixed(1) + "%" })
                                 },
                                 null,
                                 6
@@ -10414,85 +10465,85 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                             2
                             /* CLASS */
                           ),
-                          n(
+                          i(
                             "span",
-                            El,
+                            Al,
                             r(l.effect),
                             1
                             /* TEXT */
                           )
-                        ], 8, Tl))),
+                        ], 8, Cl))),
                         128
                         /* KEYED_FRAGMENT */
                       ))
                     ])
                   ]),
-                  n(
+                  i(
                     "div",
-                    Ol,
+                    Il,
                     r(a("life.companion.realtime.section.mood")),
                     1
                     /* TEXT */
                   ),
-                  n(
+                  i(
                     "p",
-                    Al,
+                    Bl,
                     r(a("life.companion.realtime.sectionSub.mood")),
                     1
                     /* TEXT */
                   ),
-                  n("div", Il, [
-                    (_(!0), v(
+                  i("div", Zl, [
+                    (v(!0), g(
                       Q,
                       null,
-                      Te(qn.value, (l) => (_(), v("div", {
+                      Ee(Z.value, (l) => (v(), g("div", {
                         key: l.label,
                         class: "gauge",
                         title: l.effect
                       }, [
-                        n("span", Zl, [
-                          n("span", Nl, [
-                            N(
+                        i("span", Rl, [
+                          i("span", Dl, [
+                            z(
                               r(l.label),
                               1
                               /* TEXT */
                             ),
-                            n(
+                            i(
                               "em",
-                              Rl,
+                              Vl,
                               r(l.alias),
                               1
                               /* TEXT */
                             )
                           ]),
-                          n("span", Vl, [
-                            n(
+                          i("span", $l, [
+                            i(
                               "b",
                               {
-                                class: Y(["gauge-state", l.stateTone])
+                                class: D(["gauge-state", l.stateTone])
                               },
                               r(l.state),
                               3
                               /* TEXT, CLASS */
                             ),
-                            N(
+                            z(
                               " " + r(l.display),
                               1
                               /* TEXT */
                             )
                           ])
                         ]),
-                        n(
+                        i(
                           "span",
                           {
-                            class: Y(["gauge-bar", { signed: l.signed }])
+                            class: D(["gauge-bar", { signed: l.signed }])
                           },
                           [
-                            n(
+                            i(
                               "i",
                               {
-                                class: Y(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ht(l)]),
-                                style: et(l.signed ? tt(l.value) : { width: (dt(l) * 100).toFixed(1) + "%" })
+                                class: D(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ft(l)]),
+                                style: ot(l.signed ? at(l.value) : { width: (tt(l) * 100).toFixed(1) + "%" })
                               },
                               null,
                               6
@@ -10502,48 +10553,48 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                           2
                           /* CLASS */
                         ),
-                        n(
+                        i(
                           "span",
-                          Dl,
+                          Ul,
                           r(l.effect),
                           1
                           /* TEXT */
                         )
-                      ], 8, Bl))),
+                      ], 8, Nl))),
                       128
                       /* KEYED_FRAGMENT */
                     ))
                   ]),
-                  Fi.value ? (_(), v("div", $l, [
-                    (_(!0), v(
+                  Wn.value ? (v(), g("div", Hl, [
+                    (v(!0), g(
                       Q,
                       null,
-                      Te(Fi.value, (l, O) => (_(), v("div", {
-                        key: O,
+                      Ee(Wn.value, (l, B) => (v(), g("div", {
+                        key: B,
                         class: "som-chan"
                       }, [
-                        n(
+                        i(
                           "span",
-                          Ul,
-                          r(vn(O)),
+                          Fl,
+                          r(fi(B)),
                           1
                           /* TEXT */
                         ),
-                        n("span", Fl, [
-                          n(
+                        i("span", Wl, [
+                          i(
                             "i",
                             {
-                              style: et({ transform: "scaleX(" + gn(l) + ")" })
+                              style: ot({ transform: "scaleX(" + mi(l) + ")" })
                             },
                             null,
                             4
                             /* STYLE */
                           )
                         ]),
-                        n(
+                        i(
                           "span",
-                          Hl,
-                          r(Le(l, 2)),
+                          Gl,
+                          r(ke(l, 2)),
                           1
                           /* TEXT */
                         )
@@ -10551,84 +10602,84 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       128
                       /* KEYED_FRAGMENT */
                     )),
-                    Number(m.value?.somatic_chronicity) > 0.1 ? (_(), v(
+                    Number(G.value?.somatic_chronicity) > 0.1 ? (v(), g(
                       "p",
-                      Wl,
-                      r(a("life.companion.realtime.somaticChronicity", { value: Le(m.value?.somatic_chronicity) })),
+                      jl,
+                      r(a("life.companion.realtime.somaticChronicity", { value: ke(G.value?.somatic_chronicity) })),
                       1
                       /* TEXT */
                     )) : E("v-if", !0)
                   ])) : E("v-if", !0),
-                  y.value || ee.value ? (_(), v(
+                  ie.value || et.value ? (v(), g(
                     Q,
                     { key: 1 },
                     [
-                      n(
+                      i(
                         "div",
-                        Gl,
+                        ql,
                         r(a("life.companion.realtime.section.social")),
                         1
                         /* TEXT */
                       ),
-                      n(
+                      i(
                         "p",
-                        jl,
+                        Kl,
                         r(a("life.companion.realtime.sectionSub.social")),
                         1
                         /* TEXT */
                       ),
-                      n("div", ql, [
-                        (_(!0), v(
+                      i("div", Yl, [
+                        (v(!0), g(
                           Q,
                           null,
-                          Te(Kn.value, (l) => (_(), v("div", {
+                          Ee(bi.value, (l) => (v(), g("div", {
                             key: l.label,
                             class: "gauge",
                             title: l.effect
                           }, [
-                            n("span", Yl, [
-                              n("span", Jl, [
-                                N(
+                            i("span", Xl, [
+                              i("span", Ql, [
+                                z(
                                   r(l.label),
                                   1
                                   /* TEXT */
                                 ),
-                                n(
+                                i(
                                   "em",
-                                  Xl,
+                                  eu,
                                   r(l.alias),
                                   1
                                   /* TEXT */
                                 )
                               ]),
-                              n("span", Ql, [
-                                n(
+                              i("span", tu, [
+                                i(
                                   "b",
                                   {
-                                    class: Y(["gauge-state", l.stateTone])
+                                    class: D(["gauge-state", l.stateTone])
                                   },
                                   r(l.state),
                                   3
                                   /* TEXT, CLASS */
                                 ),
-                                N(
+                                z(
                                   " " + r(l.display),
                                   1
                                   /* TEXT */
                                 )
                               ])
                             ]),
-                            n(
+                            i(
                               "span",
                               {
-                                class: Y(["gauge-bar", { signed: l.signed }])
+                                class: D(["gauge-bar", { signed: l.signed }])
                               },
                               [
-                                n(
+                                i(
                                   "i",
                                   {
-                                    class: Y(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ht(l)]),
-                                    style: et(l.signed ? tt(l.value) : { width: (dt(l) * 100).toFixed(1) + "%" })
+                                    class: D(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ft(l)]),
+                                    style: ot(l.signed ? at(l.value) : { width: (tt(l) * 100).toFixed(1) + "%" })
                                   },
                                   null,
                                   6
@@ -10638,30 +10689,30 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                               2
                               /* CLASS */
                             ),
-                            n(
+                            i(
                               "span",
-                              eu,
+                              nu,
                               r(l.effect),
                               1
                               /* TEXT */
                             )
-                          ], 8, Kl))),
+                          ], 8, Jl))),
                           128
                           /* KEYED_FRAGMENT */
                         ))
                       ]),
-                      n("div", tu, [
-                        n(
+                      i("div", iu, [
+                        i(
                           "span",
-                          iu,
-                          r(a("life.companion.metric.perspectiveStage")) + " " + r(y.value?.perspective_name || "—"),
+                          ou,
+                          r(a("life.companion.metric.perspectiveStage")) + " " + r(ie.value?.perspective_name || "—"),
                           1
                           /* TEXT */
                         ),
-                        n(
+                        i(
                           "span",
-                          nu,
-                          r(a("life.companion.metric.attentionState")) + " " + r(ee.value?.attention_state || "—"),
+                          au,
+                          r(a("life.companion.metric.attentionState")) + " " + r(et.value?.attention_state || "—"),
                           1
                           /* TEXT */
                         )
@@ -10670,108 +10721,108 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     64
                     /* STABLE_FRAGMENT */
                   )) : E("v-if", !0),
-                  $.value?.enabled ? (_(), v(
+                  Re.value?.enabled ? (v(), g(
                     Q,
                     { key: 2 },
                     [
-                      n(
+                      i(
                         "div",
-                        ou,
+                        su,
                         r(a("life.companion.realtime.section.attachment")),
                         1
                         /* TEXT */
                       ),
-                      n(
+                      i(
                         "p",
-                        au,
+                        ru,
                         r(a("life.companion.realtime.sectionSub.attachment")),
                         1
                         /* TEXT */
                       ),
-                      n("div", su, [
-                        n(
-                          "span",
-                          ru,
-                          r($.value.label || $.value.type),
-                          1
-                          /* TEXT */
-                        ),
-                        n(
-                          "span",
-                          lu,
-                          r(a("life.companion.metric.severity")) + " " + r(Le($.value.severity, 2)) + " · " + r($.value.band),
-                          1
-                          /* TEXT */
-                        ),
-                        n(
+                      i("div", lu, [
+                        i(
                           "span",
                           uu,
-                          r(a("life.companion.metric.dominantTendency")) + " " + r($.value.dominant || "—"),
+                          r(Re.value.label || Re.value.type),
                           1
                           /* TEXT */
                         ),
-                        n(
+                        i(
+                          "span",
+                          cu,
+                          r(a("life.companion.metric.severity")) + " " + r(ke(Re.value.severity, 2)) + " · " + r(Re.value.band),
+                          1
+                          /* TEXT */
+                        ),
+                        i(
+                          "span",
+                          du,
+                          r(a("life.companion.metric.dominantTendency")) + " " + r(Re.value.dominant || "—"),
+                          1
+                          /* TEXT */
+                        ),
+                        i(
                           "span",
                           {
-                            class: Y(["chip", $.value.safe_mode ? "warn" : "muted"])
+                            class: D(["chip", Re.value.safe_mode ? "warn" : "muted"])
                           },
-                          r(a("life.companion.metric.safetyLayer")) + " " + r($.value.safe_mode ? a("life.companion.metric.triggered") : a("life.companion.metric.normal")),
+                          r(a("life.companion.metric.safetyLayer")) + " " + r(Re.value.safe_mode ? a("life.companion.metric.triggered") : a("life.companion.metric.normal")),
                           3
                           /* TEXT, CLASS */
                         )
                       ]),
-                      n("div", cu, [
-                        (_(!0), v(
+                      i("div", hu, [
+                        (v(!0), g(
                           Q,
                           null,
-                          Te(nt.value, (l) => (_(), v("div", {
+                          Ee(wi.value, (l) => (v(), g("div", {
                             key: l.label,
                             class: "gauge",
                             title: l.effect
                           }, [
-                            n("span", hu, [
-                              n("span", pu, [
-                                N(
+                            i("span", fu, [
+                              i("span", mu, [
+                                z(
                                   r(l.label),
                                   1
                                   /* TEXT */
                                 ),
-                                n(
+                                i(
                                   "em",
-                                  fu,
+                                  _u,
                                   r(l.alias),
                                   1
                                   /* TEXT */
                                 )
                               ]),
-                              n("span", mu, [
-                                n(
+                              i("span", vu, [
+                                i(
                                   "b",
                                   {
-                                    class: Y(["gauge-state", l.stateTone])
+                                    class: D(["gauge-state", l.stateTone])
                                   },
                                   r(l.state),
                                   3
                                   /* TEXT, CLASS */
                                 ),
-                                N(
+                                z(
                                   " " + r(l.display),
                                   1
                                   /* TEXT */
                                 )
                               ])
                             ]),
-                            n(
+                            i(
                               "span",
                               {
-                                class: Y(["gauge-bar", { signed: l.signed }])
+                                class: D(["gauge-bar", { signed: l.signed }])
                               },
                               [
-                                n(
+                                i(
                                   "i",
                                   {
-                                    class: Y(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ht(l)]),
-                                    style: et(l.signed ? tt(l.value) : { width: (dt(l) * 100).toFixed(1) + "%" })
+                                    class: D(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ft(l)]),
+                                    style: ot(l.signed ? at(l.value) : { width: (tt(l) * 100).toFixed(1) + "%" })
                                   },
                                   null,
                                   6
@@ -10781,14 +10832,14 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                               2
                               /* CLASS */
                             ),
-                            n(
+                            i(
                               "span",
-                              _u,
+                              gu,
                               r(l.effect),
                               1
                               /* TEXT */
                             )
-                          ], 8, du))),
+                          ], 8, pu))),
                           128
                           /* KEYED_FRAGMENT */
                         ))
@@ -10797,94 +10848,94 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     64
                     /* STABLE_FRAGMENT */
                   )) : E("v-if", !0),
-                  ge.value?.enabled ? (_(), v(
+                  Ae.value?.enabled ? (v(), g(
                     Q,
                     { key: 3 },
                     [
-                      n(
+                      i(
                         "div",
-                        vu,
+                        yu,
                         r(a("life.companion.realtime.section.tsundere")),
                         1
                         /* TEXT */
                       ),
-                      n(
+                      i(
                         "p",
-                        gu,
+                        bu,
                         r(a("life.companion.realtime.sectionSub.tsundere")),
                         1
                         /* TEXT */
                       ),
-                      n("div", yu, [
-                        n(
+                      i("div", wu, [
+                        i(
                           "span",
-                          bu,
-                          r(ge.value.label || ge.value.type),
+                          xu,
+                          r(Ae.value.label || Ae.value.type),
                           1
                           /* TEXT */
                         ),
-                        n(
+                        i(
                           "span",
                           {
-                            class: Y(["chip", ge.value.safe_mode ? "warn" : "muted"])
+                            class: D(["chip", Ae.value.safe_mode ? "warn" : "muted"])
                           },
-                          r(a("life.companion.metric.safetyLayer")) + " " + r(ge.value.safe_mode ? a("life.companion.metric.triggered") : a("life.companion.metric.normal")),
+                          r(a("life.companion.metric.safetyLayer")) + " " + r(Ae.value.safe_mode ? a("life.companion.metric.triggered") : a("life.companion.metric.normal")),
                           3
                           /* TEXT, CLASS */
                         )
                       ]),
-                      n("div", wu, [
-                        (_(!0), v(
+                      i("div", ku, [
+                        (v(!0), g(
                           Q,
                           null,
-                          Te(I.value, (l) => (_(), v("div", {
+                          Ee(xi.value, (l) => (v(), g("div", {
                             key: l.label,
                             class: "gauge",
                             title: l.effect
                           }, [
-                            n("span", ku, [
-                              n("span", Pu, [
-                                N(
+                            i("span", Lu, [
+                              i("span", Tu, [
+                                z(
                                   r(l.label),
                                   1
                                   /* TEXT */
                                 ),
-                                n(
+                                i(
                                   "em",
-                                  Lu,
+                                  Su,
                                   r(l.alias),
                                   1
                                   /* TEXT */
                                 )
                               ]),
-                              n("span", Tu, [
-                                n(
+                              i("span", Cu, [
+                                i(
                                   "b",
                                   {
-                                    class: Y(["gauge-state", l.stateTone])
+                                    class: D(["gauge-state", l.stateTone])
                                   },
                                   r(l.state),
                                   3
                                   /* TEXT, CLASS */
                                 ),
-                                N(
+                                z(
                                   " " + r(l.display),
                                   1
                                   /* TEXT */
                                 )
                               ])
                             ]),
-                            n(
+                            i(
                               "span",
                               {
-                                class: Y(["gauge-bar", { signed: l.signed }])
+                                class: D(["gauge-bar", { signed: l.signed }])
                               },
                               [
-                                n(
+                                i(
                                   "i",
                                   {
-                                    class: Y(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ht(l)]),
-                                    style: et(l.signed ? tt(l.value) : { width: (dt(l) * 100).toFixed(1) + "%" })
+                                    class: D(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ft(l)]),
+                                    style: ot(l.signed ? at(l.value) : { width: (tt(l) * 100).toFixed(1) + "%" })
                                   },
                                   null,
                                   6
@@ -10894,14 +10945,14 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                               2
                               /* CLASS */
                             ),
-                            n(
+                            i(
                               "span",
-                              Su,
+                              Mu,
                               r(l.effect),
                               1
                               /* TEXT */
                             )
-                          ], 8, xu))),
+                          ], 8, Pu))),
                           128
                           /* KEYED_FRAGMENT */
                         ))
@@ -10910,101 +10961,101 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     64
                     /* STABLE_FRAGMENT */
                   )) : E("v-if", !0),
-                  Be.value?.enabled ? (_(), v(
+                  qe.value?.enabled ? (v(), g(
                     Q,
                     { key: 4 },
                     [
-                      n(
+                      i(
                         "div",
-                        Cu,
+                        zu,
                         r(a("life.companion.realtime.section.yandere")),
                         1
                         /* TEXT */
                       ),
-                      n(
+                      i(
                         "p",
-                        Mu,
+                        Eu,
                         r(a("life.companion.realtime.sectionSub.yandere")),
                         1
                         /* TEXT */
                       ),
-                      n("div", zu, [
-                        n(
+                      i("div", Ou, [
+                        i(
                           "span",
-                          Eu,
-                          r(Be.value.label || Be.value.type),
+                          Au,
+                          r(qe.value.label || qe.value.type),
                           1
                           /* TEXT */
                         ),
-                        n(
+                        i(
                           "span",
-                          Ou,
-                          r(a("life.companion.metric.yandereMode")) + " " + r(Be.value.mode) + " · " + r(Be.value.label_russell),
+                          Iu,
+                          r(a("life.companion.metric.yandereMode")) + " " + r(qe.value.mode) + " · " + r(qe.value.label_russell),
                           1
                           /* TEXT */
                         ),
-                        n(
+                        i(
                           "span",
                           {
-                            class: Y(["chip", Be.value.safe_mode ? "warn" : "muted"])
+                            class: D(["chip", qe.value.safe_mode ? "warn" : "muted"])
                           },
-                          r(a("life.companion.metric.safetyLayer")) + " " + r(Be.value.safe_mode ? a("life.companion.metric.triggered") : a("life.companion.metric.normal")),
+                          r(a("life.companion.metric.safetyLayer")) + " " + r(qe.value.safe_mode ? a("life.companion.metric.triggered") : a("life.companion.metric.normal")),
                           3
                           /* TEXT, CLASS */
                         )
                       ]),
-                      n("div", Au, [
-                        (_(!0), v(
+                      i("div", Bu, [
+                        (v(!0), g(
                           Q,
                           null,
-                          Te(kn.value, (l) => (_(), v("div", {
+                          Ee(ki.value, (l) => (v(), g("div", {
                             key: l.label,
                             class: "gauge",
                             title: l.effect
                           }, [
-                            n("span", Bu, [
-                              n("span", Zu, [
-                                N(
+                            i("span", Nu, [
+                              i("span", Ru, [
+                                z(
                                   r(l.label),
                                   1
                                   /* TEXT */
                                 ),
-                                n(
+                                i(
                                   "em",
-                                  Nu,
+                                  Du,
                                   r(l.alias),
                                   1
                                   /* TEXT */
                                 )
                               ]),
-                              n("span", Ru, [
-                                n(
+                              i("span", Vu, [
+                                i(
                                   "b",
                                   {
-                                    class: Y(["gauge-state", l.stateTone])
+                                    class: D(["gauge-state", l.stateTone])
                                   },
                                   r(l.state),
                                   3
                                   /* TEXT, CLASS */
                                 ),
-                                N(
+                                z(
                                   " " + r(l.display),
                                   1
                                   /* TEXT */
                                 )
                               ])
                             ]),
-                            n(
+                            i(
                               "span",
                               {
-                                class: Y(["gauge-bar", { signed: l.signed }])
+                                class: D(["gauge-bar", { signed: l.signed }])
                               },
                               [
-                                n(
+                                i(
                                   "i",
                                   {
-                                    class: Y(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ht(l)]),
-                                    style: et(l.signed ? tt(l.value) : { width: (dt(l) * 100).toFixed(1) + "%" })
+                                    class: D(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ft(l)]),
+                                    style: ot(l.signed ? at(l.value) : { width: (tt(l) * 100).toFixed(1) + "%" })
                                   },
                                   null,
                                   6
@@ -11014,14 +11065,14 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                               2
                               /* CLASS */
                             ),
-                            n(
+                            i(
                               "span",
-                              Vu,
+                              $u,
                               r(l.effect),
                               1
                               /* TEXT */
                             )
-                          ], 8, Iu))),
+                          ], 8, Zu))),
                           128
                           /* KEYED_FRAGMENT */
                         ))
@@ -11030,106 +11081,106 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     64
                     /* STABLE_FRAGMENT */
                   )) : E("v-if", !0),
-                  F.value?.enabled ? (_(), v(
+                  V.value?.enabled ? (v(), g(
                     Q,
                     { key: 5 },
                     [
-                      n(
+                      i(
                         "div",
-                        Du,
+                        Uu,
                         r(a("life.companion.realtime.section.pd")),
                         1
                         /* TEXT */
                       ),
-                      n(
+                      i(
                         "p",
-                        $u,
+                        Hu,
                         r(a("life.companion.realtime.sectionSub.pd")),
                         1
                         /* TEXT */
                       ),
-                      n("div", Uu, [
-                        n(
-                          "span",
-                          Fu,
-                          r(F.value.label || F.value.type),
-                          1
-                          /* TEXT */
-                        ),
-                        n(
-                          "span",
-                          Hu,
-                          r(a("life.companion.metric.emergentMode")) + " " + r(F.value.mode_label || F.value.mode) + " · " + r(F.value.band),
-                          1
-                          /* TEXT */
-                        ),
-                        F.value.gender ? (_(), v(
+                      i("div", Fu, [
+                        i(
                           "span",
                           Wu,
-                          r(F.value.gender),
+                          r(V.value.label || V.value.type),
+                          1
+                          /* TEXT */
+                        ),
+                        i(
+                          "span",
+                          Gu,
+                          r(a("life.companion.metric.emergentMode")) + " " + r(V.value.mode_label || V.value.mode) + " · " + r(V.value.band),
+                          1
+                          /* TEXT */
+                        ),
+                        V.value.gender ? (v(), g(
+                          "span",
+                          ju,
+                          r(V.value.gender),
                           1
                           /* TEXT */
                         )) : E("v-if", !0),
-                        F.value.clinical ? (_(), v(
+                        V.value.clinical ? (v(), g(
                           "span",
-                          Gu,
+                          qu,
                           r(a("life.companion.simulationMode")),
                           1
                           /* TEXT */
                         )) : E("v-if", !0)
                       ]),
-                      n("div", ju, [
-                        (_(!0), v(
+                      i("div", Ku, [
+                        (v(!0), g(
                           Q,
                           null,
-                          Te(Pn.value, (l) => (_(), v("div", {
+                          Ee(qn.value, (l) => (v(), g("div", {
                             key: l.label,
                             class: "gauge",
                             title: l.effect
                           }, [
-                            n("span", Ku, [
-                              n("span", Yu, [
-                                N(
+                            i("span", Ju, [
+                              i("span", Xu, [
+                                z(
                                   r(l.label),
                                   1
                                   /* TEXT */
                                 ),
-                                n(
+                                i(
                                   "em",
-                                  Ju,
+                                  Qu,
                                   r(l.alias),
                                   1
                                   /* TEXT */
                                 )
                               ]),
-                              n("span", Xu, [
-                                n(
+                              i("span", ec, [
+                                i(
                                   "b",
                                   {
-                                    class: Y(["gauge-state", l.stateTone])
+                                    class: D(["gauge-state", l.stateTone])
                                   },
                                   r(l.state),
                                   3
                                   /* TEXT, CLASS */
                                 ),
-                                N(
+                                z(
                                   " " + r(l.display),
                                   1
                                   /* TEXT */
                                 )
                               ])
                             ]),
-                            n(
+                            i(
                               "span",
                               {
-                                class: Y(["gauge-bar", { signed: l.signed }])
+                                class: D(["gauge-bar", { signed: l.signed }])
                               },
                               [
-                                n(
+                                i(
                                   "i",
                                   {
-                                    class: Y(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ht(l)]),
-                                    style: et(l.signed ? tt(l.value) : { width: (dt(l) * 100).toFixed(1) + "%" })
+                                    class: D(["gauge-fill", l.signed ? l.value >= 0 ? "good" : "bad" : ft(l)]),
+                                    style: ot(l.signed ? at(l.value) : { width: (tt(l) * 100).toFixed(1) + "%" })
                                   },
                                   null,
                                   6
@@ -11139,151 +11190,151 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                               2
                               /* CLASS */
                             ),
-                            n(
+                            i(
                               "span",
-                              Qu,
+                              tc,
                               r(l.effect),
                               1
                               /* TEXT */
                             )
-                          ], 8, qu))),
+                          ], 8, Yu))),
                           128
                           /* KEYED_FRAGMENT */
                         ))
                       ]),
-                      n("details", ec, [
-                        n(
+                      i("details", nc, [
+                        i(
                           "summary",
                           null,
                           r(a("life.companion.realtime.moreReadouts")),
                           1
                           /* TEXT */
                         ),
-                        n("div", tc, [
-                          F.value.help_seek != null ? (_(), v("div", ic, [
-                            n(
+                        i("div", ic, [
+                          V.value.help_seek != null ? (v(), g("div", oc, [
+                            i(
                               "span",
                               null,
                               r(a("life.companion.metric.helpSeeking")),
                               1
                               /* TEXT */
                             ),
-                            n(
+                            i(
                               "strong",
                               null,
-                              r(Le(F.value.help_seek, 2)),
+                              r(ke(V.value.help_seek, 2)),
                               1
                               /* TEXT */
                             )
                           ])) : E("v-if", !0),
-                          F.value.big5 ? (_(), v("div", nc, [
-                            u[105] || (u[105] = n(
+                          V.value.big5 ? (v(), g("div", ac, [
+                            u[105] || (u[105] = i(
                               "span",
                               null,
                               "Big5 O·C·E·A·N",
                               -1
                               /* CACHED */
                             )),
-                            n(
+                            i(
                               "strong",
                               null,
-                              r(Ri.value),
+                              r(Dn.value),
                               1
                               /* TEXT */
                             )
                           ])) : E("v-if", !0),
-                          F.value.hexaco ? (_(), v("div", oc, [
-                            u[106] || (u[106] = n(
+                          V.value.hexaco ? (v(), g("div", sc, [
+                            u[106] || (u[106] = i(
                               "span",
                               null,
                               "HEXACO H·E·X·A·C·O",
                               -1
                               /* CACHED */
                             )),
-                            n(
+                            i(
                               "strong",
                               null,
-                              r(Vi.value),
+                              r(Gi.value),
                               1
                               /* TEXT */
                             )
                           ])) : E("v-if", !0),
-                          F.value.mbti ? (_(), v("div", ac, [
-                            u[107] || (u[107] = n(
+                          V.value.mbti ? (v(), g("div", rc, [
+                            u[107] || (u[107] = i(
                               "span",
                               null,
                               "MBTI / DISC",
                               -1
                               /* CACHED */
                             )),
-                            n(
+                            i(
                               "strong",
                               null,
-                              r(F.value.mbti) + " · " + r(F.value.disc || "—"),
+                              r(V.value.mbti) + " · " + r(V.value.disc || "—"),
                               1
                               /* TEXT */
                             )
                           ])) : E("v-if", !0),
-                          F.value.theta_dim ? (_(), v("div", sc, [
-                            n(
+                          V.value.theta_dim ? (v(), g("div", lc, [
+                            i(
                               "span",
                               null,
                               r(a("life.companion.metric.thetaDim")),
                               1
                               /* TEXT */
                             ),
-                            n(
+                            i(
                               "strong",
                               null,
-                              r(a("life.companion.dimensionsValue", { n: F.value.theta_dim })) + " · " + r(F.value.family || "—"),
+                              r(a("life.companion.dimensionsValue", { n: V.value.theta_dim })) + " · " + r(V.value.family || "—"),
                               1
                               /* TEXT */
                             )
                           ])) : E("v-if", !0),
-                          hi.value.length ? (_(), v("div", rc, [
-                            n(
+                          $n.value.length ? (v(), g("div", uc, [
+                            i(
                               "span",
                               null,
                               r(a("life.companion.metric.topDesires")),
                               1
                               /* TEXT */
                             ),
-                            n(
+                            i(
                               "strong",
                               null,
-                              r(hi.value.join(" · ")),
+                              r($n.value.join(" · ")),
                               1
                               /* TEXT */
                             )
                           ])) : E("v-if", !0),
-                          dn.value.length ? (_(), v("div", lc, [
-                            n(
+                          _n.value.length ? (v(), g("div", cc, [
+                            i(
                               "span",
                               null,
                               r(a("life.companion.metric.topEmotions")),
                               1
                               /* TEXT */
                             ),
-                            n(
+                            i(
                               "strong",
                               null,
-                              r(dn.value.join(" · ")),
+                              r(_n.value.join(" · ")),
                               1
                               /* TEXT */
                             )
                           ])) : E("v-if", !0),
-                          F.value.learning?.enabled ? (_(), v("div", uc, [
-                            n(
+                          V.value.learning?.enabled ? (v(), g("div", dc, [
+                            i(
                               "span",
                               null,
                               r(a("life.companion.metric.learningState")),
                               1
                               /* TEXT */
                             ),
-                            n(
+                            i(
                               "strong",
                               null,
-                              r(F.value.learning.q_size) + " · " + r(Le(hn.value, 3)),
+                              r(V.value.learning.q_size) + " · " + r(ke(vn.value, 3)),
                               1
                               /* TEXT */
                             )
@@ -11294,223 +11345,223 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     64
                     /* STABLE_FRAGMENT */
                   )) : E("v-if", !0),
-                  n("details", cc, [
-                    n(
+                  i("details", hc, [
+                    i(
                       "summary",
                       null,
                       r(a("life.companion.realtime.moreReadouts")),
                       1
                       /* TEXT */
                     ),
-                    n("div", dc, [
-                      n("div", hc, [
-                        n(
+                    i("div", pc, [
+                      i("div", fc, [
+                        i(
                           "span",
                           null,
                           r(a("life.companion.metric.arbitrationMode")),
                           1
                           /* TEXT */
                         ),
-                        n(
+                        i(
                           "strong",
                           null,
-                          r(_t.value?.mode || "—"),
+                          r(T.value?.mode || "—"),
                           1
                           /* TEXT */
                         )
                       ]),
-                      n("div", pc, [
-                        n(
+                      i("div", mc, [
+                        i(
                           "span",
                           null,
                           r(a("life.companion.metric.currentStrategy")),
                           1
                           /* TEXT */
                         ),
-                        n(
+                        i(
                           "strong",
                           null,
-                          r(_t.value?.action || "—"),
+                          r(T.value?.action || "—"),
                           1
                           /* TEXT */
                         )
                       ]),
-                      n("div", fc, [
-                        n(
+                      i("div", _c, [
+                        i(
                           "span",
                           null,
                           r(a("life.companion.metric.controlNeed")),
                           1
                           /* TEXT */
                         ),
-                        n(
+                        i(
                           "strong",
                           null,
-                          r(Le(_t.value?.need)),
+                          r(ke(T.value?.need)),
                           1
                           /* TEXT */
                         )
                       ]),
-                      n("div", mc, [
-                        n(
+                      i("div", vc, [
+                        i(
                           "span",
                           null,
                           r(a("life.companion.metric.confidence")),
                           1
                           /* TEXT */
                         ),
-                        n(
+                        i(
                           "strong",
                           null,
-                          r(Le(_t.value?.confidence)),
+                          r(ke(T.value?.confidence)),
                           1
                           /* TEXT */
                         )
                       ]),
-                      n("div", _c, [
-                        n(
+                      i("div", gc, [
+                        i(
                           "span",
                           null,
                           r(a("life.companion.metric.decidedTurns")),
                           1
                           /* TEXT */
                         ),
-                        n(
+                        i(
                           "strong",
                           null,
-                          r(V.value?.turns ?? 0),
+                          r(b.value?.turns ?? 0),
                           1
                           /* TEXT */
                         )
                       ]),
-                      n("div", vc, [
-                        n(
+                      i("div", yc, [
+                        i(
                           "span",
                           null,
                           r(a("life.companion.metric.engrams")),
                           1
                           /* TEXT */
                         ),
-                        n(
+                        i(
                           "strong",
                           null,
-                          r(V.value?.engrams ?? 0),
+                          r(b.value?.engrams ?? 0),
                           1
                           /* TEXT */
                         )
                       ]),
-                      n("div", gc, [
-                        n(
+                      i("div", bc, [
+                        i(
                           "span",
                           null,
                           r(a("life.companion.metric.reliability")),
                           1
                           /* TEXT */
                         ),
-                        n(
+                        i(
                           "strong",
                           null,
-                          r(Le(V.value?.reliability)),
+                          r(ke(b.value?.reliability)),
                           1
                           /* TEXT */
                         )
                       ]),
-                      n("div", yc, [
-                        n(
+                      i("div", wc, [
+                        i(
                           "span",
                           null,
                           r(a("life.companion.metric.personaTraits")),
                           1
                           /* TEXT */
                         ),
-                        n(
+                        i(
                           "strong",
                           null,
-                          r(X.value?.applied ? X.value.source === "llm" ? a("life.companion.metric.appliedLlm") : a("life.companion.metric.appliedLocal") : a("life.companion.metric.notParsed")),
+                          r(je.value?.applied ? je.value.source === "llm" ? a("life.companion.metric.appliedLlm") : a("life.companion.metric.appliedLocal") : a("life.companion.metric.notParsed")),
                           1
                           /* TEXT */
                         )
                       ]),
-                      n("div", bc, [
-                        n(
+                      i("div", xc, [
+                        i(
                           "span",
                           null,
                           r(a("life.companion.metric.lexicon")),
                           1
                           /* TEXT */
                         ),
-                        n(
+                        i(
                           "strong",
                           null,
-                          r(T.value?.lexicon_size ?? 0),
+                          r(ne.value?.lexicon_size ?? 0),
                           1
                           /* TEXT */
                         )
                       ]),
-                      ct.value ? (_(), v(
+                      gt.value ? (v(), g(
                         Q,
                         { key: 0 },
                         [
-                          n("div", wc, [
-                            n(
+                          i("div", kc, [
+                            i(
                               "span",
                               null,
                               r(a("life.companion.metric.episodeCourse")),
                               1
                               /* TEXT */
                             ),
-                            n(
+                            i(
                               "strong",
                               null,
-                              r(Di(ct.value.state)),
+                              r(hi(gt.value.state)),
                               1
                               /* TEXT */
                             )
                           ]),
-                          n("div", xc, [
-                            n(
+                          i("div", Pc, [
+                            i(
                               "span",
                               null,
                               r(a("life.companion.metric.episodeSeverity")),
                               1
                               /* TEXT */
                             ),
-                            n(
+                            i(
                               "strong",
                               null,
-                              r(Le(ct.value.severity, 2)),
+                              r(ke(gt.value.severity, 2)),
                               1
                               /* TEXT */
                             )
                           ]),
-                          n("div", kc, [
-                            n(
+                          i("div", Lc, [
+                            i(
                               "span",
                               null,
                               r(a("life.companion.metric.episodesRelapses")),
                               1
                               /* TEXT */
                             ),
-                            n(
+                            i(
                               "strong",
                               null,
-                              r(ct.value.episodes) + " / " + r(ct.value.relapses),
+                              r(gt.value.episodes) + " / " + r(gt.value.relapses),
                               1
                               /* TEXT */
                             )
                           ]),
-                          ct.value.state === "episode" ? (_(), v("div", Pc, [
-                            n(
+                          gt.value.state === "episode" ? (v(), g("div", Tc, [
+                            i(
                               "span",
                               null,
                               r(a("life.companion.metric.duration")),
                               1
                               /* TEXT */
                             ),
-                            n(
+                            i(
                               "strong",
                               null,
-                              r(a("life.companion.daysValue", { n: Le(ct.value.days_in_episode, 1) })),
+                              r(a("life.companion.daysValue", { n: ke(gt.value.days_in_episode, 1) })),
                               1
                               /* TEXT */
                             )
@@ -11524,72 +11575,72 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 ],
                 64
                 /* STABLE_FRAGMENT */
-              )) : (_(), v(
+              )) : (v(), g(
                 "div",
-                nl,
+                al,
                 r(a("life.companion.realtime.empty")),
                 1
                 /* TEXT */
               )),
-              ct.value ? (_(), v(
+              gt.value ? (v(), g(
                 "p",
-                Lc,
+                Sc,
                 r(a("life.companion.realtime.episodeHint")),
                 1
                 /* TEXT */
               )) : E("v-if", !0),
-              $.value?.enabled ? (_(), v(
-                "p",
-                Tc,
-                r(a("life.companion.realtime.attachmentHint", { label: $.value.label, severity: Le($.value.severity, 2), band: $.value.band, safety: $.value.safe_mode ? a("life.companion.realtime.safetyOnEmotion") : a("life.companion.realtime.safetyOff") })),
-                1
-                /* TEXT */
-              )) : E("v-if", !0),
-              ge.value?.enabled ? (_(), v(
-                "p",
-                Sc,
-                r(a("life.companion.realtime.tsundereHint", { label: ge.value.label || ge.value.type, affection: Le(ge.value.affection, 2), expression: Le(ge.value.expression, 2), fixation: Le(ge.value.fixation, 2), band: ge.value.band, safety: ge.value.safe_mode ? a("life.companion.realtime.safetyOnFeeling") : a("life.companion.realtime.safetyOff") })),
-                1
-                /* TEXT */
-              )) : E("v-if", !0),
-              F.value?.enabled ? (_(), v(
+              Re.value?.enabled ? (v(), g(
                 "p",
                 Cc,
-                r(a("life.companion.realtime.personadynHint", { label: F.value.label || F.value.type, family: F.value.family || "—", theta: F.value.theta_dim, mode: F.value.mode_label || F.value.mode, pressure: Le(F.value.pressure, 2), band: F.value.band, gender: F.value.gender || re("life.companion.pdGender.unspecified"), learning: F.value.learning?.enabled ? a("life.companion.realtime.learningOnline") : "", safety: F.value.safe_mode ? a("life.companion.realtime.safetyOnFeeling") : a("life.companion.realtime.safetyOff") })),
+                r(a("life.companion.realtime.attachmentHint", { label: Re.value.label, severity: ke(Re.value.severity, 2), band: Re.value.band, safety: Re.value.safe_mode ? a("life.companion.realtime.safetyOnEmotion") : a("life.companion.realtime.safetyOff") })),
                 1
                 /* TEXT */
               )) : E("v-if", !0),
-              X.value?.applied ? (_(), v(
+              Ae.value?.enabled ? (v(), g(
                 "p",
                 Mc,
-                r(a("life.companion.realtime.personaApplied", { source: X.value.source === "llm" ? a("life.companion.realtime.personaSourceLlm") : a("life.companion.realtime.personaSourceLocal"), evidence: yn.value || "—" })),
+                r(a("life.companion.realtime.tsundereHint", { label: Ae.value.label || Ae.value.type, affection: ke(Ae.value.affection, 2), expression: ke(Ae.value.expression, 2), fixation: ke(Ae.value.fixation, 2), band: Ae.value.band, safety: Ae.value.safe_mode ? a("life.companion.realtime.safetyOnFeeling") : a("life.companion.realtime.safetyOff") })),
+                1
+                /* TEXT */
+              )) : E("v-if", !0),
+              V.value?.enabled ? (v(), g(
+                "p",
+                zc,
+                r(a("life.companion.realtime.personadynHint", { label: V.value.label || V.value.type, family: V.value.family || "—", theta: V.value.theta_dim, mode: V.value.mode_label || V.value.mode, pressure: ke(V.value.pressure, 2), band: V.value.band, gender: V.value.gender || O("life.companion.pdGender.unspecified"), learning: V.value.learning?.enabled ? a("life.companion.realtime.learningOnline") : "", safety: V.value.safe_mode ? a("life.companion.realtime.safetyOnFeeling") : a("life.companion.realtime.safetyOff") })),
+                1
+                /* TEXT */
+              )) : E("v-if", !0),
+              je.value?.applied ? (v(), g(
+                "p",
+                Ec,
+                r(a("life.companion.realtime.personaApplied", { source: je.value.source === "llm" ? a("life.companion.realtime.personaSourceLlm") : a("life.companion.realtime.personaSourceLocal"), evidence: Gn.value || "—" })),
                 1
                 /* TEXT */
               )) : E("v-if", !0)
             ]),
-            n("article", zc, [
-              n(
+            i("article", Oc, [
+              i(
                 "h3",
                 null,
                 r(a("life.companion.switches.title")),
                 1
                 /* TEXT */
               ),
-              n("div", Ec, [
-                n("label", Oc, [
-                  P(n(
+              i("div", Ac, [
+                i("label", Ic, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[42] || (u[42] = (l) => w.value.cog_enabled = l)
+                      "onUpdate:modelValue": u[42] || (u[42] = (l) => _.value.cog_enabled = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_enabled]
+                    [me, _.value.cog_enabled]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.switches.enableCognition")),
@@ -11597,20 +11648,20 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("label", Ac, [
-                  P(n(
+                i("label", Bc, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[43] || (u[43] = (l) => w.value.cog_lite_mode = l)
+                      "onUpdate:modelValue": u[43] || (u[43] = (l) => _.value.cog_lite_mode = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_lite_mode]
+                    [me, _.value.cog_lite_mode]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.switches.liteMode")),
@@ -11618,20 +11669,20 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("label", Ic, [
-                  P(n(
+                i("label", Zc, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[44] || (u[44] = (l) => w.value.cog_modulate_affect = l)
+                      "onUpdate:modelValue": u[44] || (u[44] = (l) => _.value.cog_modulate_affect = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_modulate_affect]
+                    [me, _.value.cog_modulate_affect]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.switches.modulateAffect")),
@@ -11639,20 +11690,20 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("label", Bc, [
-                  P(n(
+                i("label", Nc, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[45] || (u[45] = (l) => w.value.cog_modulate_language = l)
+                      "onUpdate:modelValue": u[45] || (u[45] = (l) => _.value.cog_modulate_language = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_modulate_language]
+                    [me, _.value.cog_modulate_language]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.switches.modulateLanguage")),
@@ -11660,20 +11711,20 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("label", Zc, [
-                  P(n(
+                i("label", Rc, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[46] || (u[46] = (l) => w.value.cog_modulate_social = l)
+                      "onUpdate:modelValue": u[46] || (u[46] = (l) => _.value.cog_modulate_social = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_modulate_social]
+                    [me, _.value.cog_modulate_social]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.switches.modulateSocial")),
@@ -11681,20 +11732,20 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("label", Nc, [
-                  P(n(
+                i("label", Dc, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[47] || (u[47] = (l) => w.value.cog_modulate_selfhood = l)
+                      "onUpdate:modelValue": u[47] || (u[47] = (l) => _.value.cog_modulate_selfhood = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_modulate_selfhood]
+                    [me, _.value.cog_modulate_selfhood]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.switches.modulateSelfhood")),
@@ -11703,66 +11754,82 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   )
                 ])
               ]),
-              n(
+              i(
                 "p",
-                Rc,
+                Vc,
                 r(a("life.companion.switches.hint")),
                 1
                 /* TEXT */
               )
             ]),
-            n("article", Vc, [
-              n(
+            i("article", $c, [
+              i(
                 "h3",
                 null,
                 r(a("life.companion.presets.title")),
                 1
                 /* TEXT */
               ),
-              n(
+              i(
                 "p",
-                Dc,
+                Uc,
                 r(a("life.companion.presets.hint")),
                 1
                 /* TEXT */
               ),
-              n("div", $c, [
-                (_(), v(
+              i("div", Hc, [
+                (v(), g(
                   Q,
                   null,
-                  Te(_n, (l) => n("button", {
+                  Ee(pi, (l) => i("button", {
                     key: l.label,
                     type: "button",
                     class: "btn sm",
-                    onClick: (O) => Ui(l.fields, l.label)
-                  }, r(a(l.labelKey)), 9, Uc)),
+                    onClick: (B) => qi(l.fields, l.label)
+                  }, r(a(l.labelKey)), 9, Fc)),
                   64
                   /* STABLE_FRAGMENT */
                 ))
               ])
             ]),
-            n("div", Fc, [
-              n("article", Hc, [
-                n(
-                  "h3",
-                  null,
-                  r(a("life.companion.decision.title")),
-                  1
-                  /* TEXT */
-                ),
-                n("div", Wc, [
-                  n("label", null, [
-                    n(
+            i("div", Wc, [
+              i("article", Gc, [
+                i("h3", null, [
+                  z(
+                    r(a("life.companion.decision.title")) + " ",
+                    1
+                    /* TEXT */
+                  ),
+                  i(
+                    "span",
+                    {
+                      class: D(["count-pill", be(!0).cls])
+                    },
+                    r(be(!0).text),
+                    3
+                    /* TEXT, CLASS */
+                  )
+                ]),
+                i("div", jc, [
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.decision.planDepth")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    i(
+                      "small",
+                      qc,
+                      r(a("life.companion.defaultHint", { n: ge.cog_plan_depth })),
+                      1
+                      /* TEXT */
+                    ),
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[48] || (u[48] = (l) => w.value.cog_plan_depth = l),
+                        "onUpdate:modelValue": u[48] || (u[48] = (l) => _.value.cog_plan_depth = l),
                         type: "number",
                         min: "1",
                         max: "6",
@@ -11773,25 +11840,32 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_plan_depth,
+                        M,
+                        _.value.cog_plan_depth,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.decision.wmCapacity")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    i(
+                      "small",
+                      Kc,
+                      r(a("life.companion.defaultHint", { n: ge.cog_wm_capacity })),
+                      1
+                      /* TEXT */
+                    ),
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[49] || (u[49] = (l) => w.value.cog_wm_capacity = l),
+                        "onUpdate:modelValue": u[49] || (u[49] = (l) => _.value.cog_wm_capacity = l),
                         type: "number",
                         min: "1",
                         max: "12",
@@ -11802,25 +11876,32 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_wm_capacity,
+                        M,
+                        _.value.cog_wm_capacity,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.decision.strategyTemp")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    i(
+                      "small",
+                      Yc,
+                      r(a("life.companion.defaultHint", { n: ge.cog_tau })),
+                      1
+                      /* TEXT */
+                    ),
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[50] || (u[50] = (l) => w.value.cog_tau = l),
+                        "onUpdate:modelValue": u[50] || (u[50] = (l) => _.value.cog_tau = l),
                         type: "number",
                         step: "0.05",
                         min: "0.05",
@@ -11832,25 +11913,32 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_tau,
+                        M,
+                        _.value.cog_tau,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.decision.discount")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    i(
+                      "small",
+                      Jc,
+                      r(a("life.companion.defaultHint", { n: ge.cog_gamma })),
+                      1
+                      /* TEXT */
+                    ),
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[51] || (u[51] = (l) => w.value.cog_gamma = l),
+                        "onUpdate:modelValue": u[51] || (u[51] = (l) => _.value.cog_gamma = l),
                         type: "number",
                         step: "0.01",
                         min: "0",
@@ -11862,25 +11950,32 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_gamma,
+                        M,
+                        _.value.cog_gamma,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.decision.habitRate")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    i(
+                      "small",
+                      Xc,
+                      r(a("life.companion.defaultHint", { n: ge.cog_alpha_habit })),
+                      1
+                      /* TEXT */
+                    ),
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[52] || (u[52] = (l) => w.value.cog_alpha_habit = l),
+                        "onUpdate:modelValue": u[52] || (u[52] = (l) => _.value.cog_alpha_habit = l),
                         type: "number",
                         step: "0.01",
                         min: "0",
@@ -11892,25 +11987,32 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_alpha_habit,
+                        M,
+                        _.value.cog_alpha_habit,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.decision.modelfreeRate")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    i(
+                      "small",
+                      Qc,
+                      r(a("life.companion.defaultHint", { n: ge.cog_alpha_mf })),
+                      1
+                      /* TEXT */
+                    ),
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[53] || (u[53] = (l) => w.value.cog_alpha_mf = l),
+                        "onUpdate:modelValue": u[53] || (u[53] = (l) => _.value.cog_alpha_mf = l),
                         type: "number",
                         step: "0.01",
                         min: "0",
@@ -11922,25 +12024,32 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_alpha_mf,
+                        M,
+                        _.value.cog_alpha_mf,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.decision.surpriseThreshold")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    i(
+                      "small",
+                      ed,
+                      r(a("life.companion.defaultHint", { n: ge.cog_theta_pe })),
+                      1
+                      /* TEXT */
+                    ),
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[54] || (u[54] = (l) => w.value.cog_theta_pe = l),
+                        "onUpdate:modelValue": u[54] || (u[54] = (l) => _.value.cog_theta_pe = l),
                         type: "number",
                         step: "0.05",
                         min: "0",
@@ -11952,25 +12061,32 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_theta_pe,
+                        M,
+                        _.value.cog_theta_pe,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.decision.noveltyThreshold")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    i(
+                      "small",
+                      td,
+                      r(a("life.companion.defaultHint", { n: ge.cog_theta_n })),
+                      1
+                      /* TEXT */
+                    ),
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[55] || (u[55] = (l) => w.value.cog_theta_n = l),
+                        "onUpdate:modelValue": u[55] || (u[55] = (l) => _.value.cog_theta_n = l),
                         type: "number",
                         step: "0.05",
                         min: "0",
@@ -11982,25 +12098,32 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_theta_n,
+                        M,
+                        _.value.cog_theta_n,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.decision.prospectionHorizon")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    i(
+                      "small",
+                      nd,
+                      r(a("life.companion.defaultHint", { n: ge.cog_prospection_horizon })),
+                      1
+                      /* TEXT */
+                    ),
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[56] || (u[56] = (l) => w.value.cog_prospection_horizon = l),
+                        "onUpdate:modelValue": u[56] || (u[56] = (l) => _.value.cog_prospection_horizon = l),
                         type: "number",
                         min: "1",
                         max: "8",
@@ -12011,29 +12134,29 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_prospection_horizon,
+                        M,
+                        _.value.cog_prospection_horizon,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ])
                 ]),
-                n("div", Gc, [
-                  n("label", jc, [
-                    P(n(
+                i("div", id, [
+                  i("label", od, [
+                    P(i(
                       "input",
                       {
                         type: "checkbox",
-                        "onUpdate:modelValue": u[57] || (u[57] = (l) => w.value.cog_use_thalamic_gate = l)
+                        "onUpdate:modelValue": u[57] || (u[57] = (l) => _.value.cog_use_thalamic_gate = l)
                       },
                       null,
                       512
                       /* NEED_PATCH */
                     ), [
-                      [fe, w.value.cog_use_thalamic_gate]
+                      [me, _.value.cog_use_thalamic_gate]
                     ]),
-                    n(
+                    i(
                       "span",
                       null,
                       r(a("life.companion.decision.thalamicGate")),
@@ -12041,20 +12164,20 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* TEXT */
                     )
                   ]),
-                  n("label", qc, [
-                    P(n(
+                  i("label", ad, [
+                    P(i(
                       "input",
                       {
                         type: "checkbox",
-                        "onUpdate:modelValue": u[58] || (u[58] = (l) => w.value.cog_use_cerebellum = l)
+                        "onUpdate:modelValue": u[58] || (u[58] = (l) => _.value.cog_use_cerebellum = l)
                       },
                       null,
                       512
                       /* NEED_PATCH */
                     ), [
-                      [fe, w.value.cog_use_cerebellum]
+                      [me, _.value.cog_use_cerebellum]
                     ]),
-                    n(
+                    i(
                       "span",
                       null,
                       r(a("life.companion.decision.cerebellum")),
@@ -12062,20 +12185,20 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* TEXT */
                     )
                   ]),
-                  n("label", Kc, [
-                    P(n(
+                  i("label", sd, [
+                    P(i(
                       "input",
                       {
                         type: "checkbox",
-                        "onUpdate:modelValue": u[59] || (u[59] = (l) => w.value.cog_use_ofc_map = l)
+                        "onUpdate:modelValue": u[59] || (u[59] = (l) => _.value.cog_use_ofc_map = l)
                       },
                       null,
                       512
                       /* NEED_PATCH */
                     ), [
-                      [fe, w.value.cog_use_ofc_map]
+                      [me, _.value.cog_use_ofc_map]
                     ]),
-                    n(
+                    i(
                       "span",
                       null,
                       r(a("life.companion.decision.ofcMap")),
@@ -12083,20 +12206,20 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* TEXT */
                     )
                   ]),
-                  n("label", Yc, [
-                    P(n(
+                  i("label", rd, [
+                    P(i(
                       "input",
                       {
                         type: "checkbox",
-                        "onUpdate:modelValue": u[60] || (u[60] = (l) => w.value.cog_use_prospection = l)
+                        "onUpdate:modelValue": u[60] || (u[60] = (l) => _.value.cog_use_prospection = l)
                       },
                       null,
                       512
                       /* NEED_PATCH */
                     ), [
-                      [fe, w.value.cog_use_prospection]
+                      [me, _.value.cog_use_prospection]
                     ]),
-                    n(
+                    i(
                       "span",
                       null,
                       r(a("life.companion.decision.prospection")),
@@ -12104,20 +12227,20 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* TEXT */
                     )
                   ]),
-                  n("label", Jc, [
-                    P(n(
+                  i("label", ld, [
+                    P(i(
                       "input",
                       {
                         type: "checkbox",
-                        "onUpdate:modelValue": u[61] || (u[61] = (l) => w.value.cog_use_limbic_bias = l)
+                        "onUpdate:modelValue": u[61] || (u[61] = (l) => _.value.cog_use_limbic_bias = l)
                       },
                       null,
                       512
                       /* NEED_PATCH */
                     ), [
-                      [fe, w.value.cog_use_limbic_bias]
+                      [me, _.value.cog_use_limbic_bias]
                     ]),
-                    n(
+                    i(
                       "span",
                       null,
                       r(a("life.companion.decision.limbicBias")),
@@ -12127,42 +12250,58 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   ])
                 ])
               ]),
-              n("article", Xc, [
-                n(
-                  "h3",
-                  null,
-                  r(a("life.companion.affect.title")),
-                  1
-                  /* TEXT */
-                ),
-                n("div", Qc, [
-                  n("label", null, [
-                    n(
+              i("article", ud, [
+                i("h3", null, [
+                  z(
+                    r(a("life.companion.affect.title")) + " ",
+                    1
+                    /* TEXT */
+                  ),
+                  i(
+                    "span",
+                    {
+                      class: D(["count-pill", be(!!_.value.cog_affect_enabled).cls])
+                    },
+                    r(be(!!_.value.cog_affect_enabled).text),
+                    3
+                    /* TEXT, CLASS */
+                  )
+                ]),
+                i("div", cd, [
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.persona.erqProfile")),
                       1
                       /* TEXT */
                     ),
-                    Oe(Ve(De), {
-                      modelValue: w.value.cog_affect_profile,
-                      "onUpdate:modelValue": u[62] || (u[62] = (l) => w.value.cog_affect_profile = l),
-                      options: $e.value,
+                    Oe($e(Ue), {
+                      modelValue: _.value.cog_affect_profile,
+                      "onUpdate:modelValue": u[62] || (u[62] = (l) => _.value.cog_affect_profile = l),
+                      options: Se.value,
                       "aria-label": a("life.companion.persona.erqProfile")
                     }, null, 8, ["modelValue", "options", "aria-label"])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.affect.vagalBaseline")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    i(
+                      "small",
+                      dd,
+                      r(a("life.companion.defaultHint", { n: ge.cog_affect_vagal })),
+                      1
+                      /* TEXT */
+                    ),
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[63] || (u[63] = (l) => w.value.cog_affect_vagal = l),
+                        "onUpdate:modelValue": u[63] || (u[63] = (l) => _.value.cog_affect_vagal = l),
                         type: "number",
                         step: "0.05",
                         min: "0",
@@ -12174,25 +12313,32 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_affect_vagal,
+                        M,
+                        _.value.cog_affect_vagal,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.persona.threatBaseline")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    i(
+                      "small",
+                      hd,
+                      r(a("life.companion.defaultHint", { n: ge.cog_affect_threat })),
+                      1
+                      /* TEXT */
+                    ),
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[64] || (u[64] = (l) => w.value.cog_affect_threat = l),
+                        "onUpdate:modelValue": u[64] || (u[64] = (l) => _.value.cog_affect_threat = l),
                         type: "number",
                         step: "0.05",
                         min: "0",
@@ -12204,25 +12350,32 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_affect_threat,
+                        M,
+                        _.value.cog_affect_threat,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.persona.rewardBaseline")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    i(
+                      "small",
+                      pd,
+                      r(a("life.companion.defaultHint", { n: ge.cog_affect_reward })),
+                      1
+                      /* TEXT */
+                    ),
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[65] || (u[65] = (l) => w.value.cog_affect_reward = l),
+                        "onUpdate:modelValue": u[65] || (u[65] = (l) => _.value.cog_affect_reward = l),
                         type: "number",
                         step: "0.1",
                         min: "0",
@@ -12234,28 +12387,28 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_affect_reward,
+                        M,
+                        _.value.cog_affect_reward,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ])
                 ]),
-                n("label", ed, [
-                  P(n(
+                i("label", fd, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[66] || (u[66] = (l) => w.value.cog_affect_enabled = l)
+                      "onUpdate:modelValue": u[66] || (u[66] = (l) => _.value.cog_affect_enabled = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_affect_enabled]
+                    [me, _.value.cog_affect_enabled]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.affect.enable")),
@@ -12263,20 +12416,20 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("label", td, [
-                  P(n(
+                i("label", md, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[67] || (u[67] = (l) => w.value.cog_affect_somatic = l)
+                      "onUpdate:modelValue": u[67] || (u[67] = (l) => _.value.cog_affect_somatic = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_affect_somatic]
+                    [me, _.value.cog_affect_somatic]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.affect.somatic")),
@@ -12284,20 +12437,20 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("label", id, [
-                  P(n(
+                i("label", _d, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[68] || (u[68] = (l) => w.value.cog_affect_persona_llm = l)
+                      "onUpdate:modelValue": u[68] || (u[68] = (l) => _.value.cog_affect_persona_llm = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_affect_persona_llm]
+                    [me, _.value.cog_affect_persona_llm]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.affect.personaLlm")),
@@ -12306,42 +12459,51 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   )
                 ])
               ]),
-              n("article", nd, [
-                n(
-                  "h3",
-                  null,
-                  r(a("life.companion.language.title")),
-                  1
-                  /* TEXT */
-                ),
-                n("div", od, [
-                  n("label", null, [
-                    n(
+              i("article", vd, [
+                i("h3", null, [
+                  z(
+                    r(a("life.companion.language.title")) + " ",
+                    1
+                    /* TEXT */
+                  ),
+                  i(
+                    "span",
+                    {
+                      class: D(["count-pill", be(!!_.value.cog_language_enabled).cls])
+                    },
+                    r(be(!!_.value.cog_language_enabled).text),
+                    3
+                    /* TEXT, CLASS */
+                  )
+                ]),
+                i("div", gd, [
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.language.framing")),
                       1
                       /* TEXT */
                     ),
-                    Oe(Ve(De), {
-                      modelValue: w.value.cog_language_framing,
-                      "onUpdate:modelValue": u[69] || (u[69] = (l) => w.value.cog_language_framing = l),
-                      options: Se.value,
+                    Oe($e(Ue), {
+                      modelValue: _.value.cog_language_framing,
+                      "onUpdate:modelValue": u[69] || (u[69] = (l) => _.value.cog_language_framing = l),
+                      options: Ce.value,
                       "aria-label": a("life.companion.language.framing")
                     }, null, 8, ["modelValue", "options", "aria-label"])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.language.boundary")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[70] || (u[70] = (l) => w.value.cog_language_boundary = l),
+                        "onUpdate:modelValue": u[70] || (u[70] = (l) => _.value.cog_language_boundary = l),
                         type: "number",
                         step: "0.05",
                         min: "0",
@@ -12353,28 +12515,28 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_language_boundary,
+                        M,
+                        _.value.cog_language_boundary,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ])
                 ]),
-                n("label", ad, [
-                  P(n(
+                i("label", yd, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[71] || (u[71] = (l) => w.value.cog_language_enabled = l)
+                      "onUpdate:modelValue": u[71] || (u[71] = (l) => _.value.cog_language_enabled = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_language_enabled]
+                    [me, _.value.cog_language_enabled]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.language.enable")),
@@ -12383,27 +12545,36 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   )
                 ])
               ]),
-              n("article", sd, [
-                n(
-                  "h3",
-                  null,
-                  r(a("life.companion.social.title")),
-                  1
-                  /* TEXT */
-                ),
-                n("div", rd, [
-                  n("label", null, [
-                    n(
+              i("article", bd, [
+                i("h3", null, [
+                  z(
+                    r(a("life.companion.social.title")) + " ",
+                    1
+                    /* TEXT */
+                  ),
+                  i(
+                    "span",
+                    {
+                      class: D(["count-pill", be(!!_.value.cog_social_enabled).cls])
+                    },
+                    r(be(!!_.value.cog_social_enabled).text),
+                    3
+                    /* TEXT, CLASS */
+                  )
+                ]),
+                i("div", wd, [
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.metric.empathy")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[72] || (u[72] = (l) => w.value.cog_social_empathy = l),
+                        "onUpdate:modelValue": u[72] || (u[72] = (l) => _.value.cog_social_empathy = l),
                         type: "number",
                         step: "0.05",
                         min: "0",
@@ -12415,43 +12586,43 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_social_empathy,
+                        M,
+                        _.value.cog_social_empathy,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.social.perspectiveStage")),
                       1
                       /* TEXT */
                     ),
-                    Oe(Ve(De), {
-                      modelValue: je.value,
-                      "onUpdate:modelValue": u[73] || (u[73] = (l) => je.value = l),
-                      options: Bt.value,
+                    Oe($e(Ue), {
+                      modelValue: Qt.value,
+                      "onUpdate:modelValue": u[73] || (u[73] = (l) => Qt.value = l),
+                      options: Qe.value,
                       "aria-label": a("life.companion.social.perspectiveStage")
                     }, null, 8, ["modelValue", "options", "aria-label"])
                   ])
                 ]),
-                n("label", ld, [
-                  P(n(
+                i("label", xd, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[74] || (u[74] = (l) => w.value.cog_social_enabled = l)
+                      "onUpdate:modelValue": u[74] || (u[74] = (l) => _.value.cog_social_enabled = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_social_enabled]
+                    [me, _.value.cog_social_enabled]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.social.enable")),
@@ -12460,27 +12631,36 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   )
                 ])
               ]),
-              n("article", ud, [
-                n(
-                  "h3",
-                  null,
-                  r(a("life.companion.selfhood.title")),
-                  1
-                  /* TEXT */
-                ),
-                n("div", cd, [
-                  n("label", null, [
-                    n(
+              i("article", kd, [
+                i("h3", null, [
+                  z(
+                    r(a("life.companion.selfhood.title")) + " ",
+                    1
+                    /* TEXT */
+                  ),
+                  i(
+                    "span",
+                    {
+                      class: D(["count-pill", be(!!_.value.cog_selfhood_enabled).cls])
+                    },
+                    r(be(!!_.value.cog_selfhood_enabled).text),
+                    3
+                    /* TEXT, CLASS */
+                  )
+                ]),
+                i("div", Pd, [
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.selfhood.timeDiscount")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[75] || (u[75] = (l) => w.value.cog_selfhood_discount = l),
+                        "onUpdate:modelValue": u[75] || (u[75] = (l) => _.value.cog_selfhood_discount = l),
                         type: "number",
                         step: "0.05",
                         min: "0",
@@ -12492,25 +12672,25 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_selfhood_discount,
+                        M,
+                        _.value.cog_selfhood_discount,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.selfhood.detailScale")),
                       1
                       /* TEXT */
                     ),
-                    P(n(
+                    P(i(
                       "input",
                       {
-                        "onUpdate:modelValue": u[76] || (u[76] = (l) => w.value.cog_selfhood_detail = l),
+                        "onUpdate:modelValue": u[76] || (u[76] = (l) => _.value.cog_selfhood_detail = l),
                         type: "number",
                         step: "1",
                         min: "1",
@@ -12522,28 +12702,28 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* NEED_PATCH */
                     ), [
                       [
-                        C,
-                        w.value.cog_selfhood_detail,
+                        M,
+                        _.value.cog_selfhood_detail,
                         void 0,
                         { number: !0 }
                       ]
                     ])
                   ])
                 ]),
-                n("label", dd, [
-                  P(n(
+                i("label", Ld, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[77] || (u[77] = (l) => w.value.cog_selfhood_enabled = l)
+                      "onUpdate:modelValue": u[77] || (u[77] = (l) => _.value.cog_selfhood_enabled = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_selfhood_enabled]
+                    [me, _.value.cog_selfhood_enabled]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.selfhood.enable")),
@@ -12552,35 +12732,44 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   )
                 ])
               ]),
-              n("article", hd, [
-                n(
-                  "h3",
-                  null,
-                  r(a("life.companion.attachmentCard.title")),
-                  1
-                  /* TEXT */
-                ),
-                n(
+              i("article", Td, [
+                i("h3", null, [
+                  z(
+                    r(a("life.companion.attachmentCard.title")) + " ",
+                    1
+                    /* TEXT */
+                  ),
+                  i(
+                    "span",
+                    {
+                      class: D(["count-pill", be(!!_.value.cog_attachment_enabled).cls])
+                    },
+                    r(be(!!_.value.cog_attachment_enabled).text),
+                    3
+                    /* TEXT, CLASS */
+                  )
+                ]),
+                i(
                   "p",
-                  pd,
+                  Sd,
                   r(a("life.companion.attachmentCard.hint")),
                   1
                   /* TEXT */
                 ),
-                n("label", fd, [
-                  P(n(
+                i("label", Cd, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[78] || (u[78] = (l) => w.value.cog_attachment_enabled = l)
+                      "onUpdate:modelValue": u[78] || (u[78] = (l) => _.value.cog_attachment_enabled = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_attachment_enabled]
+                    [me, _.value.cog_attachment_enabled]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.attachmentCard.enable")),
@@ -12588,60 +12777,69 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("div", md, [
-                  n("label", null, [
-                    n(
+                i("div", Md, [
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.metric.attachmentType")),
                       1
                       /* TEXT */
                     ),
-                    Oe(Ve(De), {
-                      modelValue: w.value.cog_attachment_type,
-                      "onUpdate:modelValue": u[79] || (u[79] = (l) => w.value.cog_attachment_type = l),
-                      options: qt.value,
+                    Oe($e(Ue), {
+                      modelValue: _.value.cog_attachment_type,
+                      "onUpdate:modelValue": u[79] || (u[79] = (l) => _.value.cog_attachment_type = l),
+                      options: Rt.value,
                       "aria-label": a("life.companion.metric.attachmentType")
                     }, null, 8, ["modelValue", "options", "aria-label"])
                   ])
                 ]),
-                n(
+                i(
                   "p",
-                  _d,
+                  zd,
                   r(a("life.companion.attachmentCard.hint2")),
                   1
                   /* TEXT */
                 )
               ]),
-              n("article", vd, [
-                n(
-                  "h3",
-                  null,
-                  r(a("life.companion.tsundereCard.title")),
-                  1
-                  /* TEXT */
-                ),
-                n(
+              i("article", Ed, [
+                i("h3", null, [
+                  z(
+                    r(a("life.companion.tsundereCard.title")) + " ",
+                    1
+                    /* TEXT */
+                  ),
+                  i(
+                    "span",
+                    {
+                      class: D(["count-pill", be(!!_.value.cog_tsundere_enabled).cls])
+                    },
+                    r(be(!!_.value.cog_tsundere_enabled).text),
+                    3
+                    /* TEXT, CLASS */
+                  )
+                ]),
+                i(
                   "p",
-                  gd,
+                  Od,
                   r(a("life.companion.tsundereCard.hint")),
                   1
                   /* TEXT */
                 ),
-                n("label", yd, [
-                  P(n(
+                i("label", Ad, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[80] || (u[80] = (l) => w.value.cog_tsundere_enabled = l)
+                      "onUpdate:modelValue": u[80] || (u[80] = (l) => _.value.cog_tsundere_enabled = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_tsundere_enabled]
+                    [me, _.value.cog_tsundere_enabled]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.tsundereCard.enable")),
@@ -12649,60 +12847,69 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("div", bd, [
-                  n("label", null, [
-                    n(
+                i("div", Id, [
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.persona.tsundereType")),
                       1
                       /* TEXT */
                     ),
-                    Oe(Ve(De), {
-                      modelValue: w.value.cog_tsundere_type,
-                      "onUpdate:modelValue": u[81] || (u[81] = (l) => w.value.cog_tsundere_type = l),
-                      options: At.value,
+                    Oe($e(Ue), {
+                      modelValue: _.value.cog_tsundere_type,
+                      "onUpdate:modelValue": u[81] || (u[81] = (l) => _.value.cog_tsundere_type = l),
+                      options: Jt.value,
                       "aria-label": a("life.companion.persona.tsundereType")
                     }, null, 8, ["modelValue", "options", "aria-label"])
                   ])
                 ]),
-                n(
+                i(
                   "p",
-                  wd,
+                  Bd,
                   r(a("life.companion.tsundereCard.hint2")),
                   1
                   /* TEXT */
                 )
               ]),
-              n("article", xd, [
-                n(
-                  "h3",
-                  null,
-                  r(a("life.companion.yandereCard.title")),
-                  1
-                  /* TEXT */
-                ),
-                n(
+              i("article", Zd, [
+                i("h3", null, [
+                  z(
+                    r(a("life.companion.yandereCard.title")) + " ",
+                    1
+                    /* TEXT */
+                  ),
+                  i(
+                    "span",
+                    {
+                      class: D(["count-pill", be(!!_.value.cog_yandere_enabled).cls])
+                    },
+                    r(be(!!_.value.cog_yandere_enabled).text),
+                    3
+                    /* TEXT, CLASS */
+                  )
+                ]),
+                i(
                   "p",
-                  kd,
+                  Nd,
                   r(a("life.companion.yandereCard.hint")),
                   1
                   /* TEXT */
                 ),
-                n("label", Pd, [
-                  P(n(
+                i("label", Rd, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[82] || (u[82] = (l) => w.value.cog_yandere_enabled = l)
+                      "onUpdate:modelValue": u[82] || (u[82] = (l) => _.value.cog_yandere_enabled = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_yandere_enabled]
+                    [me, _.value.cog_yandere_enabled]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.yandereCard.enable")),
@@ -12710,60 +12917,69 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("div", Ld, [
-                  n("label", null, [
-                    n(
+                i("div", Dd, [
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.yandereCard.type")),
                       1
                       /* TEXT */
                     ),
-                    Oe(Ve(De), {
-                      modelValue: w.value.cog_yandere_type,
-                      "onUpdate:modelValue": u[83] || (u[83] = (l) => w.value.cog_yandere_type = l),
-                      options: Kt.value,
+                    Oe($e(Ue), {
+                      modelValue: _.value.cog_yandere_type,
+                      "onUpdate:modelValue": u[83] || (u[83] = (l) => _.value.cog_yandere_type = l),
+                      options: mn.value,
                       "aria-label": a("life.companion.yandereCard.type")
                     }, null, 8, ["modelValue", "options", "aria-label"])
                   ])
                 ]),
-                n(
+                i(
                   "p",
-                  Td,
+                  Vd,
                   r(a("life.companion.yandereCard.hint2")),
                   1
                   /* TEXT */
                 )
               ]),
-              n("article", Sd, [
-                n(
-                  "h3",
-                  null,
-                  r(a("life.companion.personadynCard.title")),
-                  1
-                  /* TEXT */
-                ),
-                n(
+              i("article", $d, [
+                i("h3", null, [
+                  z(
+                    r(a("life.companion.personadynCard.title")) + " ",
+                    1
+                    /* TEXT */
+                  ),
+                  i(
+                    "span",
+                    {
+                      class: D(["count-pill", be(!!_.value.cog_personadyn_enabled).cls])
+                    },
+                    r(be(!!_.value.cog_personadyn_enabled).text),
+                    3
+                    /* TEXT, CLASS */
+                  )
+                ]),
+                i(
                   "p",
-                  Cd,
+                  Ud,
                   r(a("life.companion.personadynCard.hint")),
                   1
                   /* TEXT */
                 ),
-                n("label", Md, [
-                  P(n(
+                i("label", Hd, [
+                  P(i(
                     "input",
                     {
                       type: "checkbox",
-                      "onUpdate:modelValue": u[84] || (u[84] = (l) => w.value.cog_personadyn_enabled = l)
+                      "onUpdate:modelValue": u[84] || (u[84] = (l) => _.value.cog_personadyn_enabled = l)
                     },
                     null,
                     512
                     /* NEED_PATCH */
                   ), [
-                    [fe, w.value.cog_personadyn_enabled]
+                    [me, _.value.cog_personadyn_enabled]
                   ]),
-                  n(
+                  i(
                     "span",
                     null,
                     r(a("life.companion.personadynCard.enable")),
@@ -12771,83 +12987,92 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     /* TEXT */
                   )
                 ]),
-                n("div", zd, [
-                  n("label", null, [
-                    n(
+                i("div", Fd, [
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.persona.personaArchetype")),
                       1
                       /* TEXT */
                     ),
-                    Oe(Ve(De), {
-                      modelValue: w.value.cog_personadyn_type,
-                      "onUpdate:modelValue": u[85] || (u[85] = (l) => w.value.cog_personadyn_type = l),
-                      options: ci.value,
+                    Oe($e(Ue), {
+                      modelValue: _.value.cog_personadyn_type,
+                      "onUpdate:modelValue": u[85] || (u[85] = (l) => _.value.cog_personadyn_type = l),
+                      options: Xt.value,
                       "aria-label": a("life.companion.persona.personaArchetype")
                     }, null, 8, ["modelValue", "options", "aria-label"])
                   ]),
-                  n("label", null, [
-                    n(
+                  i("label", null, [
+                    i(
                       "span",
                       null,
                       r(a("life.companion.persona.genderSocialScript")),
                       1
                       /* TEXT */
                     ),
-                    Oe(Ve(De), {
-                      modelValue: w.value.cog_personadyn_gender,
-                      "onUpdate:modelValue": u[86] || (u[86] = (l) => w.value.cog_personadyn_gender = l),
-                      options: It.value,
+                    Oe($e(Ue), {
+                      modelValue: _.value.cog_personadyn_gender,
+                      "onUpdate:modelValue": u[86] || (u[86] = (l) => _.value.cog_personadyn_gender = l),
+                      options: Fe.value,
                       "aria-label": a("life.companion.persona.genderSocialScriptAria")
                     }, null, 8, ["modelValue", "options", "aria-label"])
                   ])
                 ]),
-                n(
+                i(
                   "p",
-                  Ed,
+                  Wd,
                   r(a("life.companion.personadynCard.hint2")),
                   1
                   /* TEXT */
                 ),
-                n(
+                i(
                   "p",
-                  Od,
+                  Gd,
                   r(a("life.companion.personadynCard.hint3")),
                   1
                   /* TEXT */
                 )
               ]),
-              n("article", Ad, [
-                n(
-                  "h3",
-                  null,
-                  r(a("life.companion.memoryCard.title")),
-                  1
-                  /* TEXT */
-                ),
-                n(
+              i("article", jd, [
+                i("h3", null, [
+                  z(
+                    r(a("life.companion.memoryCard.title")) + " ",
+                    1
+                    /* TEXT */
+                  ),
+                  i(
+                    "span",
+                    {
+                      class: D(["count-pill", be(!!_.value.cog_memory_encode).cls])
+                    },
+                    r(be(!!_.value.cog_memory_encode).text),
+                    3
+                    /* TEXT, CLASS */
+                  )
+                ]),
+                i(
                   "p",
-                  Id,
+                  qd,
                   r(a("life.companion.memoryCard.hint")),
                   1
                   /* TEXT */
                 ),
-                n("div", Bd, [
-                  n("label", Zd, [
-                    P(n(
+                i("div", Kd, [
+                  i("label", Yd, [
+                    P(i(
                       "input",
                       {
                         type: "checkbox",
-                        "onUpdate:modelValue": u[87] || (u[87] = (l) => w.value.cog_memory_encode = l)
+                        "onUpdate:modelValue": u[87] || (u[87] = (l) => _.value.cog_memory_encode = l)
                       },
                       null,
                       512
                       /* NEED_PATCH */
                     ), [
-                      [fe, w.value.cog_memory_encode]
+                      [me, _.value.cog_memory_encode]
                     ]),
-                    n(
+                    i(
                       "span",
                       null,
                       r(a("life.companion.memoryCard.selectiveEncoding")),
@@ -12855,20 +13080,20 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* TEXT */
                     )
                   ]),
-                  n("label", Nd, [
-                    P(n(
+                  i("label", Jd, [
+                    P(i(
                       "input",
                       {
                         type: "checkbox",
-                        "onUpdate:modelValue": u[88] || (u[88] = (l) => w.value.cog_sleep_replay = l)
+                        "onUpdate:modelValue": u[88] || (u[88] = (l) => _.value.cog_sleep_replay = l)
                       },
                       null,
                       512
                       /* NEED_PATCH */
                     ), [
-                      [fe, w.value.cog_sleep_replay]
+                      [me, _.value.cog_sleep_replay]
                     ]),
-                    n(
+                    i(
                       "span",
                       null,
                       r(a("life.companion.memoryCard.sleepReplay")),
@@ -12876,20 +13101,20 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* TEXT */
                     )
                   ]),
-                  n("label", Rd, [
-                    P(n(
+                  i("label", Xd, [
+                    P(i(
                       "input",
                       {
                         type: "checkbox",
-                        "onUpdate:modelValue": u[89] || (u[89] = (l) => w.value.cog_memory_reconsolidate = l)
+                        "onUpdate:modelValue": u[89] || (u[89] = (l) => _.value.cog_memory_reconsolidate = l)
                       },
                       null,
                       512
                       /* NEED_PATCH */
                     ), [
-                      [fe, w.value.cog_memory_reconsolidate]
+                      [me, _.value.cog_memory_reconsolidate]
                     ]),
-                    n(
+                    i(
                       "span",
                       null,
                       r(a("life.companion.memoryCard.reconsolidate")),
@@ -12897,20 +13122,20 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                       /* TEXT */
                     )
                   ]),
-                  n("label", Vd, [
-                    P(n(
+                  i("label", Qd, [
+                    P(i(
                       "input",
                       {
                         type: "checkbox",
-                        "onUpdate:modelValue": u[90] || (u[90] = (l) => w.value.cog_cls_interleave = l)
+                        "onUpdate:modelValue": u[90] || (u[90] = (l) => _.value.cog_cls_interleave = l)
                       },
                       null,
                       512
                       /* NEED_PATCH */
                     ), [
-                      [fe, w.value.cog_cls_interleave]
+                      [me, _.value.cog_cls_interleave]
                     ]),
-                    n(
+                    i(
                       "span",
                       null,
                       r(a("life.companion.memoryCard.cls")),
@@ -12925,35 +13150,35 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
           512
           /* NEED_PATCH */
         ), [
-          [un, Ae.value === "cognition"]
+          [ui, ce.value === "cognition"]
         ]),
-        P(n(
+        P(i(
           "section",
-          Dd,
+          eh,
           [
-            n("div", $d, [
-              n("div", null, [
-                n(
+            i("div", th, [
+              i("div", null, [
+                i(
                   "h2",
                   null,
                   r(a("life.companion.world.title")),
                   1
                   /* TEXT */
                 ),
-                n(
+                i(
                   "p",
-                  Ud,
+                  nh,
                   r(a("life.companion.world.desc")),
                   1
                   /* TEXT */
                 )
               ]),
-              n("div", Fd, [
-                n(
+              i("div", ih, [
+                i(
                   "button",
                   {
                     class: "btn filled sm",
-                    onClick: H
+                    onClick: Me
                   },
                   r(a("life.companion.saveSettings")),
                   1
@@ -12961,304 +13186,304 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 )
               ])
             ]),
-            n("article", Hd, [
-              n(
+            i("article", oh, [
+              i(
                 "h3",
                 null,
                 r(a("life.companion.world.density")),
                 1
                 /* TEXT */
               ),
-              n("div", Wd, [
-                n("label", null, [
-                  n(
+              i("div", ah, [
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.world.density")),
                     1
                     /* TEXT */
                   ),
-                  Oe(Ve(De), {
-                    modelValue: gi.value,
-                    "onUpdate:modelValue": u[91] || (u[91] = (l) => gi.value = l),
-                    options: Yn.value,
+                  Oe($e(Ue), {
+                    modelValue: $t.value,
+                    "onUpdate:modelValue": u[91] || (u[91] = (l) => $t.value = l),
+                    options: Xi.value,
                     "aria-label": a("life.companion.world.densityAria")
                   }, null, 8, ["modelValue", "options", "aria-label"])
                 ])
               ]),
-              n(
+              i(
                 "p",
-                Gd,
+                sh,
                 r(a("life.companion.world.densityHint")),
                 1
                 /* TEXT */
               )
             ]),
-            n("article", jd, [
-              n(
+            i("article", rh, [
+              i(
                 "h3",
                 null,
                 r(a("life.companion.world.personaTraits")),
                 1
                 /* TEXT */
               ),
-              n(
+              i(
                 "p",
-                qd,
+                lh,
                 r(a("life.companion.world.personaTraitsHint")),
                 1
                 /* TEXT */
               ),
-              n("label", Kd, [
-                n(
+              i("label", uh, [
+                i(
                   "span",
-                  Yd,
+                  ch,
                   r(a("life.companion.world.personaText")),
                   1
                   /* TEXT */
                 ),
-                P(n("textarea", {
-                  "onUpdate:modelValue": u[92] || (u[92] = (l) => xi.value = l),
+                P(i("textarea", {
+                  "onUpdate:modelValue": u[92] || (u[92] = (l) => rn.value = l),
                   class: "world-text",
                   rows: "4",
                   placeholder: a("life.companion.world.personaPlaceholder")
-                }, null, 8, Jd), [
-                  [C, xi.value]
+                }, null, 8, dh), [
+                  [M, rn.value]
                 ])
               ])
             ]),
-            n("article", Xd, [
-              n(
+            i("article", hh, [
+              i(
                 "h3",
                 null,
                 r(a("life.companion.world.location")),
                 1
                 /* TEXT */
               ),
-              n(
+              i(
                 "p",
-                Qd,
+                ph,
                 r(a("life.companion.world.locationHint")),
                 1
                 /* TEXT */
               ),
-              n("div", eh, [
-                n("label", null, [
-                  n(
+              i("div", fh, [
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.world.worldType")),
                     1
                     /* TEXT */
                   ),
-                  Oe(Ve(De), {
-                    modelValue: yi.value,
-                    "onUpdate:modelValue": u[93] || (u[93] = (l) => yi.value = l),
-                    options: ni.value,
+                  Oe($e(Ue), {
+                    modelValue: bt.value,
+                    "onUpdate:modelValue": u[93] || (u[93] = (l) => bt.value = l),
+                    options: un.value,
                     "aria-label": a("life.companion.world.worldType")
                   }, null, 8, ["modelValue", "options", "aria-label"])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.world.country")),
                     1
                     /* TEXT */
                   ),
-                  P(n("input", {
-                    "onUpdate:modelValue": u[94] || (u[94] = (l) => ii.value = l),
+                  P(i("input", {
+                    "onUpdate:modelValue": u[94] || (u[94] = (l) => nn.value = l),
                     class: "field",
                     placeholder: a("life.companion.world.countryPlaceholder")
-                  }, null, 8, th), [
-                    [C, ii.value]
+                  }, null, 8, mh), [
+                    [M, nn.value]
                   ])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.world.city")),
                     1
                     /* TEXT */
                   ),
-                  P(n("input", {
-                    "onUpdate:modelValue": u[95] || (u[95] = (l) => bi.value = l),
+                  P(i("input", {
+                    "onUpdate:modelValue": u[95] || (u[95] = (l) => on.value = l),
                     class: "field",
                     placeholder: a("life.companion.world.cityPlaceholder")
-                  }, null, 8, ih), [
-                    [C, bi.value]
+                  }, null, 8, _h), [
+                    [M, on.value]
                   ])
                 ]),
-                n("label", null, [
-                  n(
+                i("label", null, [
+                  i(
                     "span",
                     null,
                     r(a("life.companion.world.district")),
                     1
                     /* TEXT */
                   ),
-                  P(n("input", {
-                    "onUpdate:modelValue": u[96] || (u[96] = (l) => Pt.value = l),
+                  P(i("input", {
+                    "onUpdate:modelValue": u[96] || (u[96] = (l) => an.value = l),
                     class: "field",
                     placeholder: a("life.companion.world.districtPlaceholder")
-                  }, null, 8, nh), [
-                    [C, Pt.value]
+                  }, null, 8, vh), [
+                    [M, an.value]
                   ])
                 ])
               ]),
-              n("label", oh, [
-                n(
+              i("label", gh, [
+                i(
                   "span",
-                  ah,
+                  yh,
                   r(a("life.companion.world.premiseLabel")),
                   1
                   /* TEXT */
                 ),
-                P(n("textarea", {
-                  "onUpdate:modelValue": u[97] || (u[97] = (l) => wi.value = l),
+                P(i("textarea", {
+                  "onUpdate:modelValue": u[97] || (u[97] = (l) => sn.value = l),
                   class: "world-text",
                   rows: "3",
                   placeholder: a("life.companion.world.premisePlaceholder")
-                }, null, 8, sh), [
-                  [C, wi.value]
+                }, null, 8, bh), [
+                  [M, sn.value]
                 ])
               ]),
-              n("label", rh, [
-                n(
+              i("label", wh, [
+                i(
                   "span",
-                  lh,
+                  xh,
                   r(a("life.companion.world.actorsLabel")),
                   1
                   /* TEXT */
                 ),
-                P(n("textarea", {
-                  "onUpdate:modelValue": u[98] || (u[98] = (l) => ki.value = l),
+                P(i("textarea", {
+                  "onUpdate:modelValue": u[98] || (u[98] = (l) => Ct.value = l),
                   class: "world-text",
                   rows: "4",
                   placeholder: a("life.companion.world.actorsPlaceholder")
-                }, null, 8, uh), [
-                  [C, ki.value]
+                }, null, 8, kh), [
+                  [M, Ct.value]
                 ])
               ]),
-              n("label", ch, [
-                n(
+              i("label", Ph, [
+                i(
                   "span",
-                  dh,
+                  Lh,
                   r(a("life.companion.world.placesLabel")),
                   1
                   /* TEXT */
                 ),
-                P(n("textarea", {
-                  "onUpdate:modelValue": u[99] || (u[99] = (l) => Pi.value = l),
+                P(i("textarea", {
+                  "onUpdate:modelValue": u[99] || (u[99] = (l) => mt.value = l),
                   class: "world-text",
                   rows: "2",
                   placeholder: a("life.companion.world.placesPlaceholder")
-                }, null, 8, hh), [
-                  [C, Pi.value]
+                }, null, 8, Th), [
+                  [M, mt.value]
                 ])
               ]),
-              n("div", ph, [
-                n("button", {
+              i("div", Sh, [
+                i("button", {
                   class: "btn filled sm",
                   type: "button",
-                  disabled: ot.value,
-                  onClick: Ji
-                }, r(ot.value ? a("life.companion.world.generating") : a("life.companion.world.generateMapOnly")), 9, fh),
-                n("button", {
+                  disabled: nt.value,
+                  onClick: Ci
+                }, r(nt.value ? a("life.companion.world.generating") : a("life.companion.world.generateMapOnly")), 9, Ch),
+                i("button", {
                   class: "btn tonic sm",
                   type: "button",
-                  disabled: ot.value,
-                  onClick: Yi
-                }, r(ot.value ? a("life.companion.world.generating") : a("life.companion.world.generateWorld")), 9, mh),
-                n(
+                  disabled: nt.value,
+                  onClick: eo
+                }, r(nt.value ? a("life.companion.world.generating") : a("life.companion.world.generateWorld")), 9, Mh),
+                i(
                   "span",
-                  _h,
+                  zh,
                   r(a("life.companion.world.generateHint")),
                   1
                   /* TEXT */
                 )
               ])
             ]),
-            n("article", vh, [
-              n("div", gh, [
-                n("h3", null, [
-                  N(
+            i("article", Eh, [
+              i("div", Oh, [
+                i("h3", null, [
+                  z(
                     r(a("life.companion.world.map")) + " ",
                     1
                     /* TEXT */
                   ),
-                  n(
+                  i(
                     "span",
-                    yh,
-                    r(te.value.locations.length),
+                    Ah,
+                    r(I.value.locations.length),
                     1
                     /* TEXT */
                   )
                 ]),
-                at.value ? (_(), v(
+                Y.value ? (v(), g(
                   "span",
-                  bh,
-                  r(at.value.fictional ? a("life.companion.worldFictional.fictional") : a("life.companion.worldFictional.real")) + " · " + r([at.value.country, at.value.city, at.value.district].filter(Boolean).join(" / ") || a("life.companion.world.unnamed")),
+                  Ih,
+                  r(Y.value.fictional ? a("life.companion.worldFictional.fictional") : a("life.companion.worldFictional.real")) + " · " + r([Y.value.country, Y.value.city, Y.value.district].filter(Boolean).join(" / ") || a("life.companion.world.unnamed")),
                   1
                   /* TEXT */
                 )) : E("v-if", !0)
               ]),
-              at.value?.premise ? (_(), v(
+              Y.value?.premise ? (v(), g(
                 "p",
-                wh,
-                r(at.value.premise),
+                Bh,
+                r(Y.value.premise),
                 1
                 /* TEXT */
               )) : E("v-if", !0),
-              n("div", xh, [
-                n(
+              i("div", Zh, [
+                i(
                   "div",
                   {
                     ref_key: "mapEl",
-                    ref: $t,
-                    class: Y(["world-map-leaflet", { "is-empty": !te.value.locations.length }])
+                    ref: Ft,
+                    class: D(["world-map-leaflet", { "is-empty": !I.value.locations.length }])
                   },
                   null,
                   2
                   /* CLASS */
                 ),
-                j.value ? (_(), v(
+                wt.value ? (v(), g(
                   "div",
-                  kh,
+                  Nh,
                   r(a("life.companion.world.offline")),
                   1
                   /* TEXT */
                 )) : E("v-if", !0),
-                te.value.locations.length ? (_(), v(
+                I.value.locations.length ? (v(), g(
                   Q,
                   { key: 1 },
                   [
-                    te.value.kind !== "real" && te.value.nation ? (_(), v(
+                    I.value.kind !== "real" && I.value.nation ? (v(), g(
                       "button",
                       {
                         key: 0,
                         type: "button",
                         class: "wm-scope",
-                        onClick: ji
+                        onClick: Jn
                       },
-                      r(qe.value === "city" ? a("life.companion.world.nationView") : a("life.companion.world.cityView")),
+                      r(rt.value === "city" ? a("life.companion.world.nationView") : a("life.companion.world.cityView")),
                       1
                       /* TEXT */
                     )) : E("v-if", !0),
-                    n(
+                    i(
                       "button",
                       {
                         type: "button",
                         class: "wm-reset",
-                        onClick: si
+                        onClick: Yn
                       },
                       r(a("life.companion.world.resetView")),
                       1
                       /* TEXT */
                     ),
-                    te.value.kind !== "real" && qe.value === "city" ? (_(), v("div", Ph, [...u[108] || (u[108] = [
-                      n(
+                    I.value.kind !== "real" && rt.value === "city" ? (v(), g("div", Rh, [...u[108] || (u[108] = [
+                      i(
                         "i",
                         null,
                         "N",
@@ -13271,29 +13496,29 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   /* STABLE_FRAGMENT */
                 )) : E("v-if", !0)
               ]),
-              te.value.locations.length ? E("v-if", !0) : (_(), v(
+              I.value.locations.length ? E("v-if", !0) : (v(), g(
                 "p",
-                Lh,
+                Dh,
                 r(a("life.companion.world.noMap")),
                 1
                 /* TEXT */
               )),
-              te.value.locations.length ? (_(), v("div", Th, [
-                (_(!0), v(
+              I.value.locations.length ? (v(), g("div", Vh, [
+                (v(!0), g(
                   Q,
                   null,
-                  Te(Dt.value, (l) => (_(), v("span", { key: l }, [
-                    n(
+                  Ee(J.value, (l) => (v(), g("span", { key: l }, [
+                    i(
                       "i",
                       {
-                        class: Y("k-" + l)
+                        class: D("k-" + l)
                       },
                       null,
                       2
                       /* CLASS */
                     ),
-                    N(
-                      r(a(be[l])),
+                    z(
+                      r(a(Ht[l])),
                       1
                       /* TEXT */
                     )
@@ -13301,117 +13526,117 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   128
                   /* KEYED_FRAGMENT */
                 )),
-                n("span", null, [
-                  u[109] || (u[109] = n(
+                i("span", null, [
+                  u[109] || (u[109] = i(
                     "i",
                     { class: "k-actor" },
                     null,
                     -1
                     /* CACHED */
                   )),
-                  N(
-                    r(a("life.companion.world.actorsCount", { n: te.value.actors.length })),
+                  z(
+                    r(a("life.companion.world.actorsCount", { n: I.value.actors.length })),
                     1
                     /* TEXT */
                   )
                 ]),
-                te.value.kind !== "real" ? (_(), v(
+                I.value.kind !== "real" ? (v(), g(
                   Q,
                   { key: 0 },
                   [
-                    n("span", null, [
-                      u[110] || (u[110] = n(
+                    i("span", null, [
+                      u[110] || (u[110] = i(
                         "i",
                         { class: "k-hw" },
                         null,
                         -1
                         /* CACHED */
                       )),
-                      N(
+                      z(
                         r(a("life.companion.world.highwayLoop")),
                         1
                         /* TEXT */
                       )
                     ]),
-                    n("span", null, [
-                      u[111] || (u[111] = n(
+                    i("span", null, [
+                      u[111] || (u[111] = i(
                         "i",
                         { class: "k-arterial" },
                         null,
                         -1
                         /* CACHED */
                       )),
-                      N(
+                      z(
                         r(a("life.companion.world.arterial")),
                         1
                         /* TEXT */
                       )
                     ]),
-                    n("span", null, [
-                      u[112] || (u[112] = n(
+                    i("span", null, [
+                      u[112] || (u[112] = i(
                         "i",
                         { class: "k-street" },
                         null,
                         -1
                         /* CACHED */
                       )),
-                      N(
+                      z(
                         r(a("life.companion.world.street")),
                         1
                         /* TEXT */
                       )
                     ]),
-                    n("span", null, [
-                      u[113] || (u[113] = n(
+                    i("span", null, [
+                      u[113] || (u[113] = i(
                         "i",
                         { class: "k-metro" },
                         null,
                         -1
                         /* CACHED */
                       )),
-                      N(
+                      z(
                         r(a("life.companion.world.metro")),
                         1
                         /* TEXT */
                       )
                     ]),
-                    n("span", null, [
-                      u[114] || (u[114] = n(
+                    i("span", null, [
+                      u[114] || (u[114] = i(
                         "i",
                         { class: "k-bus" },
                         null,
                         -1
                         /* CACHED */
                       )),
-                      N(
+                      z(
                         r(a("life.companion.world.bus")),
                         1
                         /* TEXT */
                       )
                     ]),
-                    n("span", null, [
-                      u[115] || (u[115] = n(
+                    i("span", null, [
+                      u[115] || (u[115] = i(
                         "i",
                         { class: "k-park2" },
                         null,
                         -1
                         /* CACHED */
                       )),
-                      N(
+                      z(
                         r(a("life.companion.kind.park")),
                         1
                         /* TEXT */
                       )
                     ]),
-                    n("span", null, [
-                      u[116] || (u[116] = n(
+                    i("span", null, [
+                      u[116] || (u[116] = i(
                         "i",
                         { class: "k-water" },
                         null,
                         -1
                         /* CACHED */
                       )),
-                      N(
+                      z(
                         r(a("life.companion.world.water")),
                         1
                         /* TEXT */
@@ -13422,35 +13647,35 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   /* STABLE_FRAGMENT */
                 )) : E("v-if", !0)
               ])) : E("v-if", !0),
-              te.value.locations.length && te.value.kind !== "real" && qe.value === "city" ? (_(), v("div", Sh, [
-                (te.value.metro || []).length ? (_(), v("div", Ch, [
-                  n(
+              I.value.locations.length && I.value.kind !== "real" && rt.value === "city" ? (v(), g("div", $h, [
+                (I.value.metro || []).length ? (v(), g("div", Uh, [
+                  i(
                     "h4",
                     null,
                     r(a("life.companion.world.metroRoutes")),
                     1
                     /* TEXT */
                   ),
-                  n("ul", null, [
-                    (_(!0), v(
+                  i("ul", null, [
+                    (v(!0), g(
                       Q,
                       null,
-                      Te(te.value.metro, (l, O) => (_(), v("li", {
-                        key: "m" + O
+                      Ee(I.value.metro, (l, B) => (v(), g("li", {
+                        key: "m" + B
                       }, [
-                        n(
+                        i(
                           "b",
                           {
-                            style: et({ color: l.color })
+                            style: ot({ color: l.color })
                           },
                           r(l.name),
                           5
                           /* TEXT, STYLE */
                         ),
-                        n(
+                        i(
                           "span",
                           null,
-                          r((l.stations || []).map((z) => z.name).filter(Boolean).join(" · ")),
+                          r((l.stations || []).map((C) => C.name).filter(Boolean).join(" · ")),
                           1
                           /* TEXT */
                         )
@@ -13460,34 +13685,34 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     ))
                   ])
                 ])) : E("v-if", !0),
-                (te.value.bus || []).length ? (_(), v("div", Mh, [
-                  n(
+                (I.value.bus || []).length ? (v(), g("div", Hh, [
+                  i(
                     "h4",
                     null,
                     r(a("life.companion.world.busRoutes")),
                     1
                     /* TEXT */
                   ),
-                  n("ul", null, [
-                    (_(!0), v(
+                  i("ul", null, [
+                    (v(!0), g(
                       Q,
                       null,
-                      Te(te.value.bus, (l, O) => (_(), v("li", {
-                        key: "b" + O
+                      Ee(I.value.bus, (l, B) => (v(), g("li", {
+                        key: "b" + B
                       }, [
-                        n(
+                        i(
                           "b",
                           {
-                            style: et({ color: l.color })
+                            style: ot({ color: l.color })
                           },
                           r(l.name),
                           5
                           /* TEXT, STYLE */
                         ),
-                        n(
+                        i(
                           "span",
                           null,
-                          r((l.stops || []).map((z) => z.name).filter(Boolean).join(" · ")),
+                          r((l.stops || []).map((C) => C.name).filter(Boolean).join(" · ")),
                           1
                           /* TEXT */
                         )
@@ -13499,50 +13724,50 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                 ])) : E("v-if", !0)
               ])) : E("v-if", !0)
             ]),
-            n("article", zh, [
-              n("div", Eh, [
-                n("h3", null, [
-                  N(
+            i("article", Fh, [
+              i("div", Wh, [
+                i("h3", null, [
+                  z(
                     r(a("life.companion.world.recentEvents")) + " ",
                     1
                     /* TEXT */
                   ),
-                  n(
+                  i(
                     "span",
-                    Oh,
-                    r(Xt.value.length),
+                    Gh,
+                    r(bn.value.length),
                     1
                     /* TEXT */
                   )
                 ]),
-                Xt.value.length ? (_(), v(
+                bn.value.length ? (v(), g(
                   "button",
                   {
                     key: 0,
                     type: "button",
                     class: "btn tonic sm",
-                    onClick: Xi
+                    onClick: Xn
                   },
                   r(a("life.companion.world.clearTitle")),
                   1
                   /* TEXT */
                 )) : E("v-if", !0)
               ]),
-              n("ol", Ah, [
-                (_(!0), v(
+              i("ol", jh, [
+                (v(!0), g(
                   Q,
                   null,
-                  Te(Xt.value, (l) => (_(), v("li", {
+                  Ee(bn.value, (l) => (v(), g("li", {
                     key: l.id
                   }, [
-                    n(
+                    i(
                       "span",
-                      Ih,
+                      qh,
                       r(l.created_at),
                       1
                       /* TEXT */
                     ),
-                    n(
+                    i(
                       "strong",
                       null,
                       r(l.summary),
@@ -13553,9 +13778,9 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   128
                   /* KEYED_FRAGMENT */
                 )),
-                Xt.value.length ? E("v-if", !0) : (_(), v(
+                bn.value.length ? E("v-if", !0) : (v(), g(
                   "li",
-                  Bh,
+                  Kh,
                   r(a("life.companion.world.noEvents")),
                   1
                   /* TEXT */
@@ -13566,108 +13791,108 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
           512
           /* NEED_PATCH */
         ), [
-          [un, Ae.value === "world"]
+          [ui, ce.value === "world"]
         ]),
-        P(n(
+        P(i(
           "section",
-          Zh,
+          Yh,
           [
             Oe(Ns)
           ],
           512
           /* NEED_PATCH */
         ), [
-          [un, Ae.value === "adapters"]
+          [ui, ce.value === "adapters"]
         ]),
-        P(n(
+        P(i(
           "section",
-          Nh,
+          Jh,
           [
-            n("div", Rh, [
-              n("div", null, [
-                n(
+            i("div", Xh, [
+              i("div", null, [
+                i(
                   "h2",
                   null,
                   r(a("life.companion.state.title")),
                   1
                   /* TEXT */
                 ),
-                n(
+                i(
                   "p",
-                  Vh,
+                  Qh,
                   r(a("life.companion.state.desc")),
                   1
                   /* TEXT */
                 )
               ])
             ]),
-            n("article", Dh, [
-              n("h3", null, [
-                N(
+            i("article", ep, [
+              i("h3", null, [
+                z(
                   r(a("life.companion.state.relationships")) + " ",
                   1
                   /* TEXT */
                 ),
-                n(
+                i(
                   "span",
-                  $h,
-                  r(mi.value.length),
+                  tp,
+                  r(jn.value.length),
                   1
                   /* TEXT */
                 )
               ]),
-              n(
+              i(
                 "p",
-                Uh,
+                np,
                 r(a("life.companion.state.relationshipsHint")),
                 1
                 /* TEXT */
               ),
-              n("ol", Fh, [
-                (_(!0), v(
+              i("ol", ip, [
+                (v(!0), g(
                   Q,
                   null,
-                  Te(mi.value, (l) => (_(), v("li", {
+                  Ee(jn.value, (l) => (v(), g("li", {
                     key: l.user_id,
                     class: "rel-card"
                   }, [
-                    n("div", Hh, [
-                      n(
+                    i("div", op, [
+                      i(
                         "strong",
                         null,
                         r(l.user_id),
                         1
                         /* TEXT */
                       ),
-                      n(
+                      i(
                         "span",
-                        Wh,
+                        ap,
                         r(a("life.companion.state.lastSeenLabel")) + " " + r((l.last_seen || "").slice(0, 16).replace("T", " ") || "—"),
                         1
                         /* TEXT */
                       )
                     ]),
-                    n("div", Gh, [
-                      n(
+                    i("div", sp, [
+                      i(
                         "span",
-                        jh,
+                        rp,
                         r(a("life.companion.state.stage")),
                         1
                         /* TEXT */
                       ),
-                      n("span", {
+                      i("span", {
                         class: "rel-track",
                         role: "img",
-                        "aria-label": vi(l.stage)
+                        "aria-label": Kn(l.stage)
                       }, [
-                        (_(), v(
+                        (v(), g(
                           Q,
                           null,
-                          Te(_i, (O, z) => n(
+                          Ee(Pn, (B, C) => i(
                             "span",
                             {
-                              key: O,
-                              class: Y(["rel-seg", { done: z < Gi(l.stage), cur: z === Gi(l.stage) }])
+                              key: B,
+                              class: D(["rel-seg", { done: C < Pi(l.stage), cur: C === Pi(l.stage) }])
                             },
                             null,
                             2
@@ -13676,83 +13901,83 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                           64
                           /* STABLE_FRAGMENT */
                         ))
-                      ], 8, qh),
-                      n(
+                      ], 8, lp),
+                      i(
                         "span",
-                        Kh,
-                        r(vi(l.stage)),
+                        up,
+                        r(Kn(l.stage)),
                         1
                         /* TEXT */
                       )
                     ]),
-                    n("div", {
+                    i("div", {
                       class: "gauge",
                       title: a("life.companion.effect.affinity")
                     }, [
-                      n("span", Jh, [
-                        n("span", Xh, [
-                          N(
+                      i("span", dp, [
+                        i("span", hp, [
+                          z(
                             r(a("life.companion.state.affinity")),
                             1
                             /* TEXT */
                           ),
-                          n(
+                          i(
                             "em",
-                            Qh,
+                            pp,
                             r(a("life.companion.alias.affinity")),
                             1
                             /* TEXT */
                           )
                         ]),
-                        n("span", ep, [
-                          n(
+                        i("span", fp, [
+                          i(
                             "b",
                             {
-                              class: Y(["gauge-state", Number(l.affinity) >= 0 ? "good" : "bad"])
+                              class: D(["gauge-state", Number(l.affinity) >= 0 ? "good" : "bad"])
                             },
-                            r(a("life.companion.gw.affinity." + xn(Number(l.affinity) || 0))),
+                            r(a("life.companion.gw.affinity." + yi(Number(l.affinity) || 0))),
                             3
                             /* TEXT, CLASS */
                           ),
-                          N(
-                            " " + r(Le(l.affinity, 2)),
+                          z(
+                            " " + r(ke(l.affinity, 2)),
                             1
                             /* TEXT */
                           )
                         ])
                       ]),
-                      n("span", tp, [
-                        n(
+                      i("span", mp, [
+                        i(
                           "i",
                           {
-                            class: Y(["gauge-fill", Number(l.affinity) >= 0 ? "good" : "bad"]),
-                            style: et(tt(Number(l.affinity) || 0))
+                            class: D(["gauge-fill", Number(l.affinity) >= 0 ? "good" : "bad"]),
+                            style: ot(at(Number(l.affinity) || 0))
                           },
                           null,
                           6
                           /* CLASS, STYLE */
                         )
                       ]),
-                      n(
+                      i(
                         "span",
-                        ip,
+                        _p,
                         r(a("life.companion.effect.affinity")),
                         1
                         /* TEXT */
                       )
-                    ], 8, Yh),
-                    l.interaction ? (_(), v("div", np, [
-                      n(
+                    ], 8, cp),
+                    l.interaction ? (v(), g("div", vp, [
+                      i(
                         "span",
-                        op,
-                        r(a("life.companion.state.interaction")) + " · " + r(Rt(l.interaction)),
+                        gp,
+                        r(a("life.companion.state.interaction")) + " · " + r(Yi(l.interaction)),
                         1
                         /* TEXT */
                       ),
-                      n(
+                      i(
                         "span",
-                        ap,
-                        r(Ln(l.interaction)),
+                        yp,
+                        r(Ji(l.interaction)),
                         1
                         /* TEXT */
                       )
@@ -13761,54 +13986,54 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   128
                   /* KEYED_FRAGMENT */
                 )),
-                mi.value.length ? E("v-if", !0) : (_(), v(
+                jn.value.length ? E("v-if", !0) : (v(), g(
                   "li",
-                  sp,
+                  bp,
                   r(a("life.companion.state.noRelationships")),
                   1
                   /* TEXT */
                 ))
               ])
             ]),
-            n("article", rp, [
-              n("h3", null, [
-                N(
+            i("article", wp, [
+              i("h3", null, [
+                z(
                   r(a("life.companion.state.commitments")) + " ",
                   1
                   /* TEXT */
                 ),
-                n(
+                i(
                   "span",
-                  lp,
-                  r(Qt.value.length),
+                  xp,
+                  r(Lt.value.length),
                   1
                   /* TEXT */
                 )
               ]),
-              n(
+              i(
                 "p",
-                up,
+                kp,
                 r(a("life.companion.state.commitmentsHint")),
                 1
                 /* TEXT */
               ),
-              n("ol", cp, [
-                (_(!0), v(
+              i("ol", Pp, [
+                (v(!0), g(
                   Q,
                   null,
-                  Te(Qt.value, (l) => (_(), v("li", {
+                  Ee(Lt.value, (l) => (v(), g("li", {
                     key: l.id
                   }, [
-                    n(
+                    i(
                       "strong",
                       null,
                       r(l.text),
                       1
                       /* TEXT */
                     ),
-                    n(
+                    i(
                       "span",
-                      dp,
+                      Lp,
                       r(l.user_id),
                       1
                       /* TEXT */
@@ -13817,63 +14042,63 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   128
                   /* KEYED_FRAGMENT */
                 )),
-                Qt.value.length ? E("v-if", !0) : (_(), v(
+                Lt.value.length ? E("v-if", !0) : (v(), g(
                   "li",
-                  hp,
+                  Tp,
                   r(a("life.companion.state.noCommitments")),
                   1
                   /* TEXT */
                 ))
               ])
             ]),
-            n("div", pp, [
-              n("article", fp, [
-                n(
+            i("div", Sp, [
+              i("article", Cp, [
+                i(
                   "h3",
                   null,
                   r(a("life.companion.state.userModel")),
                   1
                   /* TEXT */
                 ),
-                n(
+                i(
                   "p",
-                  mp,
+                  Mp,
                   r(a("life.companion.state.userModelHint")),
                   1
                   /* TEXT */
                 ),
-                n("ol", _p, [
-                  (_(!0), v(
+                i("ol", zp, [
+                  (v(!0), g(
                     Q,
                     null,
-                    Te(Hi.value, (l) => (_(), v("li", {
+                    Ee(_i.value, (l) => (v(), g("li", {
                       key: l.user_id
                     }, [
-                      n(
+                      i(
                         "strong",
                         null,
                         r(l.user_id),
                         1
                         /* TEXT */
                       ),
-                      n(
+                      i(
                         "span",
-                        vp,
-                        r(a("life.companion.state.likes", { items: kt(l.preferences).join(a("life.companion.listSeparator")) || "—" })),
+                        Ep,
+                        r(a("life.companion.state.likes", { items: wn(l.preferences).join(a("life.companion.listSeparator")) || "—" })),
                         1
                         /* TEXT */
                       ),
-                      n(
+                      i(
                         "span",
-                        gp,
-                        r(a("life.companion.state.taboos", { items: kt(l.taboos).join(a("life.companion.listSeparator")) || "—" })),
+                        Op,
+                        r(a("life.companion.state.taboos", { items: wn(l.taboos).join(a("life.companion.listSeparator")) || "—" })),
                         1
                         /* TEXT */
                       ),
-                      n(
+                      i(
                         "span",
-                        yp,
-                        r(a("life.companion.state.concerns", { items: kt(l.concerns).join(a("life.companion.listSeparator")) || "—" })),
+                        Ap,
+                        r(a("life.companion.state.concerns", { items: wn(l.concerns).join(a("life.companion.listSeparator")) || "—" })),
                         1
                         /* TEXT */
                       )
@@ -13881,60 +14106,60 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     128
                     /* KEYED_FRAGMENT */
                   )),
-                  Hi.value.length ? E("v-if", !0) : (_(), v(
+                  _i.value.length ? E("v-if", !0) : (v(), g(
                     "li",
-                    bp,
+                    Ip,
                     r(a("life.companion.state.noUserModel")),
                     1
                     /* TEXT */
                   ))
                 ])
               ]),
-              n("article", wp, [
-                n(
+              i("article", Bp, [
+                i(
                   "h3",
                   null,
                   r(a("life.companion.state.values")),
                   1
                   /* TEXT */
                 ),
-                n(
+                i(
                   "p",
-                  xp,
+                  Zp,
                   r(a("life.companion.state.valuesHint")),
                   1
                   /* TEXT */
                 ),
-                n("ol", kp, [
-                  (_(!0), v(
+                i("ol", Np, [
+                  (v(!0), g(
                     Q,
                     null,
-                    Te(bn.value, (l) => (_(), v("li", {
+                    Ee(vi.value, (l) => (v(), g("li", {
                       key: l.k,
                       class: "value-row"
                     }, [
-                      n(
+                      i(
                         "span",
-                        Pp,
+                        Rp,
                         r(l.k),
                         1
                         /* TEXT */
                       ),
-                      n("span", Lp, [
-                        n(
+                      i("span", Dp, [
+                        i(
                           "i",
                           {
-                            class: Y(l.v >= 0 ? "good" : "bad"),
-                            style: et(tt(l.v))
+                            class: D(l.v >= 0 ? "good" : "bad"),
+                            style: ot(at(l.v))
                           },
                           null,
                           6
                           /* CLASS, STYLE */
                         )
                       ]),
-                      n(
+                      i(
                         "span",
-                        Tp,
+                        Vp,
                         r(l.v.toFixed(2)),
                         1
                         /* TEXT */
@@ -13943,9 +14168,9 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                     128
                     /* KEYED_FRAGMENT */
                   )),
-                  bn.value.length ? E("v-if", !0) : (_(), v(
+                  vi.value.length ? E("v-if", !0) : (v(), g(
                     "li",
-                    Sp,
+                    $p,
                     r(a("life.companion.state.noValues")),
                     1
                     /* TEXT */
@@ -13957,45 +14182,45 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
           512
           /* NEED_PATCH */
         ), [
-          [un, Ae.value === "state"]
+          [ui, ce.value === "state"]
         ]),
-        n("section", Cp, [
-          n("div", Mp, [
-            n("div", null, [
-              n(
+        i("section", Up, [
+          i("div", Hp, [
+            i("div", null, [
+              i(
                 "h2",
                 null,
                 r(a("life.companion.danger.title")),
                 1
                 /* TEXT */
               ),
-              n(
+              i(
                 "p",
-                zp,
+                Fp,
                 r(a("life.companion.danger.desc")),
                 1
                 /* TEXT */
               )
             ])
           ]),
-          n("div", Ep, [
-            n("article", Op, [
-              n(
+          i("div", Wp, [
+            i("article", Gp, [
+              i(
                 "h3",
                 null,
                 r(a("life.companion.danger.reset")),
                 1
                 /* TEXT */
               ),
-              n(
+              i(
                 "p",
-                Ap,
+                jp,
                 r(a("life.companion.danger.resetHint")),
                 1
                 /* TEXT */
               ),
-              n("p", Ip, [
-                n(
+              i("p", qp, [
+                i(
                   "strong",
                   null,
                   r(a("life.companion.danger.doubleConfirm")),
@@ -14003,12 +14228,12 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
                   /* TEXT */
                 )
               ]),
-              n("div", Bp, [
-                n("button", {
+              i("div", Kp, [
+                i("button", {
                   class: "btn danger",
-                  disabled: Vt.value,
-                  onClick: Tt
-                }, r(Vt.value ? a("life.companion.danger.resetting") : a("life.companion.danger.reset")), 9, Zp)
+                  disabled: ln.value,
+                  onClick: to
+                }, r(ln.value ? a("life.companion.danger.resetting") : a("life.companion.danger.reset")), 9, Yp)
               ])
             ])
           ])
@@ -14018,14 +14243,14 @@ const Za = { class: "lsp" }, Na = { class: "hero" }, Ra = { class: "hero-main" }
       /* NEED_PATCH */
     ));
   }
-}), Vp = (me, g) => {
-  const a = me.__vccOpts || me;
-  for (const [re, Z] of g)
-    a[re] = Z;
+}), Qp = (_e, y) => {
+  const a = _e.__vccOpts || _e;
+  for (const [Be, O] of y)
+    a[Be] = O;
   return a;
-}, Fp = /* @__PURE__ */ Vp(Rp, [["__scopeId", "data-v-4443f246"]]);
+}, of = /* @__PURE__ */ Qp(Xp, [["__scopeId", "data-v-b33f2d64"]]);
 export {
-  Fp as default
+  of as default
 };
 
-;(()=>{if(typeof document!=='undefined'&&!document.getElementById('life-plugin-style')){const s=document.createElement('style');s.id='life-plugin-style';s.textContent=".leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}.leaflet-container{overflow:hidden}.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow{-webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-user-drag:none}.leaflet-tile::selection{background:transparent}.leaflet-safari .leaflet-tile{image-rendering:-webkit-optimize-contrast}.leaflet-safari .leaflet-tile-container{width:1600px;height:1600px;-webkit-transform-origin:0 0}.leaflet-marker-icon,.leaflet-marker-shadow{display:block}.leaflet-container .leaflet-overlay-pane svg{max-width:none!important;max-height:none!important}.leaflet-container .leaflet-marker-pane img,.leaflet-container .leaflet-shadow-pane img,.leaflet-container .leaflet-tile-pane img,.leaflet-container img.leaflet-image-layer,.leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important;width:auto;padding:0}.leaflet-container img.leaflet-tile{mix-blend-mode:plus-lighter}.leaflet-container.leaflet-touch-zoom{-ms-touch-action:pan-x pan-y;touch-action:pan-x pan-y}.leaflet-container.leaflet-touch-drag{-ms-touch-action:pinch-zoom;touch-action:none;touch-action:pinch-zoom}.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom{-ms-touch-action:none;touch-action:none}.leaflet-container{-webkit-tap-highlight-color:transparent}.leaflet-container a{-webkit-tap-highlight-color:rgba(51,181,229,.4)}.leaflet-tile{filter:inherit;visibility:hidden}.leaflet-tile-loaded{visibility:inherit}.leaflet-zoom-box{width:0;height:0;-moz-box-sizing:border-box;box-sizing:border-box;z-index:800}.leaflet-overlay-pane svg{-moz-user-select:none}.leaflet-pane{z-index:400}.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}.leaflet-shadow-pane{z-index:500}.leaflet-marker-pane{z-index:600}.leaflet-tooltip-pane{z-index:650}.leaflet-popup-pane{z-index:700}.leaflet-map-pane canvas{z-index:100}.leaflet-map-pane svg{z-index:200}.leaflet-vml-shape{width:1px;height:1px}.lvml{behavior:url(#default#VML);display:inline-block;position:absolute}.leaflet-control{position:relative;z-index:800;pointer-events:visiblePainted;pointer-events:auto}.leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}.leaflet-top{top:0}.leaflet-right{right:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}.leaflet-control{float:left;clear:both}.leaflet-right .leaflet-control{float:right}.leaflet-top .leaflet-control{margin-top:10px}.leaflet-bottom .leaflet-control{margin-bottom:10px}.leaflet-left .leaflet-control{margin-left:10px}.leaflet-right .leaflet-control{margin-right:10px}.leaflet-fade-anim .leaflet-popup{opacity:0;-webkit-transition:opacity .2s linear;-moz-transition:opacity .2s linear;transition:opacity .2s linear}.leaflet-fade-anim .leaflet-map-pane .leaflet-popup{opacity:1}.leaflet-zoom-animated{-webkit-transform-origin:0 0;-ms-transform-origin:0 0;transform-origin:0 0}svg.leaflet-zoom-animated{will-change:transform}.leaflet-zoom-anim .leaflet-zoom-animated{-webkit-transition:-webkit-transform .25s cubic-bezier(0,0,.25,1);-moz-transition:-moz-transform .25s cubic-bezier(0,0,.25,1);transition:transform .25s cubic-bezier(0,0,.25,1)}.leaflet-zoom-anim .leaflet-tile,.leaflet-pan-anim .leaflet-tile{-webkit-transition:none;-moz-transition:none;transition:none}.leaflet-zoom-anim .leaflet-zoom-hide{visibility:hidden}.leaflet-interactive{cursor:pointer}.leaflet-grab{cursor:-webkit-grab;cursor:-moz-grab;cursor:grab}.leaflet-crosshair,.leaflet-crosshair .leaflet-interactive{cursor:crosshair}.leaflet-popup-pane,.leaflet-control{cursor:auto}.leaflet-dragging .leaflet-grab,.leaflet-dragging .leaflet-grab .leaflet-interactive,.leaflet-dragging .leaflet-marker-draggable{cursor:move;cursor:-webkit-grabbing;cursor:-moz-grabbing;cursor:grabbing}.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-image-layer,.leaflet-pane>svg path,.leaflet-tile-container{pointer-events:none}.leaflet-marker-icon.leaflet-interactive,.leaflet-image-layer.leaflet-interactive,.leaflet-pane>svg path.leaflet-interactive,svg.leaflet-image-layer.leaflet-interactive path{pointer-events:visiblePainted;pointer-events:auto}.leaflet-container{background:#ddd;outline-offset:1px}.leaflet-container a{color:#0078a8}.leaflet-zoom-box{border:2px dotted #38f;background:#ffffff80}.leaflet-container{font-family:Helvetica Neue,Arial,Helvetica,sans-serif;font-size:12px;font-size:.75rem;line-height:1.5}.leaflet-bar{box-shadow:0 1px 5px #000000a6;border-radius:4px}.leaflet-bar a{background-color:#fff;border-bottom:1px solid #ccc;width:26px;height:26px;line-height:26px;display:block;text-align:center;text-decoration:none;color:#000}.leaflet-bar a,.leaflet-control-layers-toggle{background-position:50% 50%;background-repeat:no-repeat;display:block}.leaflet-bar a:hover,.leaflet-bar a:focus{background-color:#f4f4f4}.leaflet-bar a:first-child{border-top-left-radius:4px;border-top-right-radius:4px}.leaflet-bar a:last-child{border-bottom-left-radius:4px;border-bottom-right-radius:4px;border-bottom:none}.leaflet-bar a.leaflet-disabled{cursor:default;background-color:#f4f4f4;color:#bbb}.leaflet-touch .leaflet-bar a{width:30px;height:30px;line-height:30px}.leaflet-touch .leaflet-bar a:first-child{border-top-left-radius:2px;border-top-right-radius:2px}.leaflet-touch .leaflet-bar a:last-child{border-bottom-left-radius:2px;border-bottom-right-radius:2px}.leaflet-control-zoom-in,.leaflet-control-zoom-out{font:700 18px Lucida Console,Monaco,monospace;text-indent:1px}.leaflet-touch .leaflet-control-zoom-in,.leaflet-touch .leaflet-control-zoom-out{font-size:22px}.leaflet-control-layers{box-shadow:0 1px 5px #0006;background:#fff;border-radius:5px}.leaflet-control-layers-toggle{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAQAAAADQ4RFAAACf0lEQVR4AY1UM3gkARTePdvdoTxXKc+qTl3aU5U6b2Kbkz3Gtq3Zw6ziLGNPzrYx7946Tr6/ee/XeCQ4D3ykPtL5tHno4n0d/h3+xfuWHGLX81cn7r0iTNzjr7LrlxCqPtkbTQEHeqOrTy4Yyt3VCi/IOB0v7rVC7q45Q3Gr5K6jt+3Gl5nCoDD4MtO+j96Wu8atmhGqcNGHObuf8OM/x3AMx38+4Z2sPqzCxRFK2aF2e5Jol56XTLyggAMTL56XOMoS1W4pOyjUcGGQdZxU6qRh7B9Zp+PfpOFlqt0zyDZckPi1ttmIp03jX8gyJ8a/PG2yutpS/Vol7peZIbZcKBAEEheEIAgFbDkz5H6Zrkm2hVWGiXKiF4Ycw0RWKdtC16Q7qe3X4iOMxruonzegJzWaXFrU9utOSsLUmrc0YjeWYjCW4PDMADElpJSSQ0vQvA1Tm6/JlKnqFs1EGyZiFCqnRZTEJJJiKRYzVYzJck2Rm6P4iH+cmSY0YzimYa8l0EtTODFWhcMIMVqdsI2uiTvKmTisIDHJ3od5GILVhBCarCfVRmo4uTjkhrhzkiBV7SsaqS+TzrzM1qpGGUFt28pIySQHR6h7F6KSwGWm97ay+Z+ZqMcEjEWebE7wxCSQwpkhJqoZA5ivCdZDjJepuJ9IQjGGUmuXJdBFUygxVqVsxFsLMbDe8ZbDYVCGKxs+W080max1hFCarCfV+C1KATwcnvE9gRRuMP2prdbWGowm1KB1y+zwMMENkM755cJ2yPDtqhTI6ED1M/82yIDtC/4j4BijjeObflpO9I9MwXTCsSX8jWAFeHr05WoLTJ5G8IQVS/7vwR6ohirYM7f6HzYpogfS3R2OAAAAAElFTkSuQmCC);width:36px;height:36px}.leaflet-retina .leaflet-control-layers-toggle{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADQAAAA0CAQAAABvcdNgAAAEsklEQVR4AWL4TydIhpZK1kpWOlg0w3ZXP6D2soBtG42jeI6ZmQTHzAxiTbSJsYLjO9HhP+WOmcuhciVnmHVQcJnp7DFvScowZorad/+V/fVzMdMT2g9Cv9guXGv/7pYOrXh2U+RRR3dSd9JRx6bIFc/ekqHI29JC6pJ5ZEh1yWkhkbcFeSjxgx3L2m1cb1C7bceyxA+CNjT/Ifff+/kDk2u/w/33/IeCMOSaWZ4glosqT3DNnNZQ7Cs58/3Ce5HL78iZH/vKVIaYlqzfdLu8Vi7dnvUbEza5Idt36tquZFldl6N5Z/POLof0XLK61mZCmJSWjVF9tEjUluu74IUXvgttuVIHE7YxSkaYhJZam7yiM9Pv82JYfl9nptxZaxMJE4YSPty+vF0+Y2up9d3wwijfjZbabqm/3bZ9ecKHsiGmRflnn1MW4pjHf9oLufyn2z3y1D6n8g8TZhxyzipLNPnAUpsOiuWimg52psrTZYnOWYNDTMuWBWa0tJb4rgq1UvmutpaYEbZlwU3CLJm/ayYjHW5/h7xWLn9Hh1vepDkyf7dE7MtT5LR4e7yYpHrkhOUpEfssBLq2pPhAqoSWKUkk7EDqkmK6RrCEzqDjhNDWNE+XSMvkJRDWlZTmCW0l0PHQGRZY5t1L83kT0Y3l2SItk5JAWHl2dCOBm+fPu3fo5/3v61RMCO9Jx2EEYYhb0rmNQMX/vm7gqOEJLcXTGw3CAuRNeyaPWwjR8PRqKQ1PDA/dpv+on9Shox52WFnx0KY8onHayrJzm87i5h9xGw/tfkev0jGsQizqezUKjk12hBMKJ4kbCqGPVNXudyyrShovGw5CgxsRICxF6aRmSjlBnHRzg7Gx8fKqEubI2rahQYdR1YgDIRQO7JvQyD52hoIQx0mxa0ODtW2Iozn1le2iIRdzwWewedyZzewidueOGqlsn1MvcnQpuVwLGG3/IR1hIKxCjelIDZ8ldqWz25jWAsnldEnK0Zxro19TGVb2ffIZEsIO89EIEDvKMPrzmBOQcKQ+rroye6NgRRxqR4U8EAkz0CL6uSGOm6KQCdWjvjRiSP1BPalCRS5iQYiEIvxuBMJEWgzSoHADcVMuN7IuqqTeyUPq22qFimFtxDyBBJEwNyt6TM88blFHao/6tWWhuuOM4SAK4EI4QmFHA+SEyWlp4EQoJ13cYGzMu7yszEIBOm2rVmHUNqwAIQabISNMRstmdhNWcFLsSm+0tjJH1MdRxO5Nx0WDMhCtgD6OKgZeljJqJKc9po8juskR9XN0Y1lZ3mWjLR9JCO1jRDMd0fpYC2VnvjBSEFg7wBENc0R9HFlb0xvF1+TBEpF68d+DHR6IOWVv2BECtxo46hOFUBd/APU57WIoEwJhIi2CdpyZX0m93BZicktMj1AS9dClteUFAUNUIEygRZCtik5zSxI9MubTBH1GOiHsiLJ3OCoSZkILa9PxiN0EbvhsAo8tdAf9Seepd36lGWHmtNANTv5Jd0z4QYyeo/UEJqxKRpg5LZx6btLPsOaEmdMyxYdlc8LMaJnikDlhclqmPiQnTEpLUIZEwkRagjYkEibQErwhkTAKCLQEbUgkzJQWc/0PstHHcfEdQ+UAAAAASUVORK5CYII=);background-size:26px 26px}.leaflet-touch .leaflet-control-layers-toggle{width:44px;height:44px}.leaflet-control-layers .leaflet-control-layers-list,.leaflet-control-layers-expanded .leaflet-control-layers-toggle{display:none}.leaflet-control-layers-expanded .leaflet-control-layers-list{display:block;position:relative}.leaflet-control-layers-expanded{padding:6px 10px 6px 6px;color:#333;background:#fff}.leaflet-control-layers-scrollbar{overflow-y:scroll;overflow-x:hidden;padding-right:5px}.leaflet-control-layers-selector{margin-top:2px;position:relative;top:1px}.leaflet-control-layers label{display:block;font-size:13px;font-size:1.08333em}.leaflet-control-layers-separator{height:0;border-top:1px solid #ddd;margin:5px -10px 5px -6px}.leaflet-default-icon-path{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAApCAYAAADAk4LOAAAFgUlEQVR4Aa1XA5BjWRTN2oW17d3YaZtr2962HUzbDNpjszW24mRt28p47v7zq/bXZtrp/lWnXr337j3nPCe85NcypgSFdugCpW5YoDAMRaIMqRi6aKq5E3YqDQO3qAwjVWrD8Ncq/RBpykd8oZUb/kaJutow8r1aP9II0WmLKLIsJyv1w/kqw9Ch2MYdB++12Onxee/QMwvf4/Dk/Lfp/i4nxTXtOoQ4pW5Aj7wpici1A9erdAN2OH64x8OSP9j3Ft3b7aWkTg/Fm91siTra0f9on5sQr9INejH6CUUUpavjFNq1B+Oadhxmnfa8RfEmN8VNAsQhPqF55xHkMzz3jSmChWU6f7/XZKNH+9+hBLOHYozuKQPxyMPUKkrX/K0uWnfFaJGS1QPRtZsOPtr3NsW0uyh6NNCOkU3Yz+bXbT3I8G3xE5EXLXtCXbbqwCO9zPQYPRTZ5vIDXD7U+w7rFDEoUUf7ibHIR4y6bLVPXrz8JVZEql13trxwue/uDivd3fkWRbS6/IA2bID4uk0UpF1N8qLlbBlXs4Ee7HLTfV1j54APvODnSfOWBqtKVvjgLKzF5YdEk5ewRkGlK0i33Eofffc7HT56jD7/6U+qH3Cx7SBLNntH5YIPvODnyfIXZYRVDPqgHtLs5ABHD3YzLuespb7t79FY34DjMwrVrcTuwlT55YMPvOBnRrJ4VXTdNnYug5ucHLBjEpt30701A3Ts+HEa73u6dT3FNWwflY86eMHPk+Yu+i6pzUpRrW7SNDg5JHR4KapmM5Wv2E8Tfcb1HoqqHMHU+uWDD7zg54mz5/2BSnizi9T1Dg4QQXLToGNCkb6tb1NU+QAlGr1++eADrzhn/u8Q2YZhQVlZ5+CAOtqfbhmaUCS1ezNFVm2imDbPmPng5wmz+gwh+oHDce0eUtQ6OGDIyR0uUhUsoO3vfDmmgOezH0mZN59x7MBi++WDL1g/eEiU3avlidO671bkLfwbw5XV2P8Pzo0ydy4t2/0eu33xYSOMOD8hTf4CrBtGMSoXfPLchX+J0ruSePw3LZeK0juPJbYzrhkH0io7B3k164hiGvawhOKMLkrQLyVpZg8rHFW7E2uHOL888IBPlNZ1FPzstSJM694fWr6RwpvcJK60+0HCILTBzZLFNdtAzJaohze60T8qBzyh5ZuOg5e7uwQppofEmf2++DYvmySqGBuKaicF1blQjhuHdvCIMvp8whTTfZzI7RldpwtSzL+F1+wkdZ2TBOW2gIF88PBTzD/gpeREAMEbxnJcaJHNHrpzji0gQCS6hdkEeYt9DF/2qPcEC8RM28Hwmr3sdNyht00byAut2k3gufWNtgtOEOFGUwcXWNDbdNbpgBGxEvKkOQsxivJx33iow0Vw5S6SVTrpVq11ysA2Rp7gTfPfktc6zhtXBBC+adRLshf6sG2RfHPZ5EAc4sVZ83yCN00Fk/4kggu40ZTvIEm5g24qtU4KjBrx/BTTH8ifVASAG7gKrnWxJDcU7x8X6Ecczhm3o6YicvsLXWfh3Ch1W0k8x0nXF+0fFxgt4phz8QvypiwCCFKMqXCnqXExjq10beH+UUA7+nG6mdG/Pu0f3LgFcGrl2s0kNNjpmoJ9o4B29CMO8dMT4Q5ox8uitF6fqsrJOr8qnwNbRzv6hSnG5wP+64C7h9lp30hKNtKdWjtdkbuPA19nJ7Tz3zR/ibgARbhb4AlhavcBebmTHcFl2fvYEnW0ox9xMxKBS8btJ+KiEbq9zA4RthQXDhPa0T9TEe69gWupwc6uBUphquXgf+/FrIjweHQS4/pduMe5ERUMHUd9xv8ZR98CxkS4F2n3EUrUZ10EYNw7BWm9x1GiPssi3GgiGRDKWRYZfXlON+dfNbM+GgIwYdwAAAAASUVORK5CYII=)}.leaflet-container .leaflet-control-attribution{background:#fff;background:#fffc;margin:0}.leaflet-control-attribution,.leaflet-control-scale-line{padding:0 5px;color:#333;line-height:1.4}.leaflet-control-attribution a{text-decoration:none}.leaflet-control-attribution a:hover,.leaflet-control-attribution a:focus{text-decoration:underline}.leaflet-attribution-flag{display:inline!important;vertical-align:baseline!important;width:1em;height:.6669em}.leaflet-left .leaflet-control-scale{margin-left:5px}.leaflet-bottom .leaflet-control-scale{margin-bottom:5px}.leaflet-control-scale-line{border:2px solid #777;border-top:none;line-height:1.1;padding:2px 5px 1px;white-space:nowrap;-moz-box-sizing:border-box;box-sizing:border-box;background:#fffc;text-shadow:1px 1px #fff}.leaflet-control-scale-line:not(:first-child){border-top:2px solid #777;border-bottom:none;margin-top:-2px}.leaflet-control-scale-line:not(:first-child):not(:last-child){border-bottom:2px solid #777}.leaflet-touch .leaflet-control-attribution,.leaflet-touch .leaflet-control-layers,.leaflet-touch .leaflet-bar{box-shadow:none}.leaflet-touch .leaflet-control-layers,.leaflet-touch .leaflet-bar{border:2px solid rgba(0,0,0,.2);background-clip:padding-box}.leaflet-popup{position:absolute;text-align:center;margin-bottom:20px}.leaflet-popup-content-wrapper{padding:1px;text-align:left;border-radius:12px}.leaflet-popup-content{margin:13px 24px 13px 20px;line-height:1.3;font-size:13px;font-size:1.08333em;min-height:1px}.leaflet-popup-content p{margin:1.3em 0}.leaflet-popup-tip-container{width:40px;height:20px;position:absolute;left:50%;margin-top:-1px;margin-left:-20px;overflow:hidden;pointer-events:none}.leaflet-popup-tip{width:17px;height:17px;padding:1px;margin:-10px auto 0;pointer-events:auto;-webkit-transform:rotate(45deg);-moz-transform:rotate(45deg);-ms-transform:rotate(45deg);transform:rotate(45deg)}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#fff;color:#333;box-shadow:0 3px 14px #0006}.leaflet-container a.leaflet-popup-close-button{position:absolute;top:0;right:0;border:none;text-align:center;width:24px;height:24px;font:16px/24px Tahoma,Verdana,sans-serif;color:#757575;text-decoration:none;background:transparent}.leaflet-container a.leaflet-popup-close-button:hover,.leaflet-container a.leaflet-popup-close-button:focus{color:#585858}.leaflet-popup-scrolled{overflow:auto}.leaflet-oldie .leaflet-popup-content-wrapper{-ms-zoom:1}.leaflet-oldie .leaflet-popup-tip{width:24px;margin:0 auto;-ms-filter:\"progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)\";filter:progid:DXImageTransform.Microsoft.Matrix(M11=.70710678,M12=.70710678,M21=-.70710678,M22=.70710678)}.leaflet-oldie .leaflet-control-zoom,.leaflet-oldie .leaflet-control-layers,.leaflet-oldie .leaflet-popup-content-wrapper,.leaflet-oldie .leaflet-popup-tip{border:1px solid #999}.leaflet-div-icon{background:#fff;border:1px solid #666}.leaflet-tooltip{position:absolute;padding:6px;background-color:#fff;border:1px solid #fff;border-radius:3px;color:#222;white-space:nowrap;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;pointer-events:none;box-shadow:0 1px 3px #0006}.leaflet-tooltip.leaflet-interactive{cursor:pointer;pointer-events:auto}.leaflet-tooltip-top:before,.leaflet-tooltip-bottom:before,.leaflet-tooltip-left:before,.leaflet-tooltip-right:before{position:absolute;pointer-events:none;border:6px solid transparent;background:transparent;content:\"\"}.leaflet-tooltip-bottom{margin-top:6px}.leaflet-tooltip-top{margin-top:-6px}.leaflet-tooltip-bottom:before,.leaflet-tooltip-top:before{left:50%;margin-left:-6px}.leaflet-tooltip-top:before{bottom:0;margin-bottom:-12px;border-top-color:#fff}.leaflet-tooltip-bottom:before{top:0;margin-top:-12px;margin-left:-6px;border-bottom-color:#fff}.leaflet-tooltip-left{margin-left:-6px}.leaflet-tooltip-right{margin-left:6px}.leaflet-tooltip-left:before,.leaflet-tooltip-right:before{top:50%;margin-top:-6px}.leaflet-tooltip-left:before{right:0;margin-right:-12px;border-left-color:#fff}.leaflet-tooltip-right:before{left:0;margin-left:-12px;border-right-color:#fff}@media print{.leaflet-control{-webkit-print-color-adjust:exact;print-color-adjust:exact}}.world-field[data-v-4443f246]{display:block;margin:10px 0}.world-label[data-v-4443f246]{display:block;font-size:12px;font-weight:600;color:var(--md-on-surface-variant);margin-bottom:4px}.world-text[data-v-4443f246]{width:100%;min-height:64px;padding:10px 14px;border:1px solid var(--md-outline-variant);border-radius:var(--r-sm);background:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;font-size:13px;line-height:1.5;resize:vertical;outline:none}.world-text[data-v-4443f246]:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 14%,transparent)}.world-actions[data-v-4443f246]{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}.wm-head[data-v-4443f246]{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}.wm-place[data-v-4443f246]{font-size:12px;color:var(--md-on-surface-variant)}.wm-premise[data-v-4443f246]{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:2px 0 8px}.wm-map-wrap[data-v-4443f246]{position:relative;margin-top:8px}.world-map-leaflet[data-v-4443f246]{height:clamp(460px,72vh,820px);border-radius:16px;overflow:hidden;border:1px solid var(--md-outline-variant);background:#e8edf2}.world-map-leaflet.is-empty[data-v-4443f246]{display:none}.wm-reset[data-v-4443f246]{position:absolute;top:10px;right:10px;z-index:var(--z-overlay,2000);border:1px solid var(--md-outline-variant);background:#fffffff0;color:#33404c;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 4px #0000002e}.wm-reset[data-v-4443f246]:hover{background:#fff}.wm-compass[data-v-4443f246]{position:absolute;left:12px;bottom:12px;z-index:var(--z-overlay,2000);width:38px;height:38px;border-radius:50%;background:#ffffffeb;border:1px solid #b9c3cd;box-shadow:0 1px 4px #0000002e;display:grid;place-items:center}.wm-compass i[data-v-4443f246]{font-style:normal;font-size:12px;font-weight:800;color:#d64545;position:relative}.wm-compass i[data-v-4443f246]:before{content:\"\";position:absolute;left:50%;top:-9px;transform:translate(-50%);border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:9px solid #33404c}.wm-scope[data-v-4443f246]{position:absolute;bottom:12px;right:12px;z-index:var(--z-overlay,2000);border:1px solid var(--md-outline-variant);background:#fffffff0;color:#33404c;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 4px #0000002e}.wm-scope[data-v-4443f246]:hover{background:#fff}.wm-offline[data-v-4443f246]{position:absolute;left:50%;bottom:12px;transform:translate(-50%);z-index:var(--z-overlay,2000);background:#d1495bf0;color:#fff;font-size:12px;font-weight:600;padding:5px 12px;border-radius:10px;box-shadow:0 1px 4px #00000040}.wm-routes[data-v-4443f246]{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:18px;margin-top:14px}.wm-routes h4[data-v-4443f246]{margin:0 0 6px;font-size:13px;font-weight:800}.wm-routes ul[data-v-4443f246]{list-style:none;margin:0;padding:0}.wm-routes li[data-v-4443f246]{display:flex;gap:10px;padding:4px 0;border-bottom:1px dashed color-mix(in srgb,var(--md-outline-variant) 70%,transparent);font-size:12.5px}.wm-routes b[data-v-4443f246]{flex:0 0 88px}.wm-routes span[data-v-4443f246]{color:var(--md-on-surface-variant);line-height:1.5}.wm-legend[data-v-4443f246]{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:12px;color:var(--md-on-surface-variant)}.wm-legend span[data-v-4443f246]{display:inline-flex;align-items:center;gap:6px}.wm-legend i[data-v-4443f246]{width:12px;height:12px;border-radius:50%;display:inline-block;border:1.5px solid rgba(255,255,255,.7)}.wm-legend i.k-home[data-v-4443f246]{background:#e07a5f}.wm-legend i.k-work[data-v-4443f246]{background:#5b8def}.wm-legend i.k-shop[data-v-4443f246]{background:#e0a23d}.wm-legend i.k-food[data-v-4443f246]{background:#57a773}.wm-legend i.k-park[data-v-4443f246]{background:#3faead}.wm-legend i.k-transit[data-v-4443f246]{background:#8b6fd6}.wm-legend i.k-other[data-v-4443f246]{background:#8a94a6}.wm-legend i.k-actor[data-v-4443f246]{background:#fff;border-color:#d1495b;box-shadow:inset 0 0 0 3px #d1495b}.wm-legend i.k-metro[data-v-4443f246]{background:#d64545}.wm-legend i.k-bus[data-v-4443f246]{background:#e08a2e}.wm-legend i.k-park2[data-v-4443f246]{background:#9bd08f}.wm-legend i.k-water[data-v-4443f246]{background:#8fbfe6}.wm-legend i.k-hw[data-v-4443f246]{background:#f08c2e}.wm-legend i.k-arterial[data-v-4443f246]{background:#f7cf8a}.wm-legend i.k-street[data-v-4443f246]{background:#fff;border-color:#b9c3cd}.pfield[data-v-4443f246]{display:flex;flex-direction:column;gap:4px;margin-top:10px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}#app .pcp .pfield textarea.field[data-v-4443f246]{height:auto;min-height:70px;padding:10px 12px;resize:vertical;line-height:1.5}.cog-metric[data-v-4443f246]{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:var(--r-sm);background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant)}.cog-metric span[data-v-4443f246]{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant)}.cog-metric strong[data-v-4443f246]{font-size:16px;font-weight:800;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cog-metric.warn[data-v-4443f246]{border-color:var(--md-error,#b3261e);background:color-mix(in srgb,var(--md-error,#b3261e) 8%,transparent)}.cog-metric.warn span[data-v-4443f246],.cog-metric.warn strong[data-v-4443f246]{color:var(--md-error,#b3261e)}.som-channels[data-v-4443f246]{margin-top:10px;display:flex;flex-direction:column;gap:6px}.som-chan[data-v-4443f246]{display:grid;grid-template-columns:minmax(52px,88px) minmax(0,1fr) 48px;align-items:center;gap:10px}.som-chan-name[data-v-4443f246]{font-size:12px;font-weight:600;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.som-chan-bar[data-v-4443f246]{display:block;height:8px;border-radius:999px;background:var(--md-surface-container);overflow:hidden}.som-chan-bar i[data-v-4443f246]{display:block;width:100%;height:100%;border-radius:999px;background:var(--md-primary);transform-origin:left;transition:transform var(--duration-medium) var(--ease-out);will-change:transform}.som-chan-val[data-v-4443f246]{font-size:12px;font-weight:700;text-align:right;color:var(--md-on-surface-variant)}.at-a-glance[data-v-4443f246]{display:grid;grid-template-columns:190px minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start;margin:8px 0 4px}@media(max-width:900px){.at-a-glance[data-v-4443f246]{grid-template-columns:1fr 1fr}}@media(max-width:620px){.at-a-glance[data-v-4443f246]{grid-template-columns:1fr}}.mood-plot-wrap[data-v-4443f246]{position:relative;width:190px;padding:26px 22px 40px;background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 60%,transparent);border-radius:var(--r-md);box-sizing:border-box}.mood-plot[data-v-4443f246]{display:block;width:100%}.plot-frame[data-v-4443f246]{fill:var(--md-surface-container-lowest);stroke:var(--md-outline-variant)}.plot-grid[data-v-4443f246]{stroke:var(--md-outline-variant);stroke-width:1;stroke-dasharray:3 4}.plot-dot[data-v-4443f246]{fill:var(--md-primary)}.plot-halo[data-v-4443f246]{fill:var(--md-primary);opacity:.22}.plot-label[data-v-4443f246]{position:absolute;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant);pointer-events:none}.plot-n[data-v-4443f246]{top:6px;left:50%;transform:translate(-50%)}.plot-s[data-v-4443f246]{bottom:26px;left:50%;transform:translate(-50%)}.plot-w[data-v-4443f246]{left:8px;top:50%;transform:translateY(-58%)}.plot-e[data-v-4443f246]{right:8px;top:50%;transform:translateY(-58%)}.plot-quadrant[data-v-4443f246]{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:12px;font-weight:800;color:var(--md-primary)}.glance-col[data-v-4443f246]{display:flex;flex-direction:column;gap:8px;min-width:0}.glance-title[data-v-4443f246]{display:flex;align-items:center;gap:8px;margin:0;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--md-on-surface-variant)}.gauge-grid[data-v-4443f246]{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin:8px 0}.gauge[data-v-4443f246]{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border-radius:var(--r-sm);background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);min-width:0}.gauge-head[data-v-4443f246]{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.gauge-name[data-v-4443f246]{font-size:12px;font-weight:700;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.gauge-alias[data-v-4443f246]{font-style:normal;font-weight:500;font-size:11px;color:var(--md-on-surface-variant);opacity:.8;margin-left:6px}.gauge-val[data-v-4443f246]{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.gauge-state[data-v-4443f246]{font-weight:800;margin-right:2px}.gauge-state.good[data-v-4443f246]{color:var(--md-success)}.gauge-state.mid[data-v-4443f246]{color:var(--md-primary)}.gauge-state.bad[data-v-4443f246]{color:var(--md-error)}.gauge-bar[data-v-4443f246]{position:relative;display:block;height:8px;border-radius:999px;background:var(--md-surface-container-highest);overflow:visible}.gauge-bar.signed[data-v-4443f246]:before{content:\"\";position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--md-outline-variant)}.gauge-fill[data-v-4443f246]{position:absolute;top:0;bottom:0;border-radius:999px;transition:width .35s var(--ease-out,.25s ease),left .35s var(--ease-out,.25s ease)}.gauge-fill.good[data-v-4443f246]{background:var(--md-success)}.gauge-fill.mid[data-v-4443f246]{background:var(--md-primary)}.gauge-fill.bad[data-v-4443f246]{background:var(--md-error)}.gauge-effect[data-v-4443f246]{font-size:11px;line-height:1.45;color:var(--md-on-surface-variant)}.chip-row[data-v-4443f246]{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.chip.warn[data-v-4443f246]{background:var(--md-error-container);color:var(--md-on-error-container)}.rel-card[data-v-4443f246]{display:flex;flex-direction:column;gap:10px}.rel-head[data-v-4443f246]{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}.rel-track-row[data-v-4443f246]{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}.rel-track-label[data-v-4443f246],.rel-stage-name[data-v-4443f246]{font-size:11px;font-weight:800;letter-spacing:.04em;color:var(--md-on-surface-variant);white-space:nowrap}.rel-stage-name[data-v-4443f246]{color:var(--md-primary)}.rel-track[data-v-4443f246]{display:flex;gap:3px;height:10px;border-radius:999px;overflow:hidden;background:var(--md-surface-container-highest)}.rel-seg[data-v-4443f246]{flex:1 1 0;background:color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}.rel-seg.done[data-v-4443f246]{background:color-mix(in srgb,var(--md-primary) 45%,transparent)}.rel-seg.cur[data-v-4443f246]{background:var(--md-primary)}.rel-mode[data-v-4443f246]{display:flex;flex-direction:column;gap:4px;align-items:flex-start}.value-row[data-v-4443f246]{display:grid;grid-template-columns:minmax(72px,140px) minmax(0,1fr) 44px;gap:10px;align-items:center}.value-name[data-v-4443f246]{font-size:13px;font-weight:700;overflow-wrap:anywhere}.value-bar[data-v-4443f246]{position:relative;display:block;height:8px;border-radius:999px;background:var(--md-surface-container-highest)}.value-bar[data-v-4443f246]:before{content:\"\";position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--md-outline-variant)}.value-bar i[data-v-4443f246]{position:absolute;top:0;bottom:0;border-radius:999px;transition:width .35s var(--ease-out,.25s ease),left .35s var(--ease-out,.25s ease)}.value-bar i.good[data-v-4443f246]{background:var(--md-success)}.value-bar i.bad[data-v-4443f246]{background:var(--md-error)}.value-num[data-v-4443f246]{font-size:12px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;color:var(--md-on-surface-variant)}.chip[data-v-4443f246]{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:700;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.chip.muted[data-v-4443f246]{background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-weight:500}.chip.ok[data-v-4443f246]{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}#app .pcp .cog-metric[data-v-4443f246]{background:var(--md-surface-container)}.sync-pill[data-v-4443f246]{font-weight:500;opacity:.85}html[data-theme=dark] #app .pcp .world-map-leaflet{background:#10151c}html[data-theme=dark] #app .pcp .wm-reset,html[data-theme=dark] #app .pcp .wm-scope{background:color-mix(in srgb,var(--md-surface-container-high) 94%,transparent);color:var(--md-on-surface)}html[data-theme=dark] #app .pcp .wm-reset:hover,html[data-theme=dark] #app .pcp .wm-scope:hover{background:var(--md-surface-container-highest)}html[data-theme=dark] #app .pcp .wm-compass{background:color-mix(in srgb,var(--md-surface-container-high) 92%,transparent);border-color:var(--md-outline-variant)}html[data-theme=dark] .wm-district-inner{color:#aeb9c4;text-shadow:none}html[data-theme=dark] .wm-station .wm-route-inner{background:#1a2230;color:#d7dee6}html[data-theme=dark] .leaflet-container{background:#10151c}.wm-pin-holder,.wm-actor-holder{background:none;border:none}.wm-pin{position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;background:var(--c,#8a94a6);border:3px solid #fff;box-shadow:0 2px 6px #00000073;transform:translate(-50%,-50%)}.wm-pin:after{content:\"\";position:absolute;left:50%;top:100%;width:2px;height:8px;background:#fff;transform:translate(-50%);opacity:.7}.wm-pin-label{position:absolute;left:12px;top:-9px;white-space:nowrap;background:#12141ad1;color:#fff;font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px;pointer-events:none}.wm-actor-badge{position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:#fff;color:#d1495b;border:3px solid #d1495b;font-size:14px;font-weight:800;line-height:1;display:grid;place-items:center;transform:translate(-50%,-50%);box-shadow:0 2px 6px #00000080;z-index:600}.wm-actor-name{position:absolute;left:0;top:20px;white-space:nowrap;background:#d1495b;color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:9px;transform:translate(-50%)}.wm-district{background:none;border:none}.wm-district-inner{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;font-size:12px;font-weight:800;letter-spacing:.2em;color:#5c6b78;text-shadow:0 1px 0 rgba(255,255,255,.9);pointer-events:none}.wm-route{background:none;border:none}.wm-route-inner{position:absolute;left:0;top:0;transform:translate(-50%,-50%);background:var(--c,#333);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;box-shadow:0 1px 3px #00000059;pointer-events:none}.wm-zoom-low .wm-minor{display:none}.wm-station .wm-route-inner{background:#fff;color:#33404c;border:1.5px solid var(--c,#888);border-radius:6px;font-size:9px;font-weight:700;padding:1px 5px}.leaflet-container{font-family:inherit;background:#e8edf2;border-radius:16px}.leaflet-container a{color:#2f6fed}.leaflet-popup-content{font-size:13px;line-height:1.5}\n";document.head.appendChild(s)}})();
+;(()=>{if(typeof document!=='undefined'&&!document.getElementById('life-plugin-style')){const s=document.createElement('style');s.id='life-plugin-style';s.textContent=".leaflet-pane,.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-tile-container,.leaflet-pane>svg,.leaflet-pane>canvas,.leaflet-zoom-box,.leaflet-image-layer,.leaflet-layer{position:absolute;left:0;top:0}.leaflet-container{overflow:hidden}.leaflet-tile,.leaflet-marker-icon,.leaflet-marker-shadow{-webkit-user-select:none;-moz-user-select:none;user-select:none;-webkit-user-drag:none}.leaflet-tile::selection{background:transparent}.leaflet-safari .leaflet-tile{image-rendering:-webkit-optimize-contrast}.leaflet-safari .leaflet-tile-container{width:1600px;height:1600px;-webkit-transform-origin:0 0}.leaflet-marker-icon,.leaflet-marker-shadow{display:block}.leaflet-container .leaflet-overlay-pane svg{max-width:none!important;max-height:none!important}.leaflet-container .leaflet-marker-pane img,.leaflet-container .leaflet-shadow-pane img,.leaflet-container .leaflet-tile-pane img,.leaflet-container img.leaflet-image-layer,.leaflet-container .leaflet-tile{max-width:none!important;max-height:none!important;width:auto;padding:0}.leaflet-container img.leaflet-tile{mix-blend-mode:plus-lighter}.leaflet-container.leaflet-touch-zoom{-ms-touch-action:pan-x pan-y;touch-action:pan-x pan-y}.leaflet-container.leaflet-touch-drag{-ms-touch-action:pinch-zoom;touch-action:none;touch-action:pinch-zoom}.leaflet-container.leaflet-touch-drag.leaflet-touch-zoom{-ms-touch-action:none;touch-action:none}.leaflet-container{-webkit-tap-highlight-color:transparent}.leaflet-container a{-webkit-tap-highlight-color:rgba(51,181,229,.4)}.leaflet-tile{filter:inherit;visibility:hidden}.leaflet-tile-loaded{visibility:inherit}.leaflet-zoom-box{width:0;height:0;-moz-box-sizing:border-box;box-sizing:border-box;z-index:800}.leaflet-overlay-pane svg{-moz-user-select:none}.leaflet-pane{z-index:400}.leaflet-tile-pane{z-index:200}.leaflet-overlay-pane{z-index:400}.leaflet-shadow-pane{z-index:500}.leaflet-marker-pane{z-index:600}.leaflet-tooltip-pane{z-index:650}.leaflet-popup-pane{z-index:700}.leaflet-map-pane canvas{z-index:100}.leaflet-map-pane svg{z-index:200}.leaflet-vml-shape{width:1px;height:1px}.lvml{behavior:url(#default#VML);display:inline-block;position:absolute}.leaflet-control{position:relative;z-index:800;pointer-events:visiblePainted;pointer-events:auto}.leaflet-top,.leaflet-bottom{position:absolute;z-index:1000;pointer-events:none}.leaflet-top{top:0}.leaflet-right{right:0}.leaflet-bottom{bottom:0}.leaflet-left{left:0}.leaflet-control{float:left;clear:both}.leaflet-right .leaflet-control{float:right}.leaflet-top .leaflet-control{margin-top:10px}.leaflet-bottom .leaflet-control{margin-bottom:10px}.leaflet-left .leaflet-control{margin-left:10px}.leaflet-right .leaflet-control{margin-right:10px}.leaflet-fade-anim .leaflet-popup{opacity:0;-webkit-transition:opacity .2s linear;-moz-transition:opacity .2s linear;transition:opacity .2s linear}.leaflet-fade-anim .leaflet-map-pane .leaflet-popup{opacity:1}.leaflet-zoom-animated{-webkit-transform-origin:0 0;-ms-transform-origin:0 0;transform-origin:0 0}svg.leaflet-zoom-animated{will-change:transform}.leaflet-zoom-anim .leaflet-zoom-animated{-webkit-transition:-webkit-transform .25s cubic-bezier(0,0,.25,1);-moz-transition:-moz-transform .25s cubic-bezier(0,0,.25,1);transition:transform .25s cubic-bezier(0,0,.25,1)}.leaflet-zoom-anim .leaflet-tile,.leaflet-pan-anim .leaflet-tile{-webkit-transition:none;-moz-transition:none;transition:none}.leaflet-zoom-anim .leaflet-zoom-hide{visibility:hidden}.leaflet-interactive{cursor:pointer}.leaflet-grab{cursor:-webkit-grab;cursor:-moz-grab;cursor:grab}.leaflet-crosshair,.leaflet-crosshair .leaflet-interactive{cursor:crosshair}.leaflet-popup-pane,.leaflet-control{cursor:auto}.leaflet-dragging .leaflet-grab,.leaflet-dragging .leaflet-grab .leaflet-interactive,.leaflet-dragging .leaflet-marker-draggable{cursor:move;cursor:-webkit-grabbing;cursor:-moz-grabbing;cursor:grabbing}.leaflet-marker-icon,.leaflet-marker-shadow,.leaflet-image-layer,.leaflet-pane>svg path,.leaflet-tile-container{pointer-events:none}.leaflet-marker-icon.leaflet-interactive,.leaflet-image-layer.leaflet-interactive,.leaflet-pane>svg path.leaflet-interactive,svg.leaflet-image-layer.leaflet-interactive path{pointer-events:visiblePainted;pointer-events:auto}.leaflet-container{background:#ddd;outline-offset:1px}.leaflet-container a{color:#0078a8}.leaflet-zoom-box{border:2px dotted #38f;background:#ffffff80}.leaflet-container{font-family:Helvetica Neue,Arial,Helvetica,sans-serif;font-size:12px;font-size:.75rem;line-height:1.5}.leaflet-bar{box-shadow:0 1px 5px #000000a6;border-radius:4px}.leaflet-bar a{background-color:#fff;border-bottom:1px solid #ccc;width:26px;height:26px;line-height:26px;display:block;text-align:center;text-decoration:none;color:#000}.leaflet-bar a,.leaflet-control-layers-toggle{background-position:50% 50%;background-repeat:no-repeat;display:block}.leaflet-bar a:hover,.leaflet-bar a:focus{background-color:#f4f4f4}.leaflet-bar a:first-child{border-top-left-radius:4px;border-top-right-radius:4px}.leaflet-bar a:last-child{border-bottom-left-radius:4px;border-bottom-right-radius:4px;border-bottom:none}.leaflet-bar a.leaflet-disabled{cursor:default;background-color:#f4f4f4;color:#bbb}.leaflet-touch .leaflet-bar a{width:30px;height:30px;line-height:30px}.leaflet-touch .leaflet-bar a:first-child{border-top-left-radius:2px;border-top-right-radius:2px}.leaflet-touch .leaflet-bar a:last-child{border-bottom-left-radius:2px;border-bottom-right-radius:2px}.leaflet-control-zoom-in,.leaflet-control-zoom-out{font:700 18px Lucida Console,Monaco,monospace;text-indent:1px}.leaflet-touch .leaflet-control-zoom-in,.leaflet-touch .leaflet-control-zoom-out{font-size:22px}.leaflet-control-layers{box-shadow:0 1px 5px #0006;background:#fff;border-radius:5px}.leaflet-control-layers-toggle{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABoAAAAaCAQAAAADQ4RFAAACf0lEQVR4AY1UM3gkARTePdvdoTxXKc+qTl3aU5U6b2Kbkz3Gtq3Zw6ziLGNPzrYx7946Tr6/ee/XeCQ4D3ykPtL5tHno4n0d/h3+xfuWHGLX81cn7r0iTNzjr7LrlxCqPtkbTQEHeqOrTy4Yyt3VCi/IOB0v7rVC7q45Q3Gr5K6jt+3Gl5nCoDD4MtO+j96Wu8atmhGqcNGHObuf8OM/x3AMx38+4Z2sPqzCxRFK2aF2e5Jol56XTLyggAMTL56XOMoS1W4pOyjUcGGQdZxU6qRh7B9Zp+PfpOFlqt0zyDZckPi1ttmIp03jX8gyJ8a/PG2yutpS/Vol7peZIbZcKBAEEheEIAgFbDkz5H6Zrkm2hVWGiXKiF4Ycw0RWKdtC16Q7qe3X4iOMxruonzegJzWaXFrU9utOSsLUmrc0YjeWYjCW4PDMADElpJSSQ0vQvA1Tm6/JlKnqFs1EGyZiFCqnRZTEJJJiKRYzVYzJck2Rm6P4iH+cmSY0YzimYa8l0EtTODFWhcMIMVqdsI2uiTvKmTisIDHJ3od5GILVhBCarCfVRmo4uTjkhrhzkiBV7SsaqS+TzrzM1qpGGUFt28pIySQHR6h7F6KSwGWm97ay+Z+ZqMcEjEWebE7wxCSQwpkhJqoZA5ivCdZDjJepuJ9IQjGGUmuXJdBFUygxVqVsxFsLMbDe8ZbDYVCGKxs+W080max1hFCarCfV+C1KATwcnvE9gRRuMP2prdbWGowm1KB1y+zwMMENkM755cJ2yPDtqhTI6ED1M/82yIDtC/4j4BijjeObflpO9I9MwXTCsSX8jWAFeHr05WoLTJ5G8IQVS/7vwR6ohirYM7f6HzYpogfS3R2OAAAAAElFTkSuQmCC);width:36px;height:36px}.leaflet-retina .leaflet-control-layers-toggle{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADQAAAA0CAQAAABvcdNgAAAEsklEQVR4AWL4TydIhpZK1kpWOlg0w3ZXP6D2soBtG42jeI6ZmQTHzAxiTbSJsYLjO9HhP+WOmcuhciVnmHVQcJnp7DFvScowZorad/+V/fVzMdMT2g9Cv9guXGv/7pYOrXh2U+RRR3dSd9JRx6bIFc/ekqHI29JC6pJ5ZEh1yWkhkbcFeSjxgx3L2m1cb1C7bceyxA+CNjT/Ifff+/kDk2u/w/33/IeCMOSaWZ4glosqT3DNnNZQ7Cs58/3Ce5HL78iZH/vKVIaYlqzfdLu8Vi7dnvUbEza5Idt36tquZFldl6N5Z/POLof0XLK61mZCmJSWjVF9tEjUluu74IUXvgttuVIHE7YxSkaYhJZam7yiM9Pv82JYfl9nptxZaxMJE4YSPty+vF0+Y2up9d3wwijfjZbabqm/3bZ9ecKHsiGmRflnn1MW4pjHf9oLufyn2z3y1D6n8g8TZhxyzipLNPnAUpsOiuWimg52psrTZYnOWYNDTMuWBWa0tJb4rgq1UvmutpaYEbZlwU3CLJm/ayYjHW5/h7xWLn9Hh1vepDkyf7dE7MtT5LR4e7yYpHrkhOUpEfssBLq2pPhAqoSWKUkk7EDqkmK6RrCEzqDjhNDWNE+XSMvkJRDWlZTmCW0l0PHQGRZY5t1L83kT0Y3l2SItk5JAWHl2dCOBm+fPu3fo5/3v61RMCO9Jx2EEYYhb0rmNQMX/vm7gqOEJLcXTGw3CAuRNeyaPWwjR8PRqKQ1PDA/dpv+on9Shox52WFnx0KY8onHayrJzm87i5h9xGw/tfkev0jGsQizqezUKjk12hBMKJ4kbCqGPVNXudyyrShovGw5CgxsRICxF6aRmSjlBnHRzg7Gx8fKqEubI2rahQYdR1YgDIRQO7JvQyD52hoIQx0mxa0ODtW2Iozn1le2iIRdzwWewedyZzewidueOGqlsn1MvcnQpuVwLGG3/IR1hIKxCjelIDZ8ldqWz25jWAsnldEnK0Zxro19TGVb2ffIZEsIO89EIEDvKMPrzmBOQcKQ+rroye6NgRRxqR4U8EAkz0CL6uSGOm6KQCdWjvjRiSP1BPalCRS5iQYiEIvxuBMJEWgzSoHADcVMuN7IuqqTeyUPq22qFimFtxDyBBJEwNyt6TM88blFHao/6tWWhuuOM4SAK4EI4QmFHA+SEyWlp4EQoJ13cYGzMu7yszEIBOm2rVmHUNqwAIQabISNMRstmdhNWcFLsSm+0tjJH1MdRxO5Nx0WDMhCtgD6OKgZeljJqJKc9po8juskR9XN0Y1lZ3mWjLR9JCO1jRDMd0fpYC2VnvjBSEFg7wBENc0R9HFlb0xvF1+TBEpF68d+DHR6IOWVv2BECtxo46hOFUBd/APU57WIoEwJhIi2CdpyZX0m93BZicktMj1AS9dClteUFAUNUIEygRZCtik5zSxI9MubTBH1GOiHsiLJ3OCoSZkILa9PxiN0EbvhsAo8tdAf9Seepd36lGWHmtNANTv5Jd0z4QYyeo/UEJqxKRpg5LZx6btLPsOaEmdMyxYdlc8LMaJnikDlhclqmPiQnTEpLUIZEwkRagjYkEibQErwhkTAKCLQEbUgkzJQWc/0PstHHcfEdQ+UAAAAASUVORK5CYII=);background-size:26px 26px}.leaflet-touch .leaflet-control-layers-toggle{width:44px;height:44px}.leaflet-control-layers .leaflet-control-layers-list,.leaflet-control-layers-expanded .leaflet-control-layers-toggle{display:none}.leaflet-control-layers-expanded .leaflet-control-layers-list{display:block;position:relative}.leaflet-control-layers-expanded{padding:6px 10px 6px 6px;color:#333;background:#fff}.leaflet-control-layers-scrollbar{overflow-y:scroll;overflow-x:hidden;padding-right:5px}.leaflet-control-layers-selector{margin-top:2px;position:relative;top:1px}.leaflet-control-layers label{display:block;font-size:13px;font-size:1.08333em}.leaflet-control-layers-separator{height:0;border-top:1px solid #ddd;margin:5px -10px 5px -6px}.leaflet-default-icon-path{background-image:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABkAAAApCAYAAADAk4LOAAAFgUlEQVR4Aa1XA5BjWRTN2oW17d3YaZtr2962HUzbDNpjszW24mRt28p47v7zq/bXZtrp/lWnXr337j3nPCe85NcypgSFdugCpW5YoDAMRaIMqRi6aKq5E3YqDQO3qAwjVWrD8Ncq/RBpykd8oZUb/kaJutow8r1aP9II0WmLKLIsJyv1w/kqw9Ch2MYdB++12Onxee/QMwvf4/Dk/Lfp/i4nxTXtOoQ4pW5Aj7wpici1A9erdAN2OH64x8OSP9j3Ft3b7aWkTg/Fm91siTra0f9on5sQr9INejH6CUUUpavjFNq1B+Oadhxmnfa8RfEmN8VNAsQhPqF55xHkMzz3jSmChWU6f7/XZKNH+9+hBLOHYozuKQPxyMPUKkrX/K0uWnfFaJGS1QPRtZsOPtr3NsW0uyh6NNCOkU3Yz+bXbT3I8G3xE5EXLXtCXbbqwCO9zPQYPRTZ5vIDXD7U+w7rFDEoUUf7ibHIR4y6bLVPXrz8JVZEql13trxwue/uDivd3fkWRbS6/IA2bID4uk0UpF1N8qLlbBlXs4Ee7HLTfV1j54APvODnSfOWBqtKVvjgLKzF5YdEk5ewRkGlK0i33Eofffc7HT56jD7/6U+qH3Cx7SBLNntH5YIPvODnyfIXZYRVDPqgHtLs5ABHD3YzLuespb7t79FY34DjMwrVrcTuwlT55YMPvOBnRrJ4VXTdNnYug5ucHLBjEpt30701A3Ts+HEa73u6dT3FNWwflY86eMHPk+Yu+i6pzUpRrW7SNDg5JHR4KapmM5Wv2E8Tfcb1HoqqHMHU+uWDD7zg54mz5/2BSnizi9T1Dg4QQXLToGNCkb6tb1NU+QAlGr1++eADrzhn/u8Q2YZhQVlZ5+CAOtqfbhmaUCS1ezNFVm2imDbPmPng5wmz+gwh+oHDce0eUtQ6OGDIyR0uUhUsoO3vfDmmgOezH0mZN59x7MBi++WDL1g/eEiU3avlidO671bkLfwbw5XV2P8Pzo0ydy4t2/0eu33xYSOMOD8hTf4CrBtGMSoXfPLchX+J0ruSePw3LZeK0juPJbYzrhkH0io7B3k164hiGvawhOKMLkrQLyVpZg8rHFW7E2uHOL888IBPlNZ1FPzstSJM694fWr6RwpvcJK60+0HCILTBzZLFNdtAzJaohze60T8qBzyh5ZuOg5e7uwQppofEmf2++DYvmySqGBuKaicF1blQjhuHdvCIMvp8whTTfZzI7RldpwtSzL+F1+wkdZ2TBOW2gIF88PBTzD/gpeREAMEbxnJcaJHNHrpzji0gQCS6hdkEeYt9DF/2qPcEC8RM28Hwmr3sdNyht00byAut2k3gufWNtgtOEOFGUwcXWNDbdNbpgBGxEvKkOQsxivJx33iow0Vw5S6SVTrpVq11ysA2Rp7gTfPfktc6zhtXBBC+adRLshf6sG2RfHPZ5EAc4sVZ83yCN00Fk/4kggu40ZTvIEm5g24qtU4KjBrx/BTTH8ifVASAG7gKrnWxJDcU7x8X6Ecczhm3o6YicvsLXWfh3Ch1W0k8x0nXF+0fFxgt4phz8QvypiwCCFKMqXCnqXExjq10beH+UUA7+nG6mdG/Pu0f3LgFcGrl2s0kNNjpmoJ9o4B29CMO8dMT4Q5ox8uitF6fqsrJOr8qnwNbRzv6hSnG5wP+64C7h9lp30hKNtKdWjtdkbuPA19nJ7Tz3zR/ibgARbhb4AlhavcBebmTHcFl2fvYEnW0ox9xMxKBS8btJ+KiEbq9zA4RthQXDhPa0T9TEe69gWupwc6uBUphquXgf+/FrIjweHQS4/pduMe5ERUMHUd9xv8ZR98CxkS4F2n3EUrUZ10EYNw7BWm9x1GiPssi3GgiGRDKWRYZfXlON+dfNbM+GgIwYdwAAAAASUVORK5CYII=)}.leaflet-container .leaflet-control-attribution{background:#fff;background:#fffc;margin:0}.leaflet-control-attribution,.leaflet-control-scale-line{padding:0 5px;color:#333;line-height:1.4}.leaflet-control-attribution a{text-decoration:none}.leaflet-control-attribution a:hover,.leaflet-control-attribution a:focus{text-decoration:underline}.leaflet-attribution-flag{display:inline!important;vertical-align:baseline!important;width:1em;height:.6669em}.leaflet-left .leaflet-control-scale{margin-left:5px}.leaflet-bottom .leaflet-control-scale{margin-bottom:5px}.leaflet-control-scale-line{border:2px solid #777;border-top:none;line-height:1.1;padding:2px 5px 1px;white-space:nowrap;-moz-box-sizing:border-box;box-sizing:border-box;background:#fffc;text-shadow:1px 1px #fff}.leaflet-control-scale-line:not(:first-child){border-top:2px solid #777;border-bottom:none;margin-top:-2px}.leaflet-control-scale-line:not(:first-child):not(:last-child){border-bottom:2px solid #777}.leaflet-touch .leaflet-control-attribution,.leaflet-touch .leaflet-control-layers,.leaflet-touch .leaflet-bar{box-shadow:none}.leaflet-touch .leaflet-control-layers,.leaflet-touch .leaflet-bar{border:2px solid rgba(0,0,0,.2);background-clip:padding-box}.leaflet-popup{position:absolute;text-align:center;margin-bottom:20px}.leaflet-popup-content-wrapper{padding:1px;text-align:left;border-radius:12px}.leaflet-popup-content{margin:13px 24px 13px 20px;line-height:1.3;font-size:13px;font-size:1.08333em;min-height:1px}.leaflet-popup-content p{margin:1.3em 0}.leaflet-popup-tip-container{width:40px;height:20px;position:absolute;left:50%;margin-top:-1px;margin-left:-20px;overflow:hidden;pointer-events:none}.leaflet-popup-tip{width:17px;height:17px;padding:1px;margin:-10px auto 0;pointer-events:auto;-webkit-transform:rotate(45deg);-moz-transform:rotate(45deg);-ms-transform:rotate(45deg);transform:rotate(45deg)}.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:#fff;color:#333;box-shadow:0 3px 14px #0006}.leaflet-container a.leaflet-popup-close-button{position:absolute;top:0;right:0;border:none;text-align:center;width:24px;height:24px;font:16px/24px Tahoma,Verdana,sans-serif;color:#757575;text-decoration:none;background:transparent}.leaflet-container a.leaflet-popup-close-button:hover,.leaflet-container a.leaflet-popup-close-button:focus{color:#585858}.leaflet-popup-scrolled{overflow:auto}.leaflet-oldie .leaflet-popup-content-wrapper{-ms-zoom:1}.leaflet-oldie .leaflet-popup-tip{width:24px;margin:0 auto;-ms-filter:\"progid:DXImageTransform.Microsoft.Matrix(M11=0.70710678, M12=0.70710678, M21=-0.70710678, M22=0.70710678)\";filter:progid:DXImageTransform.Microsoft.Matrix(M11=.70710678,M12=.70710678,M21=-.70710678,M22=.70710678)}.leaflet-oldie .leaflet-control-zoom,.leaflet-oldie .leaflet-control-layers,.leaflet-oldie .leaflet-popup-content-wrapper,.leaflet-oldie .leaflet-popup-tip{border:1px solid #999}.leaflet-div-icon{background:#fff;border:1px solid #666}.leaflet-tooltip{position:absolute;padding:6px;background-color:#fff;border:1px solid #fff;border-radius:3px;color:#222;white-space:nowrap;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;pointer-events:none;box-shadow:0 1px 3px #0006}.leaflet-tooltip.leaflet-interactive{cursor:pointer;pointer-events:auto}.leaflet-tooltip-top:before,.leaflet-tooltip-bottom:before,.leaflet-tooltip-left:before,.leaflet-tooltip-right:before{position:absolute;pointer-events:none;border:6px solid transparent;background:transparent;content:\"\"}.leaflet-tooltip-bottom{margin-top:6px}.leaflet-tooltip-top{margin-top:-6px}.leaflet-tooltip-bottom:before,.leaflet-tooltip-top:before{left:50%;margin-left:-6px}.leaflet-tooltip-top:before{bottom:0;margin-bottom:-12px;border-top-color:#fff}.leaflet-tooltip-bottom:before{top:0;margin-top:-12px;margin-left:-6px;border-bottom-color:#fff}.leaflet-tooltip-left{margin-left:-6px}.leaflet-tooltip-right{margin-left:6px}.leaflet-tooltip-left:before,.leaflet-tooltip-right:before{top:50%;margin-top:-6px}.leaflet-tooltip-left:before{right:0;margin-right:-12px;border-left-color:#fff}.leaflet-tooltip-right:before{left:0;margin-left:-12px;border-right-color:#fff}@media print{.leaflet-control{-webkit-print-color-adjust:exact;print-color-adjust:exact}}.dirty-pill[data-v-b33f2d64]{display:inline-block;vertical-align:middle;margin-left:10px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em;background:var(--md-tertiary-container,#e8def8);color:var(--md-on-tertiary-container,#1d192b)}.fab.dirty[data-v-b33f2d64]{animation:fab-dirty-b33f2d64 1.6s ease-in-out infinite}@keyframes fab-dirty-b33f2d64{0%,to{box-shadow:0 0 color-mix(in srgb,var(--md-primary,#6750a4) 45%,transparent)}55%{box-shadow:0 0 0 8px transparent}}@media(prefers-reduced-motion:reduce){.fab.dirty[data-v-b33f2d64]{animation:none}}.count-pill.core-off[data-v-b33f2d64]{background:var(--md-surface-container-high,#d8d3dd);color:var(--md-on-surface-variant,#49454f);font-style:normal}.def-hint[data-v-b33f2d64]{display:block;font-size:10.5px;font-weight:500;color:var(--md-on-surface-variant,#49454f);opacity:.85;margin:1px 0 3px}.world-field[data-v-b33f2d64]{display:block;margin:10px 0}.world-label[data-v-b33f2d64]{display:block;font-size:12px;font-weight:600;color:var(--md-on-surface-variant);margin-bottom:4px}.world-text[data-v-b33f2d64]{width:100%;min-height:64px;padding:10px 14px;border:1px solid var(--md-outline-variant);border-radius:var(--r-sm);background:var(--md-surface-container-high);color:var(--md-on-surface);font:inherit;font-size:13px;line-height:1.5;resize:vertical;outline:none}.world-text[data-v-b33f2d64]:focus{border-color:var(--md-primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 14%,transparent)}.world-actions[data-v-b33f2d64]{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}.wm-head[data-v-b33f2d64]{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px}.wm-place[data-v-b33f2d64]{font-size:12px;color:var(--md-on-surface-variant)}.wm-premise[data-v-b33f2d64]{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin:2px 0 8px}.wm-map-wrap[data-v-b33f2d64]{position:relative;margin-top:8px}.world-map-leaflet[data-v-b33f2d64]{height:clamp(460px,72vh,820px);border-radius:16px;overflow:hidden;border:1px solid var(--md-outline-variant);background:#e8edf2}.world-map-leaflet.is-empty[data-v-b33f2d64]{display:none}.wm-reset[data-v-b33f2d64]{position:absolute;top:10px;right:10px;z-index:var(--z-overlay,2000);border:1px solid var(--md-outline-variant);background:#fffffff0;color:#33404c;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 4px #0000002e}.wm-reset[data-v-b33f2d64]:hover{background:#fff}.wm-compass[data-v-b33f2d64]{position:absolute;left:12px;bottom:12px;z-index:var(--z-overlay,2000);width:38px;height:38px;border-radius:50%;background:#ffffffeb;border:1px solid #b9c3cd;box-shadow:0 1px 4px #0000002e;display:grid;place-items:center}.wm-compass i[data-v-b33f2d64]{font-style:normal;font-size:12px;font-weight:800;color:#d64545;position:relative}.wm-compass i[data-v-b33f2d64]:before{content:\"\";position:absolute;left:50%;top:-9px;transform:translate(-50%);border-left:4px solid transparent;border-right:4px solid transparent;border-bottom:9px solid #33404c}.wm-scope[data-v-b33f2d64]{position:absolute;bottom:12px;right:12px;z-index:var(--z-overlay,2000);border:1px solid var(--md-outline-variant);background:#fffffff0;color:#33404c;border-radius:10px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;box-shadow:0 1px 4px #0000002e}.wm-scope[data-v-b33f2d64]:hover{background:#fff}.wm-offline[data-v-b33f2d64]{position:absolute;left:50%;bottom:12px;transform:translate(-50%);z-index:var(--z-overlay,2000);background:#d1495bf0;color:#fff;font-size:12px;font-weight:600;padding:5px 12px;border-radius:10px;box-shadow:0 1px 4px #00000040}.wm-routes[data-v-b33f2d64]{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(280px,100%),1fr));gap:18px;margin-top:14px}.wm-routes h4[data-v-b33f2d64]{margin:0 0 6px;font-size:13px;font-weight:800}.wm-routes ul[data-v-b33f2d64]{list-style:none;margin:0;padding:0}.wm-routes li[data-v-b33f2d64]{display:flex;gap:10px;padding:4px 0;border-bottom:1px dashed color-mix(in srgb,var(--md-outline-variant) 70%,transparent);font-size:12.5px}.wm-routes b[data-v-b33f2d64]{flex:0 0 88px}.wm-routes span[data-v-b33f2d64]{color:var(--md-on-surface-variant);line-height:1.5}.wm-legend[data-v-b33f2d64]{display:flex;flex-wrap:wrap;gap:14px;margin-top:12px;font-size:12px;color:var(--md-on-surface-variant)}.wm-legend span[data-v-b33f2d64]{display:inline-flex;align-items:center;gap:6px}.wm-legend i[data-v-b33f2d64]{width:12px;height:12px;border-radius:50%;display:inline-block;border:1.5px solid rgba(255,255,255,.7)}.wm-legend i.k-home[data-v-b33f2d64]{background:#e07a5f}.wm-legend i.k-work[data-v-b33f2d64]{background:#5b8def}.wm-legend i.k-shop[data-v-b33f2d64]{background:#e0a23d}.wm-legend i.k-food[data-v-b33f2d64]{background:#57a773}.wm-legend i.k-park[data-v-b33f2d64]{background:#3faead}.wm-legend i.k-transit[data-v-b33f2d64]{background:#8b6fd6}.wm-legend i.k-other[data-v-b33f2d64]{background:#8a94a6}.wm-legend i.k-actor[data-v-b33f2d64]{background:#fff;border-color:#d1495b;box-shadow:inset 0 0 0 3px #d1495b}.wm-legend i.k-metro[data-v-b33f2d64]{background:#d64545}.wm-legend i.k-bus[data-v-b33f2d64]{background:#e08a2e}.wm-legend i.k-park2[data-v-b33f2d64]{background:#9bd08f}.wm-legend i.k-water[data-v-b33f2d64]{background:#8fbfe6}.wm-legend i.k-hw[data-v-b33f2d64]{background:#f08c2e}.wm-legend i.k-arterial[data-v-b33f2d64]{background:#f7cf8a}.wm-legend i.k-street[data-v-b33f2d64]{background:#fff;border-color:#b9c3cd}.pfield[data-v-b33f2d64]{display:flex;flex-direction:column;gap:4px;margin-top:10px;font-size:12px;font-weight:600;color:var(--md-on-surface-variant)}#app .pcp .pfield textarea.field[data-v-b33f2d64]{height:auto;min-height:70px;padding:10px 12px;resize:vertical;line-height:1.5}.cog-metric[data-v-b33f2d64]{display:flex;flex-direction:column;gap:4px;padding:10px 12px;border-radius:var(--r-sm);background:var(--md-surface-container-low);border:1px solid var(--md-outline-variant)}.cog-metric span[data-v-b33f2d64]{font-size:11px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant)}.cog-metric strong[data-v-b33f2d64]{font-size:16px;font-weight:800;letter-spacing:-.01em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cog-metric.warn[data-v-b33f2d64]{border-color:var(--md-error,#b3261e);background:color-mix(in srgb,var(--md-error,#b3261e) 8%,transparent)}.cog-metric.warn span[data-v-b33f2d64],.cog-metric.warn strong[data-v-b33f2d64]{color:var(--md-error,#b3261e)}.som-channels[data-v-b33f2d64]{margin-top:10px;display:flex;flex-direction:column;gap:6px}.som-chan[data-v-b33f2d64]{display:grid;grid-template-columns:minmax(52px,88px) minmax(0,1fr) 48px;align-items:center;gap:10px}.som-chan-name[data-v-b33f2d64]{font-size:12px;font-weight:600;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.som-chan-bar[data-v-b33f2d64]{display:block;height:8px;border-radius:999px;background:var(--md-surface-container);overflow:hidden}.som-chan-bar i[data-v-b33f2d64]{display:block;width:100%;height:100%;border-radius:999px;background:var(--md-primary);transform-origin:left;transition:transform var(--duration-medium) var(--ease-out);will-change:transform}.som-chan-val[data-v-b33f2d64]{font-size:12px;font-weight:700;text-align:right;color:var(--md-on-surface-variant)}.at-a-glance[data-v-b33f2d64]{display:grid;grid-template-columns:190px minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start;margin:8px 0 4px}@media(max-width:900px){.at-a-glance[data-v-b33f2d64]{grid-template-columns:1fr 1fr}}@media(max-width:620px){.at-a-glance[data-v-b33f2d64]{grid-template-columns:1fr}}.mood-plot-wrap[data-v-b33f2d64]{position:relative;width:190px;padding:26px 22px 40px;background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 60%,transparent);border-radius:var(--r-md);box-sizing:border-box}.mood-plot[data-v-b33f2d64]{display:block;width:100%}.plot-frame[data-v-b33f2d64]{fill:var(--md-surface-container-lowest);stroke:var(--md-outline-variant)}.plot-grid[data-v-b33f2d64]{stroke:var(--md-outline-variant);stroke-width:1;stroke-dasharray:3 4}.plot-dot[data-v-b33f2d64]{fill:var(--md-primary)}.plot-halo[data-v-b33f2d64]{fill:var(--md-primary);opacity:.22}.plot-label[data-v-b33f2d64]{position:absolute;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--md-on-surface-variant);pointer-events:none}.plot-n[data-v-b33f2d64]{top:6px;left:50%;transform:translate(-50%)}.plot-s[data-v-b33f2d64]{bottom:26px;left:50%;transform:translate(-50%)}.plot-w[data-v-b33f2d64]{left:8px;top:50%;transform:translateY(-58%)}.plot-e[data-v-b33f2d64]{right:8px;top:50%;transform:translateY(-58%)}.plot-quadrant[data-v-b33f2d64]{position:absolute;left:0;right:0;bottom:8px;text-align:center;font-size:12px;font-weight:800;color:var(--md-primary)}.glance-col[data-v-b33f2d64]{display:flex;flex-direction:column;gap:8px;min-width:0}.glance-title[data-v-b33f2d64]{display:flex;align-items:center;gap:8px;margin:0;font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--md-on-surface-variant)}.gauge-grid[data-v-b33f2d64]{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:10px;margin:8px 0}.gauge[data-v-b33f2d64]{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border-radius:var(--r-sm);background:var(--md-surface-container);border:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);min-width:0}.gauge-head[data-v-b33f2d64]{display:flex;justify-content:space-between;align-items:baseline;gap:8px}.gauge-name[data-v-b33f2d64]{font-size:12px;font-weight:700;color:var(--md-on-surface-variant);overflow-wrap:anywhere}.gauge-alias[data-v-b33f2d64]{font-style:normal;font-weight:500;font-size:11px;color:var(--md-on-surface-variant);opacity:.8;margin-left:6px}.gauge-val[data-v-b33f2d64]{font-size:13px;font-weight:800;font-variant-numeric:tabular-nums;white-space:nowrap}.gauge-state[data-v-b33f2d64]{font-weight:800;margin-right:2px}.gauge-state.good[data-v-b33f2d64]{color:var(--md-success)}.gauge-state.mid[data-v-b33f2d64]{color:var(--md-primary)}.gauge-state.bad[data-v-b33f2d64]{color:var(--md-error)}.gauge-bar[data-v-b33f2d64]{position:relative;display:block;height:8px;border-radius:999px;background:var(--md-surface-container-highest);overflow:visible}.gauge-bar.signed[data-v-b33f2d64]:before{content:\"\";position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--md-outline-variant)}.gauge-fill[data-v-b33f2d64]{position:absolute;top:0;bottom:0;border-radius:999px;transition:width .35s var(--ease-out,.25s ease),left .35s var(--ease-out,.25s ease)}.gauge-fill.good[data-v-b33f2d64]{background:var(--md-success)}.gauge-fill.mid[data-v-b33f2d64]{background:var(--md-primary)}.gauge-fill.bad[data-v-b33f2d64]{background:var(--md-error)}.gauge-effect[data-v-b33f2d64]{font-size:11px;line-height:1.45;color:var(--md-on-surface-variant)}.chip-row[data-v-b33f2d64]{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.chip.warn[data-v-b33f2d64]{background:var(--md-error-container);color:var(--md-on-error-container)}.rel-card[data-v-b33f2d64]{display:flex;flex-direction:column;gap:10px}.rel-head[data-v-b33f2d64]{display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap}.rel-track-row[data-v-b33f2d64]{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center}.rel-track-label[data-v-b33f2d64],.rel-stage-name[data-v-b33f2d64]{font-size:11px;font-weight:800;letter-spacing:.04em;color:var(--md-on-surface-variant);white-space:nowrap}.rel-stage-name[data-v-b33f2d64]{color:var(--md-primary)}.rel-track[data-v-b33f2d64]{display:flex;gap:3px;height:10px;border-radius:999px;overflow:hidden;background:var(--md-surface-container-highest)}.rel-seg[data-v-b33f2d64]{flex:1 1 0;background:color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}.rel-seg.done[data-v-b33f2d64]{background:color-mix(in srgb,var(--md-primary) 45%,transparent)}.rel-seg.cur[data-v-b33f2d64]{background:var(--md-primary)}.rel-mode[data-v-b33f2d64]{display:flex;flex-direction:column;gap:4px;align-items:flex-start}.value-row[data-v-b33f2d64]{display:grid;grid-template-columns:minmax(72px,140px) minmax(0,1fr) 44px;gap:10px;align-items:center}.value-name[data-v-b33f2d64]{font-size:13px;font-weight:700;overflow-wrap:anywhere}.value-bar[data-v-b33f2d64]{position:relative;display:block;height:8px;border-radius:999px;background:var(--md-surface-container-highest)}.value-bar[data-v-b33f2d64]:before{content:\"\";position:absolute;left:50%;top:-3px;bottom:-3px;width:2px;border-radius:1px;background:var(--md-outline-variant)}.value-bar i[data-v-b33f2d64]{position:absolute;top:0;bottom:0;border-radius:999px;transition:width .35s var(--ease-out,.25s ease),left .35s var(--ease-out,.25s ease)}.value-bar i.good[data-v-b33f2d64]{background:var(--md-success)}.value-bar i.bad[data-v-b33f2d64]{background:var(--md-error)}.value-num[data-v-b33f2d64]{font-size:12px;font-weight:800;text-align:right;font-variant-numeric:tabular-nums;color:var(--md-on-surface-variant)}.chip[data-v-b33f2d64]{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 12px;border-radius:999px;font-size:12px;font-weight:700;background:var(--md-secondary-container);color:var(--md-on-secondary-container)}.chip.muted[data-v-b33f2d64]{background:var(--md-surface-container-high);color:var(--md-on-surface-variant);font-weight:500}.chip.ok[data-v-b33f2d64]{background:var(--md-success-container);color:var(--md-on-success-container,#0d3b1e)}#app .pcp .cog-metric[data-v-b33f2d64]{background:var(--md-surface-container)}.sync-pill[data-v-b33f2d64]{font-weight:500;opacity:.85}html[data-theme=dark] #app .pcp .world-map-leaflet{background:#10151c}html[data-theme=dark] #app .pcp .wm-reset,html[data-theme=dark] #app .pcp .wm-scope{background:color-mix(in srgb,var(--md-surface-container-high) 94%,transparent);color:var(--md-on-surface)}html[data-theme=dark] #app .pcp .wm-reset:hover,html[data-theme=dark] #app .pcp .wm-scope:hover{background:var(--md-surface-container-highest)}html[data-theme=dark] #app .pcp .wm-compass{background:color-mix(in srgb,var(--md-surface-container-high) 92%,transparent);border-color:var(--md-outline-variant)}html[data-theme=dark] .wm-district-inner{color:#aeb9c4;text-shadow:none}html[data-theme=dark] .wm-station .wm-route-inner{background:#1a2230;color:#d7dee6}html[data-theme=dark] .leaflet-container{background:#10151c}.wm-pin-holder,.wm-actor-holder{background:none;border:none}.wm-pin{position:absolute;left:0;top:0;width:16px;height:16px;border-radius:50%;background:var(--c,#8a94a6);border:3px solid #fff;box-shadow:0 2px 6px #00000073;transform:translate(-50%,-50%)}.wm-pin:after{content:\"\";position:absolute;left:50%;top:100%;width:2px;height:8px;background:#fff;transform:translate(-50%);opacity:.7}.wm-pin-label{position:absolute;left:12px;top:-9px;white-space:nowrap;background:#12141ad1;color:#fff;font-size:12px;font-weight:600;padding:2px 8px;border-radius:10px;pointer-events:none}.wm-actor-badge{position:absolute;left:0;top:0;width:26px;height:26px;border-radius:50%;background:#fff;color:#d1495b;border:3px solid #d1495b;font-size:14px;font-weight:800;line-height:1;display:grid;place-items:center;transform:translate(-50%,-50%);box-shadow:0 2px 6px #00000080;z-index:600}.wm-actor-name{position:absolute;left:0;top:20px;white-space:nowrap;background:#d1495b;color:#fff;font-size:11px;font-weight:700;padding:1px 7px;border-radius:9px;transform:translate(-50%)}.wm-district{background:none;border:none}.wm-district-inner{position:absolute;left:0;top:0;transform:translate(-50%,-50%);white-space:nowrap;font-size:12px;font-weight:800;letter-spacing:.2em;color:#5c6b78;text-shadow:0 1px 0 rgba(255,255,255,.9);pointer-events:none}.wm-route{background:none;border:none}.wm-route-inner{position:absolute;left:0;top:0;transform:translate(-50%,-50%);background:var(--c,#333);color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;white-space:nowrap;box-shadow:0 1px 3px #00000059;pointer-events:none}.wm-zoom-low .wm-minor{display:none}.wm-station .wm-route-inner{background:#fff;color:#33404c;border:1.5px solid var(--c,#888);border-radius:6px;font-size:9px;font-weight:700;padding:1px 5px}.leaflet-container{font-family:inherit;background:#e8edf2;border-radius:16px}.leaflet-container a{color:#2f6fed}.leaflet-popup-content{font-size:13px;line-height:1.5}\n";document.head.appendChild(s)}})();

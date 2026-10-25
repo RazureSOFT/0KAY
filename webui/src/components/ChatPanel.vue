@@ -368,7 +368,7 @@ watch(
       <div v-if="pendingFiles.length" class="pending-files">
         <span v-for="file in pendingFiles" :key="file.url" class="pending-file" :title="`${file.mime || ''} · ${file.size || 0} B`">
           <span class="pending-file-name">{{ file.name }}</span>
-          <button class="remove-file" type="button" :title="t('chat.removeFile')" @click="removePendingFile(file.url)">
+          <button class="remove-file" type="button" :title="t('chat.removeFile')" :aria-label="t('chat.removeFile')" @click="removePendingFile(file.url)">
             ×
           </button>
         </span>
@@ -469,16 +469,28 @@ watch(
           {{ t('chat.connected') }}
         </span>
         <span class="hint">{{ t('chat.contextHint', { n: chatStore.contextTokens.toLocaleString() }) }}</span>
-        <button class="context-btn" type="button" :class="{ active: chatStore.voiceEnabled }" :title="chatStore.voiceEnabled ? t('chat.voiceOnTitle') : t('chat.voiceOffTitle')" @click="chatStore.setVoiceEnabled(!chatStore.voiceEnabled)">
+        <button
+          class="context-btn"
+          type="button"
+          :class="{ active: chatStore.voiceEnabled }"
+          :title="chatStore.voiceEnabled ? t('chat.voiceOnTitle') : t('chat.voiceOffTitle')"
+          :aria-label="chatStore.voiceEnabled ? t('chat.voiceOnTitle') : t('chat.voiceOffTitle')"
+          :aria-pressed="chatStore.voiceEnabled"
+          @click="chatStore.setVoiceEnabled(!chatStore.voiceEnabled)"
+        >
           {{ chatStore.voiceEnabled ? t('chat.voiceOn') : t('chat.voiceOff') }}
         </button>
-        <button class="context-btn" type="button" :disabled="chatStore.messages.length === 0" @click="downloadHistory">
-          {{ t('chat.download') }}
-        </button>
-        <button class="context-btn" type="button" :disabled="chatStore.compacting" @click="chatStore.compactContext">
-          {{ chatStore.compacting ? t('chat.compacting') : t('chat.compact') }}
-        </button>
-        <button class="context-btn danger" type="button" @click="clearChat">{{ t('chat.clear') }}</button>
+        <!-- Session tools only exist once there is a session; hiding them on
+             the empty composer keeps the footer to status + voice + danger. -->
+        <template v-if="chatStore.messages.length">
+          <button class="context-btn" type="button" :title="t('chat.download')" :aria-label="t('chat.download')" @click="downloadHistory">
+            {{ t('chat.download') }}
+          </button>
+          <button class="context-btn" type="button" :disabled="chatStore.compacting" :title="t('chat.compact')" :aria-label="t('chat.compact')" @click="chatStore.compactContext">
+            {{ chatStore.compacting ? t('chat.compacting') : t('chat.compact') }}
+          </button>
+        </template>
+        <button class="context-btn danger" type="button" :title="t('chat.clear')" :aria-label="t('chat.clear')" @click="clearChat">{{ t('chat.clear') }}</button>
       </div>
     </div>
   </div>
@@ -491,7 +503,7 @@ watch(
   height: 100%;
   background: var(--neutral-gray-2);
 }
-.context-btn{border:1px solid var(--md-outline-variant);border-radius:999px;background:transparent;color:var(--md-on-surface-variant);min-height:32px;padding:7px 12px;font-size:12px;cursor:pointer;transition:background-color var(--transition-fast),border-color var(--transition-fast),color var(--transition-fast)}.context-btn:disabled{opacity:.6;cursor:wait}.context-btn.danger{color:var(--md-error)}
+.context-btn{border:1px solid var(--md-outline-variant);border-radius:999px;background:transparent;color:var(--md-on-surface-variant);min-height:32px;padding:7px 12px;font-size:12px;cursor:pointer;transition:background-color var(--transition-fast),border-color var(--transition-fast),color var(--transition-fast)}.context-btn:disabled{opacity:.6;cursor:wait}.context-btn.danger{color:var(--md-on-error-container);background:var(--md-error-container);border-color:transparent}
 
 .chat-container {
   flex: 1;

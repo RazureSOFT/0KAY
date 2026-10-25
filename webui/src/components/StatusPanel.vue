@@ -56,8 +56,11 @@ onUnmounted(() => {
   if (clockTimer) clearInterval(clockTimer)
 })
 
+// life.patch declares energy axes as kind 'bar' (singular); 'bars' is the
+// spelling the first consumer used. Both render identically, so patches
+// written against either spelling work.
 const visibleSections = computed(() =>
-  ui.statusSections.filter((s) => s.kind === 'mood' || s.kind === 'bars'),
+  ui.statusSections.filter((s) => s.kind === 'mood' || s.kind === 'bars' || s.kind === 'bar'),
 )
 const moodColor = computed(() => lifeStore.emotionColor)
 const moodMood = computed(() => lifeStore.emotionMood)
@@ -129,7 +132,7 @@ const moodMood = computed(() => lifeStore.emotionMood)
           </div>
         </div>
 
-                <div v-else-if="section.kind === 'bars'" class="emotion-bars">
+                <div v-else-if="section.kind === 'bars' || section.kind === 'bar'" class="emotion-bars">
           <div v-for="axis in section.axes || []" :key="axis.key" class="emotion-row">
             <span class="emotion-label">{{ axisLabel(axis) }}</span>
             <div class="emotion-bar">
@@ -146,7 +149,7 @@ const moodMood = computed(() => lifeStore.emotionMood)
       </div>
 
       <div v-if="ui.statusSections.length === 0" class="empty-tasks">
-        No status sections (load life.patch)
+        {{ t('status.noSections') }}
       </div>
     </div>
   </div>

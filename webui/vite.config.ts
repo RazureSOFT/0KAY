@@ -1,5 +1,59 @@
 import { defineConfig } from 'vitest/config'
 import vue from '@vitejs/plugin-vue'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
+
+// Plugin UI modules are committed artifacts under core/data/plugin-ui/<name>/.
+// Serving them straight from disk beats proxying to Core in dev: the WebView's
+// module loader chokes on the http-proxy response (fetch works, import does
+// not), and disk serving picks up a fresh `build:plugin` instantly.
+const MIME = {
+  '.js': 'text/javascript; charset=utf-8',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8',
+  '.json': 'application/json; charset=utf-8',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
+  '.html': 'text/html; charset=utf-8',
+}
+const pluginUiFromDisk = () => ({
+  name: '0kay-plugin-ui-from-disk',
+  // Version the entry module per HTML response: some embedded WebViews cache
+  // module URLs across reloads even with ETag + no-store, so an edited file
+  // never re-executes and a stale strings table sticks. A fresh query per
+  // page load makes the whole module graph a cache miss — dev-only overhead,
+  // production builds hash their filenames.
+  transformIndexHtml(html) {
+    return html.replace('<script type="module" src="/src/main.ts">', `<script type="module" src="/src/main.ts?boot=${Date.now().toString(36)}">`)
+  },
+  configureServer(server) {
+    server.middlewares.use((req, res, next) => {
+      const match = /^\/api\/plugins\/([^/]+)\/ui\/([^?]+)/.exec(req.url || '')
+      if (!match) return next()
+      const resolved = path.resolve(path.join(repoRoot, 'core', 'data', 'plugin-ui', match[1], ...match[2].split('/')))
+      const root = path.join(repoRoot, 'core', 'data', 'plugin-ui') + path.sep
+      if (!resolved.startsWith(root) || !fs.existsSync(resolved) || !fs.statSync(resolved).isFile()) return next()
+      const stat = fs.statSync(resolved)
+      // no-cache alone is not honoured without validators by some embedded
+      // HTTP caches; an ETag makes revalidation well-defined (304 or fresh).
+      const etag = `W/"${stat.size.toString(16)}-${stat.mtimeMs.toString(16)}"`
+      if (req.headers['if-none-match'] === etag) {
+        res.statusCode = 304
+        res.end()
+        return
+      }
+      res.setHeader('ETag', etag)
+      res.setHeader('Last-Modified', stat.mtime.toUTCString())
+      res.setHeader('Content-Type', MIME[path.extname(resolved).toLowerCase()] || 'application/octet-stream')
+      res.setHeader('Cache-Control', 'no-cache')
+      res.end(fs.readFileSync(resolved))
+    })
+  },
+})
 
 // WEBUI_PORT, WEBUI_HOST, CORE_HTTP_ADDR come from runtime-env.json when
 // installed via 0kay-pm. WEBUI_HOST=0.0.0.0 exposes the dev server to the LAN.
@@ -21,7 +75,7 @@ const sameOrigin = (proxy: any) => {
 }
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [vue(), pluginUiFromDisk()],
   test: {
     // Vitest stubs CSS modules by default, which makes `import css from
     // './x.css?raw'` yield an empty string. One test asserts that every `btn-*`
@@ -52,6 +106,13 @@ export default defineConfig({
   server: {
     host: webuiHost,
     port: webuiPort,
+    // Dev-only: some embedded WebViews cache every response — even ETag'd,
+    // no-cache ones — so edited modules and strings never refresh on reload.
+    // no-store makes every dev fetch authoritative. Production (nginx) is a
+    // separate config and unaffected.
+    headers: {
+      'Cache-Control': 'no-store',
+    },
     ...(exposed ? { allowedHosts: true } : {}),
     proxy: {
       '/live2d/models': { target: coreHttp },
