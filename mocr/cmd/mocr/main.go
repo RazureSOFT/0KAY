@@ -61,6 +61,9 @@ func main() {
 		<-ctx.Done()
 		fmt.Println("\nShutting down mocr...")
 		grpcServer.GracefulStop()
+		// Let in-flight usage drains finish posting to Core instead of
+		// dropping the tail of the ledger on every restart.
+		server.WaitUsage()
 	}()
 
 	// Register mocr as a Core plugin (capability: mocr) + heartbeat.

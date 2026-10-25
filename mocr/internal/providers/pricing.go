@@ -59,14 +59,26 @@ func ParsePriceOverrides(raw string) map[string]PriceSpec {
 }
 
 // ResolvePrice returns the user-configured price for a model (substring match).
+// Longest matching key wins, with the lexicographically smaller key breaking
+// ties, so the result does not depend on map iteration order — the price feeds
+// model ranking, and a flapping resolution changes which model is selected.
 // Unconfigured models fall back to a name-based guess so cost ordering still
 // works; set a price to make it authoritative.
 func ResolvePrice(modelID string, overrides map[string]PriceSpec) PriceSpec {
 	low := strings.ToLower(modelID)
+	bestKey := ""
+	var best PriceSpec
+	found := false
 	for key, spec := range overrides {
-		if key != "" && strings.Contains(low, key) {
-			return spec
+		if key == "" || !strings.Contains(low, key) {
+			continue
 		}
+		if !found || len(key) > len(bestKey) || (len(key) == len(bestKey) && key < bestKey) {
+			found, bestKey, best = true, key, spec
+		}
+	}
+	if found {
+		return best
 	}
 	return heuristicPrice(modelID)
 }

@@ -98,6 +98,7 @@ type FinishInfo struct {
 	FinishReason     string
 	PromptTokens     int32
 	OutputTokens     int32
+	CachedTokens     int32
 	ToolCalls        []ToolCall
 	ReasoningContent string
 }
@@ -379,7 +380,7 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, fmt.Errorf("provider error %d: %s", resp.StatusCode, string(b))
+		return nil, newUpstreamError(resp, b)
 	}
 
 	if !opts.Stream {
@@ -403,8 +404,11 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 				FinishReason string `json:"finish_reason"`
 			} `json:"choices"`
 			Usage struct {
-				PromptTokens     int32 `json:"prompt_tokens"`
-				CompletionTokens int32 `json:"completion_tokens"`
+				PromptTokens        int32 `json:"prompt_tokens"`
+				CompletionTokens    int32 `json:"completion_tokens"`
+				PromptTokensDetails struct {
+					CachedTokens int32 `json:"cached_tokens"`
+				} `json:"prompt_tokens_details"`
 			} `json:"usage"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
@@ -435,6 +439,7 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 		}
 		info.PromptTokens = parsed.Usage.PromptTokens
 		info.OutputTokens = parsed.Usage.CompletionTokens
+		info.CachedTokens = parsed.Usage.PromptTokensDetails.CachedTokens
 		return info, nil
 	}
 
@@ -445,7 +450,7 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	var finish string
 	completed := false
-	var pt, ot int32
+	var pt, ot, ct int32
 	toolAcc := map[int]*ToolCall{}
 	var reasoningAcc strings.Builder
 
@@ -490,8 +495,11 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 				FinishReason *string `json:"finish_reason"`
 			} `json:"choices"`
 			Usage *struct {
-				PromptTokens     int32 `json:"prompt_tokens"`
-				CompletionTokens int32 `json:"completion_tokens"`
+				PromptTokens        int32 `json:"prompt_tokens"`
+				CompletionTokens    int32 `json:"completion_tokens"`
+				PromptTokensDetails *struct {
+					CachedTokens int32 `json:"cached_tokens"`
+				} `json:"prompt_tokens_details"`
 			} `json:"usage"`
 		}
 		if err := json.Unmarshal([]byte(data), &chunk); err != nil {
@@ -500,17 +508,20 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 		if chunk.Usage != nil {
 			pt = chunk.Usage.PromptTokens
 			ot = chunk.Usage.CompletionTokens
+			if chunk.Usage.PromptTokensDetails != nil {
+				ct = chunk.Usage.PromptTokensDetails.CachedTokens
+			}
 		}
 		for _, c := range chunk.Choices {
 			if c.Delta.ReasoningContent != "" {
 				reasoningAcc.WriteString(c.Delta.ReasoningContent)
 				if opts.OnThinking != nil && !opts.OnThinking(c.Delta.ReasoningContent) {
-					return &FinishInfo{FinishReason: "stop", PromptTokens: pt, OutputTokens: ot, ToolCalls: sortedToolCalls(toolAcc), ReasoningContent: reasoningAcc.String()}, nil
+					return &FinishInfo{FinishReason: "stop", PromptTokens: pt, OutputTokens: ot, CachedTokens: ct, ToolCalls: sortedToolCalls(toolAcc), ReasoningContent: reasoningAcc.String()}, nil
 				}
 			}
 			if c.Delta.Content != "" {
 				if !onChunk(c.Delta.Content) {
-					return &FinishInfo{FinishReason: "stop", PromptTokens: pt, OutputTokens: ot, ToolCalls: sortedToolCalls(toolAcc), ReasoningContent: reasoningAcc.String()}, nil
+					return &FinishInfo{FinishReason: "stop", PromptTokens: pt, OutputTokens: ot, CachedTokens: ct, ToolCalls: sortedToolCalls(toolAcc), ReasoningContent: reasoningAcc.String()}, nil
 				}
 			}
 			for _, tc := range c.Delta.ToolCalls {
@@ -549,7 +560,7 @@ func generateOpenAICompatible(ctx context.Context, opts GenerateOptions, msgs []
 	}
 	calls := sortedToolCalls(toolAcc)
 	emitTools(opts, calls)
-	return &FinishInfo{FinishReason: finish, PromptTokens: pt, OutputTokens: ot, ToolCalls: calls, ReasoningContent: reasoningAcc.String()}, nil
+	return &FinishInfo{FinishReason: finish, PromptTokens: pt, OutputTokens: ot, CachedTokens: ct, ToolCalls: calls, ReasoningContent: reasoningAcc.String()}, nil
 }
 
 // sortedToolCalls flattens the index-keyed accumulator in stable order.
@@ -733,7 +744,7 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, fmt.Errorf("provider error %d: %s", resp.StatusCode, string(b))
+		return nil, newUpstreamError(resp, b)
 	}
 
 	if !opts.Stream {
@@ -747,8 +758,9 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 			} `json:"content"`
 			StopReason string `json:"stop_reason"`
 			Usage      struct {
-				InputTokens  int32 `json:"input_tokens"`
-				OutputTokens int32 `json:"output_tokens"`
+				InputTokens          int32 `json:"input_tokens"`
+				OutputTokens         int32 `json:"output_tokens"`
+				CacheReadInputTokens int32 `json:"cache_read_input_tokens"`
 			} `json:"usage"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
@@ -775,7 +787,7 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 			info.FinishReason = "stop"
 		}
 		emitTools(opts, info.ToolCalls)
-		return &FinishInfo{FinishReason: info.FinishReason, PromptTokens: parsed.Usage.InputTokens, OutputTokens: parsed.Usage.OutputTokens, ToolCalls: info.ToolCalls}, nil
+		return &FinishInfo{FinishReason: info.FinishReason, PromptTokens: parsed.Usage.InputTokens, OutputTokens: parsed.Usage.OutputTokens, CachedTokens: parsed.Usage.CacheReadInputTokens, ToolCalls: info.ToolCalls}, nil
 	}
 
 	// SSE stream
@@ -784,7 +796,7 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 	scanner := bufio.NewScanner(resp.Body)
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	var finish string
-	var pt, ot int32
+	var pt, ot, ct int32
 	// current tool_use block being streamed
 	var curCall *ToolCall
 	var calls []ToolCall
@@ -804,8 +816,9 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 			Type    string `json:"type"`
 			Message struct {
 				Usage struct {
-					InputTokens  int32 `json:"input_tokens"`
-					OutputTokens int32 `json:"output_tokens"`
+					InputTokens          int32 `json:"input_tokens"`
+					OutputTokens         int32 `json:"output_tokens"`
+					CacheReadInputTokens int32 `json:"cache_read_input_tokens"`
 				} `json:"usage"`
 			} `json:"message"`
 			Index        int `json:"index"`
@@ -822,8 +835,9 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 				StopReason  string `json:"stop_reason"`
 			} `json:"delta"`
 			Usage *struct {
-				InputTokens  int32 `json:"input_tokens"`
-				OutputTokens int32 `json:"output_tokens"`
+				InputTokens          int32 `json:"input_tokens"`
+				OutputTokens         int32 `json:"output_tokens"`
+				CacheReadInputTokens int32 `json:"cache_read_input_tokens"`
 			} `json:"usage"`
 		}
 		if err := json.Unmarshal([]byte(data), &evt); err != nil {
@@ -832,12 +846,16 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 		if evt.Type == "message_start" {
 			pt = evt.Message.Usage.InputTokens
 			ot = evt.Message.Usage.OutputTokens
+			ct = evt.Message.Usage.CacheReadInputTokens
 		}
 		if evt.Usage != nil {
 			if evt.Usage.InputTokens > 0 {
 				pt = evt.Usage.InputTokens
 			}
 			ot = evt.Usage.OutputTokens
+			if evt.Usage.CacheReadInputTokens > 0 {
+				ct = evt.Usage.CacheReadInputTokens
+			}
 		}
 		switch evt.Type {
 		case "error":
@@ -853,11 +871,11 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 			case evt.Delta.Type == "thinking_delta" && evt.Delta.Thinking != "":
 				reasoning.WriteString(evt.Delta.Thinking)
 				if opts.OnThinking != nil && !opts.OnThinking(evt.Delta.Thinking) {
-					return &FinishInfo{FinishReason: "stop", PromptTokens: pt, OutputTokens: ot, ToolCalls: calls, ReasoningContent: reasoning.String()}, nil
+					return &FinishInfo{FinishReason: "stop", PromptTokens: pt, OutputTokens: ot, CachedTokens: ct, ToolCalls: calls, ReasoningContent: reasoning.String()}, nil
 				}
 			case evt.Delta.Text != "":
 				if !onChunk(evt.Delta.Text) {
-					return &FinishInfo{FinishReason: "stop", PromptTokens: pt, OutputTokens: ot, ToolCalls: calls, ReasoningContent: reasoning.String()}, nil
+					return &FinishInfo{FinishReason: "stop", PromptTokens: pt, OutputTokens: ot, CachedTokens: ct, ToolCalls: calls, ReasoningContent: reasoning.String()}, nil
 				}
 			}
 		case "content_block_stop":
@@ -878,7 +896,7 @@ func generateAnthropic(ctx context.Context, opts GenerateOptions, msgs []ChatMes
 		return nil, fmt.Errorf("provider stream ended without stop_reason")
 	}
 	emitTools(opts, calls)
-	return &FinishInfo{FinishReason: finish, PromptTokens: pt, OutputTokens: ot, ToolCalls: calls, ReasoningContent: reasoning.String()}, nil
+	return &FinishInfo{FinishReason: finish, PromptTokens: pt, OutputTokens: ot, CachedTokens: ct, ToolCalls: calls, ReasoningContent: reasoning.String()}, nil
 }
 
 func streamIdleTimeout() time.Duration {

@@ -97,7 +97,7 @@ func compatibleRequest(ctx context.Context, client *http.Client, url, key, model
 			compatibilityCache.Unlock()
 			continue
 		}
-		return nil, fmt.Errorf("upstream HTTP %d: %s", response.StatusCode, string(data))
+		return nil, newUpstreamError(response, data)
 	}
 	return nil, fmt.Errorf("parameter compatibility attempts exhausted")
 }

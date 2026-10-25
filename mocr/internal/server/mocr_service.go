@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	mathrand "math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -18,6 +19,25 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
+
+// retryBackoff is the delay before the next same-model attempt. A
+// provider-supplied Retry-After wins (capped at 30s so an absurd header cannot
+// stall the stream); otherwise the exponential 400ms*2^try capped at 5s is
+// jittered down to 50-100% so concurrent turns do not retry in lockstep
+// against a shared rate limit.
+func retryBackoff(try int, retryAfter time.Duration) time.Duration {
+	if retryAfter > 0 {
+		if retryAfter > 30*time.Second {
+			return 30 * time.Second
+		}
+		return retryAfter
+	}
+	base := time.Duration(400*(1<<try)) * time.Millisecond
+	if base > 5*time.Second {
+		base = 5 * time.Second
+	}
+	return time.Duration(float64(base) * (0.5 + 0.5*mathrand.Float64()))
+}
 
 // isFakeKey reports placeholder keys that must not hit the network.
 func isFakeKey(key string) bool {
@@ -345,10 +365,7 @@ func (s *MocrServiceServer) generateReal(req *mocrv1.GenerateRequest, stream moc
 			if err == nil || chunks > 0 || thinkingChunks > 0 || try+1 >= innerTries || !prov.IsRetryable(err) {
 				break
 			}
-			backoff := time.Duration(400*(1<<try)) * time.Millisecond
-			if backoff > 5*time.Second {
-				backoff = 5 * time.Second
-			}
+			backoff := retryBackoff(try, prov.RetryAfter(err))
 			log.Printf("[mocr] retry %d/%d model=%s after error: %v (backoff %s)", try+1, innerTries-1, curModel, err, backoff)
 			select {
 			case <-ctx.Done():
@@ -394,6 +411,20 @@ func finishGenerate(req *mocrv1.GenerateRequest, modelID string, lastErr error, 
 
 	promptTokens := info.PromptTokens
 	completionTokens := info.OutputTokens
+	cachedTokens := info.CachedTokens
+	if promptTokens < 0 {
+		promptTokens = 0
+	}
+	if completionTokens < 0 {
+		completionTokens = 0
+	}
+	if cachedTokens < 0 {
+		cachedTokens = 0
+	}
+	// A cache hit larger than the prompt would imply a >100% hit rate.
+	if cachedTokens > promptTokens {
+		cachedTokens = promptTokens
+	}
 	if promptTokens == 0 {
 		n := len(req.SystemPrompt)
 		for _, m := range req.Messages {
@@ -404,7 +435,11 @@ func finishGenerate(req *mocrv1.GenerateRequest, modelID string, lastErr error, 
 	if completionTokens == 0 {
 		completionTokens = int32((len(fullText.String()) + 3) / 4)
 	}
-	reportUsage(requestID, sessionID, modelID, promptTokens, completionTokens)
+	costUSD := prov.ResolvePrice(modelID, rtVal.PriceOverrides).EstimateCost(int(promptTokens), int(completionTokens))
+	if costUSD < 0 {
+		costUSD = 0
+	}
+	reportUsage(requestID, sessionID, modelID, promptTokens, completionTokens, cachedTokens, costUSD)
 
 	final := &mocrv1.GenerateResponse{
 		Done:            true,

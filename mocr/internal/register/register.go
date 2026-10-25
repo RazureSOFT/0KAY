@@ -188,6 +188,11 @@ func Start(ctx context.Context, opts Options) {
 					}
 				}
 				cctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+				// Heartbeat is authenticated: attach the service token Core
+				// issued at registration (kept via SetIdentity).
+				if _, token := Identity(); token != "" {
+					cctx = metadata.AppendToOutgoingContext(cctx, "authorization", "Bearer "+token)
+				}
 				resp, err := client.Heartbeat(cctx, &corev1.HeartbeatRequest{
 					PluginId:    pluginID,
 					Status:      corev1.PluginStatus_PLUGIN_STATUS_HEALTHY,
