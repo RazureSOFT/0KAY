@@ -8,8 +8,6 @@ on:
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
-permissions:
-  contents: write
 
 concurrency:
   group: pages
@@ -18,13 +16,18 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    permissions:
+      # Scope the write grant to the one job that publishes, and pin the
+      # third-party action to a full commit SHA: a movable v4 tag can be
+      # repointed by its owner (or an attacker) and would inherit this token.
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Build static documentation
         run: python docs/build.py
       - name: Publish gh-pages branch
-        uses: peaceiris/actions-gh-pages@v4
+        uses: peaceiris/actions-gh-pages@84c30a85c19949d7eee79c4ff27748b70285e453 # v4.1.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages

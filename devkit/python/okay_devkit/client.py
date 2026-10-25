@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import urllib.parse
 import urllib.request
 
@@ -34,11 +35,11 @@ def resolve_base_url(port: int | None = None, host: str = "127.0.0.1") -> str:
     env_port = (os.environ.get("OKAY_CORE_PORT") or "").strip()
     if env_port.isdigit():
         return f"http://{host}:{env_port}"
-    try:
-        answer = input(f"0kay Core port [{DEFAULT_PORT}]: ").strip()
-    except EOFError:
-        answer = ""
-    return f"http://{host}:{answer or DEFAULT_PORT}"
+    # Library code must not prompt on stdin: in non-interactive contexts
+    # input() either raises or swallows a line meant for something else.
+    if env_port:
+        print(f"okay_devkit: OKAY_CORE_PORT={env_port!r} is not a port; using default {DEFAULT_PORT}", file=sys.stderr)
+    return f"http://{host}:{DEFAULT_PORT}"
 
 
 class Plugin:

@@ -54,6 +54,29 @@ jobs:
         working-directory: webui
         run: npm test
 
+  plugin-bundles:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: webui/package-lock.json
+      - name: Install
+        working-directory: webui
+        run: npm ci
+      # core/data/plugin-ui/webui/*.js are committed build outputs; without
+      # this check a source change ships as "new src + stale bundle".
+      - name: Committed plugin bundles are in sync
+        working-directory: webui
+        run: |
+          npm run build:plugin
+          git diff --exit-code ../core/data/plugin-ui/webui/ || {
+            echo "::error::core/data/plugin-ui/webui is out of sync — run 'npm run build:plugin' in webui/ and commit"
+            exit 1
+          }
+
   python:
     runs-on: ubuntu-latest
     steps:
@@ -108,15 +131,51 @@ jobs:
           node-version: '22'
       - name: Install
         working-directory: ${{ matrix.dir }}
-        run: ${{ matrix.install }}
+        env:
+          INSTALL: ${{ matrix.install }}
+        run: "$INSTALL"
       - name: Audit dependencies (high/critical gate)
         working-directory: ${{ matrix.dir }}
         run: npm audit --audit-level=high
-      - name: Unit tests
-        if: matrix.test
-        working-directory: ${{ matrix.dir }}
-        run: ${{ matrix.test }}
       - name: Build
         if: matrix.build
         working-directory: ${{ matrix.dir }}
-        run: ${{ matrix.build }}
+        env:
+          BUILD: ${{ matrix.build }}
+        run: "$BUILD"
+
+  proto:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # breaking-change detection needs the main branch history
+          fetch-depth: 0
+      - uses: bufbuild/buf-action@v1
+        with:
+          setup-only: true
+      - name: Lint protobuf
+        run: buf lint
+      - name: Breaking-change check against main
+        if: github.event_name == 'pull_request'
+        run: buf breaking --against '.git#branch=main,subdir=proto'
+      # gen/ is committed; regenerate and fail if anyone edits proto without
+      # refreshing the three language outputs.
+      - name: Generated code is in sync
+        run: |
+          buf generate
+          git diff --exit-code gen/ || {
+            echo "::error::gen/ is out of sync with proto/ — run 'buf generate' and commit the result"
+            exit 1
+          }
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # A broken COPY (a gitignored file, a moved path) only surfaces when a
+      # clean checkout actually builds the image.
+      - name: Build core image
+        run: docker build -f core/Dockerfile -t 0kay-core-smoke .
+      - name: Build webui image
+        run: docker build -f webui/Dockerfile -t 0kay-webui-smoke .

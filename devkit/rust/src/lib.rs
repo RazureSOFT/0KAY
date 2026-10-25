@@ -90,7 +90,12 @@ impl Okay {
     }
 
     pub fn get(&self, path: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let response = ureq::get(&format!("{}{}", self.base_url, path)).call()?;
+        // The other four SDKs time out at 10s; a bare ureq::get has no total
+        // timeout and hangs forever when Core is unresponsive.
+        let agent = ureq::AgentBuilder::new()
+            .timeout(std::time::Duration::from_secs(10))
+            .build();
+        let response = agent.get(&format!("{}{}", self.base_url, path)).call()?;
         Ok(response.into_string()?)
     }
 

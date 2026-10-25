@@ -16,6 +16,8 @@ rm -rf "$DIST"
 mkdir -p "$DIST"
 
 echo "== python =="
+# Drop __pycache__ so the shipped zip carries only source.
+find python -type d -name __pycache__ -prune -exec rm -rf {} +
 python -m zipfile -c "$DIST/okay-devkit-python.zip" python/okay_devkit python/pyproject.toml
 echo "   $DIST/okay-devkit-python.zip"
 
@@ -33,8 +35,10 @@ echo "   $DIST/okay-devkit-go.zip"
 
 echo "== rust =="
 (cd rust && cargo package --allow-dirty --no-verify --quiet)
-cp rust/target/package/okay-devkit-0.1.0.crate "$DIST/"
-echo "   $DIST/okay-devkit-0.1.0.crate"
+CRATE_VERSION=$(sed -n 's/^version[[:space:]]*=[[:space:]]*"\(.*\)"//p' rust/Cargo.toml | head -n1)
+CRATE="okay-devkit-${CRATE_VERSION}.crate"
+cp "rust/target/package/$CRATE" "$DIST/"
+echo "   $DIST/$CRATE"
 
 echo "== java =="
 (cd java && rm -rf out && javac -d out src/OkayDevkit.java && jar cfe "../$DIST/okay-devkit-java.jar" OkayDevkit -C out .)

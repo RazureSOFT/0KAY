@@ -94,7 +94,10 @@ life/life-review-fixes.md
 life/life-review-report-v2-addendum.md
 life/life-review-report-v2.md
 life/life-review-report.md
-*REVIEW*.md
+# Local review reports (root level only; a repo-wide *REVIEW* glob would
+# silently swallow any file whose name happens to contain it).
+/REVIEW*.md
+/*REVIEW*.md
 
 # Compiled devkit java classes (devkit/build.sh regenerates them).
 /devkit/java/out/

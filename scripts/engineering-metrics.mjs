@@ -40,7 +40,11 @@ async function walk(dir, exts, acc) {
   let entries;
   try {
     entries = await readdir(dir, { withFileTypes: true });
-  } catch {
+  } catch (err) {
+    if (err?.code === 'ENOENT') {
+      // A silent zero reads like "measured and empty"; say it is missing.
+      console.warn(`engineering-metrics: module dir ${dir} is missing (independent checkout not cloned?) — counted as 0`);
+    }
     return;
   }
   for (const entry of entries) {

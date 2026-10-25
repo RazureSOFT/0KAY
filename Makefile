@@ -20,10 +20,14 @@ test:
 	cd core && go test ./...
 	cd mocr && go test ./...
 
-# Clean build artifacts
+# Clean build artifacts. gen/ is tracked source (core/mocr replace-link to
+# it), so deleting it here breaks the build until buf regenerates with
+# network access; use clean-gen for that explicitly.
 clean:
 	cd core && go clean
 	cd mocr && go clean
+
+clean-gen:
 	rm -rf gen/
 
 # Generate protobuf code
