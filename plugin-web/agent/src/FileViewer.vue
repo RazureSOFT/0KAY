@@ -57,6 +57,7 @@ function bytesToBase64(bytes: Uint8Array): string {
 function clearAssets() {
   cancelSpreadsheet?.()
   if (pdfUrl.value) { URL.revokeObjectURL(pdfUrl.value); pdfUrl.value = '' }
+  if (htmlUrl.value) { URL.revokeObjectURL(htmlUrl.value); htmlUrl.value = '' }
   dataUrl.value = ''
   sheetNames.value = []
   activeSheet.value = 0

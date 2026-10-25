@@ -1,4 +1,11 @@
 <script setup lang="ts">
+
+// Search results come from external backends (searxng, MCP tools); a poisoned
+// source must not turn a result link into javascript: running in the app.
+function safeUrl(value: unknown): string {
+  const text = String(value ?? '').trim()
+  return /^https?:\/\//i.test(text) ? text : ''
+}
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import type { TaskRow } from './store'
 import { i18n, uid } from '@0kay/host'
@@ -540,7 +547,8 @@ onUnmounted(() => { window.removeEventListener('keydown', onKeydown); if (copyTi
         <p v-if="step.state === 'running'" class="muted">{{ t('agent.tool.searching') }}</p>
         <ol v-else-if="searchResults.length" class="tool-search-results">
           <li v-for="(item, index) in searchResults" :key="index">
-            <a :href="item.url" target="_blank" rel="noopener noreferrer">{{ item.title || item.url }}</a>
+            <a v-if="safeUrl(item.url)" :href="safeUrl(item.url)" target="_blank" rel="noopener noreferrer">{{ item.title || item.url }}</a>
+            <span v-else>{{ item.title || item.url }}</span>
             <p v-if="item.snippet">{{ item.snippet }}</p>
             <small v-if="item.title && item.url">{{ item.url }}</small>
             <span v-if="item.source" class="tool-search-source">{{ item.source }}</span>

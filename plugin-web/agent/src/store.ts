@@ -45,6 +45,8 @@ function createStore() {
     agents: [] as AgentInfo[],
     tasks: [] as TaskRow[],
     sessions: [] as TaskRow[],
+    /** One-line notices pushed by the agent's session tool, carried on the task stream. */
+    toasts: [] as Array<{ id: string; text: string; level: string }>,
     onlineCount: 0,
     loading: false,
     error: '',
@@ -64,6 +66,42 @@ function createStore() {
   const turnsMore = reactive<Record<string, string>>({})
   const turnsPending = reactive<Record<string, boolean>>({})
 
+  function pushToastFromRow(row: TaskRow): void {
+    let text = row.prompt || ''
+    let level = 'info'
+    try {
+      const payload = row.result ? JSON.parse(row.result) : null
+      if (payload?.text) text = String(payload.text)
+      if (payload?.level) level = String(payload.level)
+    } catch { /* the prompt line is the fallback */ }
+    if (!text) return
+    s.toasts.push({ id: row.task_id, text, level })
+    if (s.toasts.length > 20) s.toasts.splice(0, s.toasts.length - 20)
+  }
+
+  function dismissToast(id: string): void {
+    const index = s.toasts.findIndex((toast) => toast.id === id)
+    if (index >= 0) s.toasts.splice(index, 1)
+  }
+
+  /** Whether a session carries at least one real agent turn (a sent message). */
+  function sessionHasTurns(id: string): boolean {
+    for (const row of taskCache.values()) {
+      if (row.session_id === id && row.kind === 'agent') return true
+    }
+    return false
+  }
+
+  /** Notification rows are UI moments, not task history — they become toasts and never enter the cache. */
+  function splitNotifications(rows: TaskRow[]): TaskRow[] {
+    const kept: TaskRow[] = []
+    for (const row of rows || []) {
+      if (row.kind === 'notification') pushToastFromRow(row)
+      else kept.push(row)
+    }
+    return kept
+  }
+
   function recompute() {
     const rows = [...taskCache.values()].sort((a, b) => (b.started_at || '').localeCompare(a.started_at || '') || a.task_id.localeCompare(b.task_id))
     s.tasks = rows.filter((task) => task.kind !== 'agent_session')
@@ -71,7 +109,7 @@ function createStore() {
   }
 
   function mergeTasks(rows: TaskRow[]) {
-    for (const row of rows || []) taskCache.set(row.task_id, row)
+    for (const row of splitNotifications(rows)) taskCache.set(row.task_id, row)
     recompute()
   }
 
@@ -83,7 +121,7 @@ function createStore() {
       s.resetToken++
     }
     for (const id of tdata.removed || []) taskCache.delete(id)
-    for (const row of tdata.tasks || []) taskCache.set(row.task_id, row)
+    for (const row of splitNotifications(tdata.tasks || [])) taskCache.set(row.task_id, row)
     taskCursor = tdata.cursor || ''
     recompute()
   }
@@ -238,6 +276,8 @@ function createStore() {
     olderSessionTurns,
     hasOlderTurns,
     turnsPending,
+    dismissToast,
+    sessionHasTurns,
   })
 }
 

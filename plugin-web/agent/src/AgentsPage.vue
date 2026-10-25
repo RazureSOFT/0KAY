@@ -922,30 +922,22 @@ const onUsageResizeDown = usageHandlers.rdown
 const usagePanelStyle = computed(() => ({ translate: `${usagePos.value.x}px ${usagePos.value.y}px`, width: `${usageSize.value.w}px`, height: `${usageSize.value.h}px` }))
 function toggleUsage() { usageOpen.value = !usageOpen.value; if (usageOpen.value) void fetchContextUsage() }
 
-// ---- recon panel -----------------------------------------------------------
-// The ARTEX view for the session you are in: what the target IS, what has been
-// TRIED, and how much of it is covered. It reads the same recon_graph the model
-// writes to (keyed by session), so the panel cannot disagree with the agent.
-const reconOpen = ref(false)
-// Clear of the dock (58px + margin): a panel that covers the button you open it
-// with is a panel you have to move before you can close it.
-const reconPos = ref(loadBrowserPosKey('0kay.agent.recon.pos') || { x: Math.max(16, (window.innerWidth || 1280) - 468), y: 64 })
-const reconSize = ref(loadBrowserSizeKey('0kay.agent.recon.size') || { w: 360, h: 460 })
-const reconHandlers = makeWindowHandlers(reconPos, reconSize, '0kay.agent.recon.pos', '0kay.agent.recon.size')
-const onReconDown = reconHandlers.down
-const onReconResizeDown = reconHandlers.rdown
-const reconPanelStyle = computed(() => ({ translate: `${reconPos.value.x}px ${reconPos.value.y}px`, width: `${reconSize.value.w}px`, height: `${reconSize.value.h}px` }))
+// ---- the task detail (ARTEX's 任务 page) ------------------------------------
+// Tasks live in the left sidebar — the list is the sidebar's second tab, and
+// selecting one swaps the list for its detail in place. No floating window,
+// no dock button: the chat column keeps running while you read the graph. The
+// detail draws the same session graph the agent writes to (recon_graph, keyed
+// by session), so the view cannot disagree with the model.
 
 interface ReconAsset { id: string; kind: string; key: string }
-interface ReconNode { id: string; kind: string; text: string; status: string; assetIds: string[]; derivedFrom: string[] }
+interface ReconNode { id: string; kind: string; text: string; status: string; assetIds: string[]; derivedFrom: string[]; priority?: number }
+interface ReconEdge { src: string; rel: string; dst: string }
 const reconAssets = ref<ReconAsset[]>([])
 const reconNodes = ref<ReconNode[]>([])
-const reconCoverage = ref({ total: 0, tested: 0 })
-const reconLoading = ref(false)
-const reconError = ref('')
+const reconEdges = ref<ReconEdge[]>([])
 
 async function fetchRecon() {
-  if (!selectedId.value) { reconAssets.value = []; reconNodes.value = []; reconCoverage.value = { total: 0, tested: 0 }; return }
+  if (!selectedId.value) { resetRecon(); return }
   const response = await fetch('/api/run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -956,46 +948,409 @@ async function fetchRecon() {
   const payload = typeof data.result === 'string' ? JSON.parse(data.result) : data.result
   reconAssets.value = Array.isArray(payload?.assets) ? payload.assets : []
   reconNodes.value = Array.isArray(payload?.nodes) ? payload.nodes : []
-  reconCoverage.value = { total: Number(payload?.coverage?.total) || 0, tested: Number(payload?.coverage?.tested) || 0 }
+  reconEdges.value = Array.isArray(payload?.edges) ? payload.edges : []
 }
 
-async function loadRecon() {
-  reconLoading.value = true
-  reconError.value = ''
-  try { await fetchRecon() }
-  catch (e: any) {
-    reconError.value = e?.message || String(e)
-    reconAssets.value = []; reconNodes.value = []; reconCoverage.value = { total: 0, tested: 0 }
-  }
-  finally { reconLoading.value = false }
+function resetRecon() {
+  reconAssets.value = []
+  reconNodes.value = []
+  reconEdges.value = []
 }
 
-function toggleRecon() { reconOpen.value = !reconOpen.value; if (reconOpen.value) void loadRecon() }
-
-// Poll while open — a scan is the one time this panel matters, and a graph you
-// have to refresh by hand is a report, not a view. Failures keep the last read.
-let reconTimer: ReturnType<typeof setInterval> | null = null
-watch(reconOpen, (open) => {
-  if (reconTimer) { clearInterval(reconTimer); reconTimer = null }
-  if (!open) return
-  reconTimer = setInterval(() => {
-    if (document.visibilityState === 'visible' && !reconLoading.value) void fetchRecon().catch(() => {})
-  }, 4000)
-})
-watch(selectedId, () => { if (reconOpen.value) void loadRecon() })
+function onTasksRefresh() { void pollAssessments().catch(() => {}); if (taskSelectedId.value) void loadTaskDetail().catch(() => {}) }
 
 const RECON_LIMIT = 12
-const reconByKind = computed(() => {
-  const counts = new Map<string, number>()
-  for (const asset of reconAssets.value) counts.set(asset.kind, (counts.get(asset.kind) || 0) + 1)
-  return [...counts.entries()].sort((a, b) => b[1] - a[1])
+// ---- the layered drawing ---------------------------------------------------
+// The original draws its exploration graph left to right along provenance
+// depth, with finished regions folded under their digest. Same idea here: a
+// column is the longest upstream path, rows stack within a column, and the
+// members of an active digest collapse into that digest node. Goals end up at
+// the right edge because a finding proves a goal — proof flows outward.
+const RECON_NODE_W = 128
+const RECON_NODE_H = 34
+const RECON_GAP_X = 34
+const RECON_GAP_Y = 10
+const RECON_COL_W = RECON_NODE_W + RECON_GAP_X
+const RECON_ROW_H = RECON_NODE_H + RECON_GAP_Y
+const RECON_MAX_NODES = 160
+const RECON_REL_GLYPH: Record<string, string> = { spawns: '＋', derived_from: '↳', yields: '→', proves: '✓', covers: '⊃' }
+
+interface ReconLayoutNode extends ReconNode { x: number; y: number; l1: string; l2: string; members: number }
+/** The layered drawing — the task detail's 探索链路 tab draws from this. */
+function computeReconLayout(nodes: ReconNode[], edges: ReconEdge[], expanded: Set<string>) {
+  if (!nodes.length) return null
+
+  const folded = new Set<string>()
+  const memberCount = new Map<string, number>()
+  for (const digest of nodes) {
+    if (digest.kind !== 'digest' || digest.status !== 'active') continue
+    if (expanded.has(digest.id)) continue
+    let count = 0
+    for (const edge of edges) {
+      if (edge.src === digest.id && edge.rel === 'covers') { folded.add(edge.dst); count += 1 }
+    }
+    if (count) memberCount.set(digest.id, count)
+  }
+  const visible = nodes.filter((node) => !(node.kind === 'digest' && node.status === 'superseded') && !folded.has(node.id))
+  if (!visible.length || visible.length > RECON_MAX_NODES) return null
+
+  const ids = new Set(visible.map((node) => node.id))
+  const up = new Map<string, string[]>()
+  for (const edge of edges) {
+    if (edge.rel === 'covers' || !ids.has(edge.src) || !ids.has(edge.dst)) continue
+    if (!up.has(edge.dst)) up.set(edge.dst, [])
+    up.get(edge.dst)!.push(edge.src)
+  }
+
+  const colOf = new Map<string, number>()
+  const visiting = new Set<string>()
+  const depth = (id: string): number => {
+    const memo = colOf.get(id)
+    if (memo != null) return memo
+    if (visiting.has(id)) return 0
+    visiting.add(id)
+    const parents = up.get(id) || []
+    const col = parents.length ? Math.max(...parents.map(depth)) + 1 : 0
+    visiting.delete(id)
+    colOf.set(id, col)
+    return col
+  }
+  for (const node of visible) depth(node.id)
+
+  const layout: ReconLayoutNode[] = []
+  const rows = new Map<number, number>()
+  for (const node of visible) {
+    const col = colOf.get(node.id) || 0
+    const row = rows.get(col) || 0
+    rows.set(col, row + 1)
+    const text = node.text || ''
+    const cut = text.length > 26 ? `${text.slice(0, 25)}…` : text
+    const mid = Math.ceil(cut.length / 2)
+    layout.push({
+      ...node,
+      x: col * RECON_COL_W + 8,
+      y: row * RECON_ROW_H + 8,
+      l1: cut.slice(0, mid),
+      l2: cut.slice(mid),
+      members: memberCount.get(node.id) || 0,
+    })
+  }
+  const cols = Math.max(...[...rows.keys()], 0) + 1
+  const rowCount = Math.max(...[...rows.values()], 0)
+  const positions = new Map(layout.map((node) => [node.id, node]))
+  const drawn = edges
+    .filter((edge) => edge.rel !== 'covers' && positions.has(edge.src) && positions.has(edge.dst))
+    .map((edge) => {
+      const from = positions.get(edge.src)!
+      const to = positions.get(edge.dst)!
+      const x1 = from.x + RECON_NODE_W
+      const y1 = from.y + RECON_NODE_H / 2
+      const x2 = to.x
+      const y2 = to.y + RECON_NODE_H / 2
+      const bend = Math.max(RECON_GAP_X / 2, 12)
+      return {
+        rel: edge.rel,
+        d: `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`,
+        // Midpoint of the cubic at t=0.5 collapses to the chord midpoint here.
+        lx: (x1 + x2) / 2,
+        ly: (y1 + y2) / 2,
+        label: RECON_REL_GLYPH[edge.rel] || '',
+      }
+    })
+  return {
+    nodes: layout,
+    edges: drawn,
+    width: cols * RECON_COL_W + 8,
+    height: rowCount * RECON_ROW_H + 8,
+  }
+}
+// ---- ARTEX-style canvas: drag to pan, wheel to zoom -------------------------
+const reconZoom = ref(1)
+const reconPan = ref({ x: 0, y: 0 })
+const expandedDigests = ref(new Set<string>())
+let reconDrag: { x: number; y: number; panX: number; panY: number; moved: boolean } | null = null
+
+function onReconCanvasDown(event: PointerEvent) {
+  if (event.button !== 0) return
+  const target = event.currentTarget as HTMLElement
+  reconDrag = { x: event.clientX, y: event.clientY, panX: reconPan.value.x, panY: reconPan.value.y, moved: false }
+  target.setPointerCapture(event.pointerId)
+}
+function onReconCanvasMove(event: PointerEvent) {
+  if (!reconDrag) return
+  const dx = event.clientX - reconDrag.x
+  const dy = event.clientY - reconDrag.y
+  if (Math.abs(dx) + Math.abs(dy) > 4) reconDrag.moved = true
+  reconPan.value = { x: reconDrag.panX + dx, y: reconDrag.panY + dy }
+}
+function onReconCanvasUp(event: PointerEvent) {
+  const target = event.currentTarget as HTMLElement
+  if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId)
+  reconDrag = null
+}
+function onReconCanvasWheel(event: WheelEvent) {
+  event.preventDefault()
+  const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15
+  reconZoom.value = Math.min(3, Math.max(0.25, reconZoom.value * factor))
+}
+function reconFit() {
+  const canvas = document.querySelector('.recon-canvas') as HTMLElement | null
+  const layout = taskLayout.value
+  if (!canvas || !layout) return
+  const scale = Math.min(canvas.clientWidth / layout.width, canvas.clientHeight / layout.height, 1)
+  reconZoom.value = Math.max(0.25, Math.round(scale * 100) / 100)
+  reconPan.value = { x: 0, y: 0 }
+}
+
+// ---- the task tab: ARTEX's task list, fed by the assessments tool -----------
+interface TaskRow {
+  id: string
+  objective: string
+  status: string
+  createdAt: string
+  endedAt?: string
+  stopped?: string
+  error?: string
+  goalTexts: Array<{ id: string; text: string }>
+  scope: string[]
+  report?: { rounds: number; intents: number; facts: number; findings: number; proven: boolean; pct: number | null }
+}
+interface TaskDetail {
+  state: TaskRow & { activity: Array<{ at: string; round: number; kind: string; text: string }>; targets: string[]; coverageArg?: number; constraints: string[] }
+  live?: {
+    coverage: { total: number; tested: number; scope: { rows: number; denominator: number; pct: number | null } }
+    goals: Array<{ id: string; text: string; status: string }>
+    openIntents: Array<{ id: string; text: string }>
+    runningIntents: number
+    findings: Array<{ id: string; text: string; status: string }>
+    digests: number
+  }
+}
+const taskDetail = ref<TaskDetail | null>(null)
+const taskSelectedId = ref<string | null>(null)
+const taskShowNew = ref(false)
+const taskCreating = ref(false)
+const taskError = ref('')
+const newTaskObjective = ref('')
+const newTaskTargets = ref('')
+const newTaskCoverage = ref('')
+const newTaskModel = ref('')
+const hintDraft = ref('')
+
+async function runAssessments(args: Record<string, any>): Promise<any> {
+  if (!selectedId.value) throw new Error(t('agent.page.taskNeedSession'))
+  // Polls fail fast so a gated or stale agent cannot stack hung requests.
+  // create/report run the goals phase / render a file first and legitimately
+  // take longer, so they get their own budget.
+  const long = args.action === 'create' || args.action === 'report'
+  const response = await fetch('/api/run', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tool: 'assessments', args: JSON.stringify(args), session_id: selectedId.value }),
+    signal: AbortSignal.timeout(long ? 180_000 : 8000),
+  })
+  const data = await response.json()
+  if (!data?.success) throw new Error(data?.error || 'assessments call failed')
+  return typeof data.result === 'string' ? JSON.parse(data.result) : data.result
+}
+async function loadTaskDetail() {
+  if (!taskSelectedId.value) return
+  taskDetail.value = await runAssessments({ action: 'get', id: taskSelectedId.value })
+}
+async function openTask(id: string) {
+  taskSelectedId.value = id
+  taskDetail.value = null
+  hintDraft.value = ''
+  taskShowNew.value = false
+  taskDetailTab.value = 'overview'
+  await loadTaskDetail().catch(() => {})
+}
+// Every action shows its failure INLINE: an error escaping an event handler
+// reaches the host's error boundary and takes the whole page down with it.
+async function controlTask(operation: string) {
+  if (!taskSelectedId.value) return
+  taskError.value = ''
+  try {
+    await runAssessments({ action: 'control', id: taskSelectedId.value, operation })
+    await Promise.all([pollAssessments().catch(() => {}), loadTaskDetail().catch(() => {})])
+  } catch (e: any) {
+    taskError.value = e?.message || String(e)
+  }
+}
+async function sendHint() {
+  const text = hintDraft.value.trim()
+  if (!taskSelectedId.value || !text) return
+  taskError.value = ''
+  try {
+    hintDraft.value = ''
+    await runAssessments({ action: 'hint', id: taskSelectedId.value, text })
+    await loadTaskDetail().catch(() => {})
+  } catch (e: any) {
+    taskError.value = e?.message || String(e)
+  }
+}
+async function createTask() {
+  const objective = newTaskObjective.value.trim()
+  const targets = newTaskTargets.value.split(/[\n,]+/).map((entry) => entry.trim()).filter(Boolean)
+  if (!objective || !targets.length) return
+  taskError.value = ''
+  if (!selectedId.value) { taskError.value = t('agent.page.taskNeedSession'); return }
+  taskCreating.value = true
+  try {
+    const created = await runAssessments({
+      action: 'create',
+      objective,
+      targets,
+      ...(newTaskCoverage.value ? { coverage: Number(newTaskCoverage.value) } : {}),
+      ...(newTaskModel.value ? { model: newTaskModel.value } : {}),
+      language: locale.value.startsWith('zh') ? 'zh' : 'en',
+    })
+    newTaskObjective.value = ''; newTaskTargets.value = ''; newTaskCoverage.value = ''; newTaskModel.value = ''
+    taskShowNew.value = false
+    await pollAssessments().catch(() => {})
+    if (created?.id) await openTask(created.id)
+  } catch (e: any) {
+    taskError.value = e?.message || String(e)
+  } finally {
+    taskCreating.value = false
+  }
+}
+function deleteTask(id: string) {
+  if (taskSelectedId.value === id) { taskSelectedId.value = null; taskDetail.value = null }
+  void runAssessments({ action: 'control', id, operation: 'delete' }).then(() => pollAssessments()).catch(() => {})
+}
+const taskPercent = computed(() => {
+  const live = taskDetail.value?.live
+  if (!live) return null
+  if (live.coverage.scope.pct != null) return live.coverage.scope.pct
+  return live.coverage.total ? Math.round((live.coverage.tested / live.coverage.total) * 100) : 0
 })
-const reconFindings = computed(() => reconNodes.value.filter((node) => node.kind === 'finding'))
-const reconIntents = computed(() => reconNodes.value.filter((node) => node.kind === 'intent' && node.status === 'open'))
-const reconPercent = computed(() => reconCoverage.value.total ? Math.round((reconCoverage.value.tested / reconCoverage.value.total) * 100) : 0)
-const reconEmpty = computed(() => !reconLoading.value && !reconAssets.value.length && !reconNodes.value.length)
-function reconTextOf(id: string) { return reconNodes.value.find((node) => node.id === id)?.text || '' }
-function reconOriginOf(finding: ReconNode) { return finding.derivedFrom.map(reconTextOf).find(Boolean) || '' }
+
+// ---- the task page tabs (ARTEX's task detail) -------------------------------
+type TaskDetailTab = 'sessions' | 'overview' | 'graph' | 'board' | 'findings' | 'assets' | 'approvals' | 'report'
+const taskDetailTab = ref<TaskDetailTab>('overview')
+// 探索链路 draws the session graph — the same recon_graph export the agent
+// writes to, laid out along provenance depth.
+const taskLayout = computed(() => computeReconLayout(reconNodes.value, reconEdges.value, expandedDigests.value))
+
+const taskAssets = computed(() => {
+  // tested = anchored by a fact or finding in the fetched graph
+  const tested = new Set<string>()
+  for (const node of reconNodes.value) {
+    if (node.kind !== 'fact' && node.kind !== 'finding') continue
+    for (const assetId of node.assetIds) tested.add(assetId)
+  }
+  return reconAssets.value.map((asset) => ({ ...asset, tested: tested.has(asset.id) }))
+})
+const taskAssetsTested = computed(() => taskAssets.value.filter((asset) => asset.tested))
+const taskAssetsUntested = computed(() => taskAssets.value.filter((asset) => !asset.tested))
+
+const taskPlannerSessions = computed(() => (taskDetail.value?.live?.sessions || []).filter((s) => s.kind === 'planner').slice(-12).reverse())
+const taskWorkerSessions = computed(() => (taskDetail.value?.live?.sessions || []).filter((s) => s.kind === 'worker').slice(-40).reverse())
+const taskSystemSessions = computed(() => (taskDetail.value?.live?.sessions || []).filter((s) => s.kind === 'system').slice(-12).reverse())
+const taskBoard = computed(() => [...(taskDetail.value?.state.activity || [])].reverse().slice(0, 80))
+
+function fmtTokens(n: number): string {
+  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n)
+}
+
+interface TaskApproval { id: string; tool: string; args?: string; cwd?: string; created_at?: string }
+const taskApprovals = ref<TaskApproval[]>([])
+async function fetchTaskApprovals() {
+  if (!selectedId.value) { taskApprovals.value = []; return }
+  try {
+    const response = await fetch(`/api/agent/approvals?session_id=${encodeURIComponent(selectedId.value)}`, { signal: AbortSignal.timeout(8000) })
+    const data = await response.json()
+    taskApprovals.value = Array.isArray(data?.approvals) ? data.approvals : []
+  } catch { taskApprovals.value = [] }
+}
+async function decideApproval(id: string, allow: boolean) {
+  try {
+    await fetch('/api/agent/approvals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, allow }),
+      signal: AbortSignal.timeout(8000),
+    })
+  } catch { /* the inbox is the source of truth; a failed decision just stays pending */ }
+  void fetchTaskApprovals()
+}
+
+const taskReport = ref('')
+const taskReportBusy = ref(false)
+
+// ---- ARTEX-style task list: search + status filter + count ------------------
+const taskSearch = ref('')
+const taskStatusFilter = ref('')
+const sidebarTab = ref<'sessions' | 'tasks'>('sessions')
+
+// Poll while the 任务 tab is open — a scan is the one time this view matters,
+// and a graph you have to refresh by hand is a report, not a view. Failures
+// keep the last read.
+let tasksTimer: ReturnType<typeof setInterval> | null = null
+watch(sidebarTab, (tab) => {
+  if (tasksTimer) { clearInterval(tasksTimer); tasksTimer = null }
+  if (tab !== 'tasks') return
+  void pollAssessments().catch(() => {})
+  tasksTimer = setInterval(() => {
+    if (document.visibilityState !== 'visible') return
+    void pollAssessments().catch(() => {})
+    if (taskSelectedId.value) void loadTaskDetail().catch(() => {})
+    if (taskDetailTab.value === 'graph' || taskDetailTab.value === 'assets') void fetchRecon().catch(() => {})
+  }, 4000)
+})
+
+// ---- 会话 tab: the grouped session tree with trace expansion ----------------
+const taskSessionOpen = ref<string | null>(null)
+const taskTraceSteps = ref<Array<{ action: string; detail: string; ok: boolean; at?: string }>>([])
+const taskTraceLoading = ref(false)
+const taskWorkerRows = computed(() => {
+  const workers = (taskDetail.value?.live?.sessions || []).filter((s) => s.kind === 'worker')
+  return workers.map((entry, index) => ({ ...entry, num: index + 1 }))
+})
+const taskPlannerRows = computed(() => (taskDetail.value?.live?.sessions || []).filter((s) => s.kind === 'planner').slice().reverse())
+const taskSystemRows = computed(() => (taskDetail.value?.live?.sessions || []).filter((s) => s.kind === 'system').slice().reverse())
+async function toggleSessionTrace(entry: { id: string; refId?: string; kind: string }) {
+  if (taskSessionOpen.value === entry.id) { taskSessionOpen.value = null; taskTraceSteps.value = []; return }
+  taskSessionOpen.value = entry.id
+  taskTraceSteps.value = []
+  if (entry.kind !== 'worker' || !entry.refId || !taskSelectedId.value) return
+  taskTraceLoading.value = true
+  try {
+    const payload = await runAssessments({ action: 'trace', id: taskSelectedId.value, intent_id: entry.refId })
+    taskTraceSteps.value = Array.isArray(payload?.steps) ? payload.steps : []
+  } catch { taskTraceSteps.value = [] }
+  finally { taskTraceLoading.value = false }
+}
+async function generateTaskReport(save: boolean) {
+  if (!taskSelectedId.value) return
+  taskReportBusy.value = true
+  taskError.value = ''
+  try {
+    const result = await runAssessments({ action: 'report', id: taskSelectedId.value, ...(save ? {} : { preview: true }) })
+    if (save && result.path) {
+      taskReport.value = ''
+      showToast(t('agent.page.taskReportSaved'), 4000)
+    } else {
+      taskReport.value = String(result.markdown || '')
+    }
+  } catch (e: any) {
+    taskError.value = e?.message || String(e)
+  } finally {
+    taskReportBusy.value = false
+  }
+}
+
+watch(taskDetailTab, (tab) => {
+  if (tab === 'graph' || tab === 'assets') {
+    // The sidebar canvas is narrow — fit the fresh graph once it lands, not the
+    // stale one that was on screen when the tab was clicked.
+    void fetchRecon().catch(() => {}).finally(() => {
+      if (taskDetailTab.value === 'graph') void nextTick().then(() => reconFit())
+    })
+  }
+  if (tab === 'approvals') void fetchTaskApprovals()
+})
 const hostPos = ref(loadBrowserPosKey('0kay.agent.host.pos') || { x: Math.max(16, (window.innerWidth || 1280) - 336), y: 392 })
 const hostSize = ref(loadBrowserSizeKey('0kay.agent.host.size') || { w: 360, h: 360 })
 const hostHandlers = makeWindowHandlers(hostPos, hostSize, '0kay.agent.host.pos', '0kay.agent.host.size')
@@ -1016,6 +1371,10 @@ function loadOptions() {
     else { taskKind.value = 'agent'; agentSubKind.value = saved.mode || 'general' }
   } catch { executorId.value='';workdir.value='';intensity.value=50;modelId.value='MOCR';draft.value='';taskKind.value='agent';agentSubKind.value='general';duetMode.value='off';minimalMode.value='off' }
 }
+// Applied at setup, not in onMounted: the refs' defaults (agent / 通用 Agent)
+// would otherwise paint for one frame before the saved values land — that was
+// the flash when the settings gear opened.
+loadOptions()
 const providerNames = ref<Record<string, string>>({})
 function modelLabel(model: { id: string; provider: string; provider_id?: string; provider_name?: string }) {
   const name = model.provider_name
@@ -1249,10 +1608,54 @@ async function submitEdit(turn: TaskRow) {
 }
 const toast = ref('')
 let toastTimer: ReturnType<typeof setTimeout> | null = null
-function showToast(text: string) {
+function showToast(text: string, duration = 1600) {
   toast.value = text
   if (toastTimer) clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => { toast.value = '' }, 1600)
+  toastTimer = setTimeout(() => { toast.value = '' }, duration)
+}
+// Notifications pushed by the agent's session tool ride the task stream as
+// `notification` rows; the store turns them into toasts, this consumes them.
+watch(() => store.toasts.length, () => {
+  for (const item of [...store.toasts]) {
+    showToast(item.text, 5000)
+    store.dismissToast(item.id)
+  }
+})
+
+// ---- assessment task indicator ---------------------------------------------
+// A background assessment must be visible even with the panel closed: the dock
+// button carries a count while one runs, and finishing one — done, failed or
+// cancelled — raises a toast, whichever tab or panel state you are in.
+const assessmentRows = ref<Array<{ id: string; objective: string; status: string; createdAt: string; endedAt?: string; stopped?: string; error?: string; goalProgress?: { met: number; total: number }; findingsCount?: number }>>([])
+const assessmentRowsFiltered = computed(() => {
+  const q = taskSearch.value.trim().toLowerCase()
+  const status = taskStatusFilter.value
+  return assessmentRows.value.filter((row) => {
+    if (status && row.status !== status) return false
+    if (!q) return true
+    return row.objective.toLowerCase().includes(q) || row.id.toLowerCase().includes(q)
+  })
+})
+const assessmentPrev = new Map<string, string>()
+let assessmentTimer: ReturnType<typeof setInterval> | null = null
+const reconRunningCount = computed(() => assessmentRows.value.filter((row) => row.status === 'running').length)
+async function pollAssessments() {
+  if (!selectedId.value) { assessmentRows.value = []; return }
+  try {
+    const payload = await runAssessments({ action: 'list' })
+    const rows: Array<{ id: string; objective: string; status: string; createdAt: string; endedAt?: string; stopped?: string; error?: string; goalProgress?: { met: number; total: number }; findingsCount?: number }> = Array.isArray(payload?.tasks) ? payload.tasks : []
+    for (const row of rows) {
+      const before = assessmentPrev.get(row.id)
+      if (before === 'running' && row.status !== 'running') {
+        const label = row.status === 'done'
+          ? t('agent.page.taskDoneToast')
+          : row.status === 'failed' ? t('agent.page.taskFailedToast') : t('agent.page.taskCancelledToast')
+        showToast(`✦ ${row.objective.slice(0, 60)} — ${label}`, 6000)
+      }
+      assessmentPrev.set(row.id, row.status)
+    }
+    assessmentRows.value = rows
+  } catch { /* the indicator is cosmetic; a failed poll just keeps the last state */ }
 }
 
 async function copyMessage(text?: string) {
@@ -1460,7 +1863,15 @@ async function manage(action: 'archive' | 'restore' | 'delete') {
 function choose(id: string) { rememberEditor();selectedId.value = id; localStorage.setItem('0kay.agent.selected', id) }
 async function create() {
   busy.value = true; error.value = ''
-  try { const id=await store.createSession(t('agent.page.newChat'));rememberEditor();selectedId.value=id;localStorage.setItem('0kay.agent.selected',id);showArchived.value=false } catch (e: any) { error.value = e.message }
+  try {
+    // A click on 新对话 reuses the newest untouched empty session instead of
+    // piling up another one — the old behavior left a new "新对话" behind
+    // every time it was clicked without sending anything.
+    const empty = [...store.sessions].reverse().find((session) =>
+      session.prompt === t('agent.page.newChat') && session.state === 'done' && !store.sessionHasTurns(session.task_id))
+    if (empty) { rememberEditor(); choose(empty.task_id); showArchived.value = false; return }
+    const id=await store.createSession(t('agent.page.newChat'));rememberEditor();selectedId.value=id;localStorage.setItem('0kay.agent.selected',id);showArchived.value=false
+  } catch (e: any) { error.value = e.message }
   finally { busy.value = false }
 }
 async function send(override?: string, overrideAttachments?: Array<{ name: string; url: string; mime: string; size: number }>) {
@@ -1608,8 +2019,8 @@ watch(executorId,()=>{hostUsage.value=null;workdir.value='';closeBrowser();fetch
 watch(hostOpen,fetchHost)
 watch(selectedId,()=>{compactNotice.value=''})
 watch([selectedId, () => store.resetToken], ([id]) => { if (id) void store.ensureSessionTurns(id) }, { immediate: true })
-onMounted(() => { syncLocale(); store.connect(); loadOptions(); fetchModels();void fetchWorkspaces();hostTimer=setInterval(fetchHost,5000);workspaceTimer=setInterval(()=>{if(!document.hidden)void fetchWorkspaces()},5000);void fetchBrowserStatus();browserTimer=setInterval(()=>{if(!document.hidden)void fetchBrowserStatus()},5000);window.addEventListener('keydown',onEscape);loadSuperseded(selectedId.value) })
-onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrowser();store.disconnect();if(hostTimer) clearInterval(hostTimer);if(workspaceTimer) clearInterval(workspaceTimer);if(browserTimer) clearInterval(browserTimer);if(browserViewTimer) clearInterval(browserViewTimer);if(browserStreamRetry) clearTimeout(browserStreamRetry);if(treeRefreshTimer) clearTimeout(treeRefreshTimer);if(searchTimer) clearTimeout(searchTimer);if(toastTimer) clearTimeout(toastTimer);if(ctxTimer) clearTimeout(ctxTimer);window.removeEventListener('keydown',onEscape)})
+onMounted(() => { syncLocale(); store.connect(); loadOptions(); fetchModels();void fetchWorkspaces();hostTimer=setInterval(fetchHost,5000);workspaceTimer=setInterval(()=>{if(!document.hidden)void fetchWorkspaces()},5000);void fetchBrowserStatus();browserTimer=setInterval(()=>{if(!document.hidden)void fetchBrowserStatus()},5000);window.addEventListener('keydown',onEscape);loadSuperseded(selectedId.value);void pollAssessments();assessmentTimer=setInterval(()=>{if(!document.hidden)void pollAssessments()},6000) })
+onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrowser();store.disconnect();if(hostTimer) clearInterval(hostTimer);if(workspaceTimer) clearInterval(workspaceTimer);if(browserTimer) clearInterval(browserTimer);if(browserViewTimer) clearInterval(browserViewTimer);if(browserStreamRetry) clearTimeout(browserStreamRetry);if(treeRefreshTimer) clearTimeout(treeRefreshTimer);if(searchTimer) clearTimeout(searchTimer);if(toastTimer) clearTimeout(toastTimer);if(ctxTimer) clearTimeout(ctxTimer);if(assessmentTimer) clearInterval(assessmentTimer);if(tasksTimer) clearInterval(tasksTimer);window.removeEventListener('keydown',onEscape)})
 </script>
 
 <template>
@@ -1617,6 +2028,13 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
     <aside class="sessions">
       <header><h1>Agent</h1><button @click="create" :disabled="busy" :title="t('agent.page.newSession')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> {{ t('agent.page.newChat') }}</button></header>
       <div class="connection"><i :class="{online:store.onlineCount>0}" />{{ store.onlineCount }} {{ t('agent.page.executorsOnline') }} <button @click="store.fetchAgents()" :title="t('agent.page.refresh')" aria-label="refresh"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+      <nav class="sidebar-mode">
+        <button type="button" :class="{ chosen: sidebarTab === 'sessions' }" @click="sidebarTab = 'sessions'">{{ t('agent.page.sidebarChats') }}</button>
+        <button type="button" :class="{ chosen: sidebarTab === 'tasks' }" @click="sidebarTab = 'tasks'">
+          {{ t('agent.page.tasksTitle') }}<span v-if="reconRunningCount" class="sidebar-badge">{{ reconRunningCount > 9 ? '9+' : reconRunningCount }}</span>
+        </button>
+      </nav>
+      <template v-if="sidebarTab === 'sessions'">
       <input v-model="search" :placeholder="t('agent.page.searchSessions')" :aria-label="t('agent.page.searchSessionsLabel')" />
       <nav class="filter-bar"><button v-for="filter in [{id:'all',label:t('agent.page.all')},{id:'life',label:t('agent.page.fromLife')},{id:'user',label:t('agent.page.myChats')}]" :key="filter.id" :class="{chosen:source===filter.id}" @click="source=filter.id">{{ filter.label }}</button></nav>
       <div class="sidebar-toggles">
@@ -1689,6 +2107,259 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
           <button v-if="executor" class="ws-add" :disabled="busy" @click="addWorkspace()">+ {{ t('agent.page.addWorkspace') }}</button>
           <p v-if="!sessions.length && !workspaces.length" class="muted">{{ t('agent.page.noSessionsHint') }}</p>
           <p v-if="workspaceError" class="muted" role="alert">{{ workspaceError }}</p>
+        </template>
+      </div>
+      </template>
+      <div v-else class="session-list task-tab">
+        <!-- 任务详情：选中一个任务后列表就地换成详情（ARTEX 的任务详情页），← 返回列表。
+             聊天列保持原样——看得见图，也看得见 agent 在干什么。 -->
+        <div v-if="taskSelectedId" class="task-detail">
+          <div class="recon-task-head">
+            <button type="button" class="recon-back" :title="t('agent.page.tasksTitle')" @click="taskSelectedId = null; taskDetail = null">←</button>
+            <div class="recon-task-headtext">
+              <div class="recon-task-titleline">
+                <strong class="recon-task-objective">{{ taskDetail?.state.objective || '…' }}</strong>
+                <span v-if="taskDetail" class="recon-idchip" :title="taskDetail.state.id">{{ taskDetail.state.id.slice(3, 15) }}</span>
+              </div>
+              <div class="recon-task-chips">
+                <span v-if="taskDetail" class="recon-badge" :class="taskDetail.state.status"><i class="recon-pillardot"></i>{{ t('agent.page.taskStatus_' + taskDetail.state.status) }}</span>
+                <small v-if="taskDetail?.state.stopped" class="recon-task-stopped">{{ taskDetail.state.stopped }}</small>
+              </div>
+            </div>
+            <button type="button" class="recon-back" :title="t('agent.page.refresh')" @click="onTasksRefresh()">⟳</button>
+          </div>
+          <p v-if="taskError" class="recon-error">{{ taskError }}</p>
+          <p v-if="!taskDetail" class="tree-msg">…</p>
+          <template v-if="taskDetail">
+            <div class="recon-usage" :title="t('agent.page.taskUsageTotal')">
+              <span class="recon-usage-label">{{ t('agent.page.taskUsageTotal') }}</span>
+              <span class="recon-usage-item">{{ t('agent.page.taskUsageIn') }} <b>{{ fmtTokens(taskDetail.live?.usage?.inTokens || 0) }}</b></span>
+              <span class="recon-usage-item">{{ t('agent.page.taskUsageOut') }} <b>{{ fmtTokens(taskDetail.live?.usage?.outTokens || 0) }}</b></span>
+              <span class="recon-usage-item">{{ t('agent.page.taskUsageCalls') }} <b>{{ taskDetail.live?.usage?.llmCalls || 0 }}</b></span>
+            </div>
+            <div v-if="taskDetail.state.status === 'running' || taskDetail.state.status === 'paused'" class="recon-task-controls">
+              <button v-if="taskDetail.state.status === 'running'" type="button" @click="controlTask('pause')">{{ t('agent.page.taskPause') }}</button>
+              <button v-if="taskDetail.state.status === 'paused'" type="button" @click="controlTask('resume')">{{ t('agent.page.taskResume') }}</button>
+              <button type="button" class="danger" @click="controlTask('cancel')">{{ t('agent.page.taskStop') }}</button>
+            </div>
+            <div v-else class="recon-task-controls">
+              <button type="button" class="danger" @click="deleteTask(taskDetail.state.id)">{{ t('agent.page.taskDelete') }}</button>
+            </div>
+            <form class="recon-hintform" @submit.prevent="sendHint">
+              <input v-model="hintDraft" :placeholder="t('agent.page.taskHint')" />
+              <button type="submit" :disabled="!hintDraft.trim()">{{ t('agent.page.taskSend') }}</button>
+            </form>
+            <div class="recon-tabs">
+              <button type="button" :class="{ active: taskDetailTab === 'sessions' }" @click="taskDetailTab = 'sessions'">{{ t('agent.page.taskTabSessions') }}</button>
+              <button type="button" :class="{ active: taskDetailTab === 'overview' }" @click="taskDetailTab = 'overview'">{{ t('agent.page.taskTabOverview') }}</button>
+              <button type="button" :class="{ active: taskDetailTab === 'graph' }" @click="taskDetailTab = 'graph'">{{ t('agent.page.taskTabGraph') }}</button>
+              <button type="button" :class="{ active: taskDetailTab === 'board' }" @click="taskDetailTab = 'board'">{{ t('agent.page.taskTabBoard') }}</button>
+              <button type="button" :class="{ active: taskDetailTab === 'findings' }" @click="taskDetailTab = 'findings'">{{ t('agent.page.taskTabFindings') }}</button>
+              <button type="button" :class="{ active: taskDetailTab === 'assets' }" @click="taskDetailTab = 'assets'">{{ t('agent.page.taskTabAssets') }}</button>
+              <button type="button" :class="{ active: taskDetailTab === 'approvals' }" @click="taskDetailTab = 'approvals'">{{ t('agent.page.taskTabApprovals') }}</button>
+              <button type="button" :class="{ active: taskDetailTab === 'report' }" @click="taskDetailTab = 'report'">{{ t('agent.page.taskTabReport') }}</button>
+            </div>
+            <!-- 会话：the conversation tree — planner rounds, worker intents, system events -->
+            <template v-if="taskDetailTab === 'sessions'">
+              <div class="recon-sesslist-head">
+                <span class="recon-sesslist-title">{{ t('agent.page.taskSessList') }}</span>
+                <small class="recon-sesslist-usage">{{ t('agent.page.taskUsageTotal') }} · in {{ fmtTokens(taskDetail.live?.usage?.inTokens || 0) }} · out {{ fmtTokens(taskDetail.live?.usage?.outTokens || 0) }}</small>
+              </div>
+              <div class="recon-sessgroup">
+                <h5>⓿ 主 Agent</h5>
+                <button type="button" class="recon-sessitem" :class="{ open: taskSessionOpen === 'main' }" @click="taskSessionOpen = taskSessionOpen === 'main' ? null : 'main'">
+                  主 Agent · 编排
+                </button>
+                <div v-if="taskSessionOpen === 'main'" class="recon-tracebox">
+                  <ul class="recon-items">
+                    <li v-for="(entry, i) in taskSystemRows" :key="i" class="recon-item system"><i class="recon-dot system" />{{ entry.text }}</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="recon-sessgroup">
+                <h5>◉ 规划 Planner</h5>
+                <button v-for="entry in taskPlannerRows" :key="entry.id" type="button" class="recon-sessitem" :class="{ open: taskSessionOpen === entry.id }" @click="taskSessionOpen = taskSessionOpen === entry.id ? null : entry.id">
+                  规划 Planner · 态势研判 #{{ entry.round }}
+                </button>
+                <div v-if="taskPlannerRows.some((entry) => taskSessionOpen === entry.id)" class="recon-tracebox">
+                  <ul class="recon-items">
+                    <li v-for="(entry, i) in taskBoard.filter((row) => row.kind === 'planner' || row.kind === 'fact' || row.kind === 'finding').slice(0, 12)" :key="i" class="recon-item">
+                      <i class="recon-dot" :class="entry.kind" />{{ entry.text }}
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div class="recon-sessgroup">
+                <h5>((•)) Workers <b>{{ taskWorkerRows.length }}</b></h5>
+                <template v-for="entry in taskWorkerRows" :key="entry.id">
+                  <button type="button" class="recon-sessitem" :class="{ open: taskSessionOpen === entry.id }" @click="toggleSessionTrace(entry)">
+                    <span class="recon-sessmark" :class="entry.status">{{ entry.status === 'done' ? '✓' : entry.status === 'running' ? '⟳' : entry.status === 'blocked' ? '✕' : entry.status === 'paused' ? '❚❚' : '○' }}</span>
+                    <span class="recon-sessnum">#{{ entry.num }}</span>
+                    <span class="recon-sesstext">{{ entry.title }}</span>
+                    <span v-if="entry.status === 'running'" class="recon-livebadge">• {{ t('agent.page.taskLive') }}</span>
+                  </button>
+                  <div v-if="taskSessionOpen === entry.id" class="recon-tracebox">
+                    <p v-if="taskTraceLoading" class="tree-msg">…</p>
+                    <p v-else-if="!taskTraceSteps.length" class="tree-msg">{{ t('agent.page.taskNoTrace') }}</p>
+                    <ol v-else class="recon-tracesteps">
+                      <li v-for="(step, i) in taskTraceSteps" :key="i" :class="{ fail: !step.ok }">
+                        <span class="recon-trace-action">{{ step.action }}</span>
+                        <span class="recon-trace-detail">{{ step.detail }}</span>
+                      </li>
+                    </ol>
+                  </div>
+                </template>
+              </div>
+            </template>
+            <!-- 总览 -->
+            <template v-else-if="taskDetailTab === 'overview'">
+              <div v-if="taskDetail.live" class="recon-coverage">
+                <div class="recon-coverage-line">
+                  <span>{{ t('agent.page.reconCoverage') }}</span>
+                  <span><b>{{ taskDetail.live.coverage.tested }}</b> / {{ taskDetail.live.coverage.scope.denominator || taskDetail.live.coverage.total }} <em>{{ t('agent.page.reconTested') }}</em><i v-if="taskPercent != null" class="recon-pct"> · {{ taskPercent }}%</i></span>
+                </div>
+                <div class="recon-bar" role="progressbar" :aria-valuenow="taskPercent || 0" aria-valuemin="0" aria-valuemax="100"><span :style="{ width: (taskPercent || 0) + '%' }"></span></div>
+              </div>
+              <section v-if="taskDetail.live?.goals.length" class="recon-block">
+                <h4>{{ t('agent.page.reconGoals') }} <b>{{ taskDetail.live.goals.filter((goal) => goal.status === 'met').length }}/{{ taskDetail.live.goals.length }}</b></h4>
+                <ul class="recon-items">
+                  <li v-for="goal in taskDetail.live.goals" :key="goal.id" class="recon-item goal" :class="{ met: goal.status === 'met' }"><i class="recon-dot" />{{ goal.text }}</li>
+                </ul>
+              </section>
+              <section v-if="taskDetail.live?.openIntents.length" class="recon-block">
+                <h4>{{ t('agent.page.reconIntents') }} <b>{{ taskDetail.live.openIntents.length }}</b></h4>
+                <ul class="recon-items">
+                  <li v-for="intent in taskDetail.live.openIntents" :key="intent.id" class="recon-item"><i class="recon-dot" />{{ intent.text }}</li>
+                </ul>
+              </section>
+            </template>
+            <!-- 探索链路：the layered graph, drawn from the session fetch -->
+            <template v-else-if="taskDetailTab === 'graph'">
+              <div class="recon-legend">
+                <span class="recon-legend-spacer"></span>
+                <button type="button" :title="t('agent.page.reconFit')" @click="reconFit()">⤢</button>
+                <button type="button" title="−" @click="reconZoom = Math.max(0.25, reconZoom / 1.2)">−</button>
+                <button type="button" title="+" @click="reconZoom = Math.min(3, reconZoom * 1.2)">＋</button>
+              </div>
+              <div
+                class="recon-canvas"
+                @pointerdown="onReconCanvasDown"
+                @pointermove="onReconCanvasMove"
+                @pointerup="onReconCanvasUp"
+                @pointercancel="onReconCanvasUp"
+                @wheel="onReconCanvasWheel"
+              >
+                <svg v-if="taskLayout" :width="Math.max(taskLayout.width * reconZoom + 40, 200)" :height="Math.max(taskLayout.height * reconZoom + 40, 120)" role="img" :aria-label="t('agent.page.taskTabGraph')">
+                  <g :transform="`translate(${reconPan.x + 20},${reconPan.y + 20}) scale(${reconZoom})`">
+                    <path v-for="(edge, i) in taskLayout.edges" :key="i" class="recon-edge" :class="edge.rel" :d="edge.d" />
+                    <text v-for="(edge, i) in taskLayout.edges" :key="'l' + i" class="recon-edge-label" :class="edge.rel" :x="edge.lx" :y="edge.ly">{{ edge.label }}</text>
+                    <g v-for="node in taskLayout.nodes" :key="node.id" class="recon-node" :class="[node.kind, node.status]" :transform="`translate(${node.x},${node.y})`">
+                      <title>{{ node.kind }} · {{ node.status }} — {{ node.text }}</title>
+                      <rect :width="RECON_NODE_W" :height="RECON_NODE_H" rx="8" />
+                      <text :y="15"><tspan x="8">{{ node.l1 }}</tspan></text>
+                      <text :y="27"><tspan x="8">{{ node.l2 }}</tspan></text>
+                    </g>
+                  </g>
+                </svg>
+                <p v-else class="tree-msg">{{ t('agent.page.reconEmpty') }}</p>
+              </div>
+            </template>
+            <!-- 播报板 -->
+            <template v-else-if="taskDetailTab === 'board'">
+              <ul class="recon-items">
+                <li v-for="(entry, i) in taskBoard" :key="i" class="recon-item activity">
+                  <i class="recon-dot" :class="entry.kind"></i>
+                  <div><p>{{ entry.text }}</p><small>{{ entry.kind }} · #{{ entry.round }}</small></div>
+                </li>
+              </ul>
+            </template>
+            <!-- 发现 -->
+            <template v-else-if="taskDetailTab === 'findings'">
+              <p v-if="!taskDetail.live?.findings.length" class="tree-msg">{{ t('agent.page.reconNoFindings') }}</p>
+              <ul v-else class="recon-items">
+                <li v-for="finding in taskDetail.live.findings" :key="finding.id" class="recon-item finding"><i class="recon-dot" />{{ finding.text }}</li>
+              </ul>
+            </template>
+            <!-- 测试资产 -->
+            <template v-else-if="taskDetailTab === 'assets'">
+              <div class="recon-coverage">
+                <div class="recon-coverage-line">
+                  <span>{{ t('agent.page.reconCoverage') }}</span>
+                  <span><b>{{ taskAssetsTested.length }}</b> / {{ taskAssets.length }} <em>{{ t('agent.page.reconTested') }}</em></span>
+                </div>
+                <div class="recon-bar" role="progressbar" :aria-valuenow="taskAssets.length ? Math.round((taskAssetsTested.length / taskAssets.length) * 100) : 0" aria-valuemin="0" aria-valuemax="100"><span :style="{ width: (taskAssets.length ? Math.round((taskAssetsTested.length / taskAssets.length) * 100) : 0) + '%' }"></span></div>
+              </div>
+              <section class="recon-block">
+                <h4>{{ t('agent.page.taskTested') }} <b>{{ taskAssetsTested.length }}</b></h4>
+                <ul class="recon-items">
+                  <li v-for="asset in taskAssetsTested.slice(0, RECON_LIMIT)" :key="asset.id" class="recon-item goal"><i class="recon-dot" />{{ asset.kind }}:{{ asset.key }}</li>
+                </ul>
+              </section>
+              <section class="recon-block">
+                <h4>{{ t('agent.page.taskUntested') }} <b>{{ taskAssetsUntested.length }}</b></h4>
+                <ul class="recon-items">
+                  <li v-for="asset in taskAssetsUntested.slice(0, RECON_LIMIT)" :key="asset.id" class="recon-item"><i class="recon-dot" />{{ asset.kind }}:{{ asset.key }}</li>
+                </ul>
+              </section>
+            </template>
+            <!-- 拦截审批 -->
+            <template v-else-if="taskDetailTab === 'approvals'">
+              <p v-if="!taskApprovals.length" class="tree-msg">{{ t('agent.page.taskApprovalsEmpty') }}</p>
+              <ul v-else class="recon-items">
+                <li v-for="approval in taskApprovals" :key="approval.id" class="recon-taskrow">
+                  <div class="recon-taskrow-top"><span class="recon-badge intent">{{ approval.tool }}</span></div>
+                  <pre v-if="approval.args" class="recon-approval-args">{{ approval.args }}</pre>
+                  <div class="recon-task-controls">
+                    <button type="button" @click="decideApproval(approval.id, true)">{{ t('agent.page.taskAllow') }}</button>
+                    <button type="button" class="danger" @click="decideApproval(approval.id, false)">{{ t('agent.page.taskDeny') }}</button>
+                  </div>
+                </li>
+              </ul>
+            </template>
+            <!-- 报告 -->
+            <template v-else>
+              <div class="recon-task-controls">
+                <button type="button" :disabled="taskReportBusy" @click="generateTaskReport(false)">{{ t('agent.page.taskReportGenerate') }}</button>
+                <button type="button" :disabled="taskReportBusy" @click="generateTaskReport(true)">{{ t('agent.page.taskReportSave') }}</button>
+              </div>
+              <pre v-if="taskReport" class="recon-report">{{ taskReport }}</pre>
+            </template>
+          </template>
+        </div>
+        <!-- 任务列表 -->
+        <template v-else>
+          <form v-if="taskShowNew" class="recon-taskform" style="margin-bottom:10px" @submit.prevent="createTask">
+            <label>{{ t('agent.page.taskObjective') }}<textarea v-model="newTaskObjective" rows="2"></textarea></label>
+            <label>{{ t('agent.page.taskTargets') }}<textarea v-model="newTaskTargets" rows="3" placeholder="https://a.example&#10;10.0.0.0/24"></textarea></label>
+            <label>{{ t('agent.page.taskCoverageGate') }}<input v-model="newTaskCoverage" type="number" min="0" max="100" /></label>
+            <label>{{ t('agent.page.taskModel') }}<AppSelect v-model="newTaskModel" :options="[{ value: '', label: t('agent.page.taskModelAuto') }, ...modelOptions]" /></label>
+            <button type="submit" :disabled="taskCreating || !selectedId || !newTaskObjective.trim() || !newTaskTargets.trim()">{{ t('agent.page.taskCreate') }}</button>
+          </form>
+          <div class="recon-task-search" style="margin-bottom:8px">
+            <input v-model="taskSearch" :placeholder="t('agent.page.taskSearchPlaceholder')" />
+            <select v-model="taskStatusFilter" :aria-label="t('agent.page.taskFilterAll')">
+              <option value="">{{ t('agent.page.taskFilterAll') }}</option>
+              <option value="running">{{ t('agent.page.taskStatus_running') }}</option>
+              <option value="paused">{{ t('agent.page.taskStatus_paused') }}</option>
+              <option value="done">{{ t('agent.page.taskStatus_done') }}</option>
+              <option value="cancelled">{{ t('agent.page.taskStatus_cancelled') }}</option>
+              <option value="failed">{{ t('agent.page.taskStatus_failed') }}</option>
+            </select>
+          </div>
+          <button type="button" class="recon-newtask-btn" style="width:100%;justify-content:center;margin-bottom:8px" @click="taskShowNew = !taskShowNew">{{ taskShowNew ? '✕' : '＋' }} {{ t('agent.page.taskNew') }}</button>
+          <p v-if="!assessmentRows.length" class="tree-msg">{{ t('agent.page.reconNoTasks') }}</p>
+          <ul v-else class="recon-items">
+            <li v-for="row in assessmentRowsFiltered" :key="row.id" class="recon-taskrow" @click="openTask(row.id)">
+              <div class="recon-taskrow-top">
+                <span class="recon-badge" :class="row.status"><i class="recon-pillardot"></i>{{ t('agent.page.taskStatus_' + row.status) }}</span>
+              </div>
+              <p>{{ row.objective }}</p>
+              <div class="recon-taskrow-meta">
+                <small v-if="row.goalProgress">{{ t('agent.page.taskGoalProgress') }} <b>{{ row.goalProgress.met }}/{{ row.goalProgress.total }}</b></small>
+                <small>{{ row.createdAt.slice(5, 16).replace('T', ' ') }}</small>
+              </div>
+            </li>
+          </ul>
         </template>
       </div>
     </aside>
@@ -1970,10 +2641,6 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M7.5 9l3 3-3 3M13 15h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="hint left"><b>{{ t('agent.page.terminal') }}</b><i>{{ t('agent.page.tipTerm') }}</i></span>
       </button>
-      <button type="button" class="dock-btn" :class="{active:reconOpen}" :title="t('agent.page.reconTitle')" @click="toggleRecon">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="5" r="2.3" stroke="currentColor" stroke-width="1.7"/><circle cx="5.5" cy="17.5" r="2.3" stroke="currentColor" stroke-width="1.7"/><circle cx="18.5" cy="17.5" r="2.3" stroke="currentColor" stroke-width="1.7"/><path d="M10.7 7.2 6.8 15.3M13.3 7.2l3.9 8.1M7.8 17.5h8.4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
-        <span class="hint left"><b>{{ t('agent.page.reconTitle') }}</b><i>{{ t('agent.page.tipRecon') }}</i></span>
-      </button>
       <button type="button" class="dock-btn" :class="{active:usageOpen}" :title="t('agent.page.contextUsage')" @click="toggleUsage">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="hint left"><b>{{ t('agent.page.contextUsage') }}</b><i>{{ t('agent.page.tipUsage') }}</i></span>
@@ -2065,57 +2732,6 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
         <p v-if="!ctxRows.length" class="tree-msg">{{ t('agent.page.noData') }}</p>
       </div>
       <span class="browser-resize" :title="t('agent.page.resize')" @pointerdown="onUsageResizeDown"></span>
-    </section>
-    </Transition>
-
-    <Transition name="browser-panel">
-    <section v-if="reconOpen" class="recon-panel" :style="reconPanelStyle">
-      <div class="browser-toolbar" @pointerdown="onReconDown">
-        <span class="browser-grab" aria-hidden="true">⠿</span>
-        <strong class="tree-title">{{ t('agent.page.reconTitle') }}</strong>
-        <button type="button" :title="t('agent.page.refresh')" @click="loadRecon()">⟳</button>
-        <button type="button" :title="t('agent.page.close')" @click="reconOpen=false">✕</button>
-      </div>
-      <div class="recon-body">
-        <p v-if="reconError" class="recon-error">{{ reconError }}</p>
-        <p v-else-if="reconLoading" class="tree-msg">{{ t('agent.page.reconLoading') }}</p>
-        <template v-else>
-          <div v-if="reconCoverage.total" class="recon-coverage">
-            <div class="recon-coverage-line">
-              <span>{{ t('agent.page.reconCoverage') }}</span>
-              <span><b>{{ reconCoverage.tested }}</b> / {{ reconCoverage.total }} <em>{{ t('agent.page.reconTested') }}</em></span>
-            </div>
-            <div class="recon-bar" role="progressbar" :aria-valuenow="reconPercent" aria-valuemin="0" aria-valuemax="100"><span :style="{ width: reconPercent + '%' }"></span></div>
-          </div>
-          <p v-if="reconEmpty" class="tree-msg">{{ t('agent.page.reconEmpty') }}</p>
-          <template v-else>
-            <section v-if="reconByKind.length" class="recon-block">
-              <h4>{{ t('agent.page.reconAssets') }}</h4>
-              <div class="recon-chips"><span v-for="[kind, count] in reconByKind" :key="kind" class="recon-chip">{{ kind }} <b>{{ count }}</b></span></div>
-            </section>
-            <section class="recon-block">
-              <h4>{{ t('agent.page.reconIntents') }} <b>{{ reconIntents.length }}</b></h4>
-              <p v-if="!reconIntents.length" class="tree-msg">{{ t('agent.page.reconNoIntents') }}</p>
-              <ul v-else class="recon-items">
-                <li v-for="intent in reconIntents.slice(0, RECON_LIMIT)" :key="intent.id" class="recon-item"><i class="recon-dot" />{{ intent.text }}</li>
-              </ul>
-              <p v-if="reconIntents.length > RECON_LIMIT" class="recon-more">{{ t('agent.page.reconMore', { n: reconIntents.length - RECON_LIMIT }) }}</p>
-            </section>
-            <section class="recon-block">
-              <h4>{{ t('agent.page.reconFindings') }} <b>{{ reconFindings.length }}</b></h4>
-              <p v-if="!reconFindings.length" class="tree-msg">{{ t('agent.page.reconNoFindings') }}</p>
-              <ul v-else class="recon-items">
-                <li v-for="finding in reconFindings.slice(0, RECON_LIMIT)" :key="finding.id" class="recon-item finding">
-                  <i class="recon-dot" />
-                  <div><p>{{ finding.text }}</p><small v-if="reconOriginOf(finding)">← {{ reconOriginOf(finding) }}</small></div>
-                </li>
-              </ul>
-              <p v-if="reconFindings.length > RECON_LIMIT" class="recon-more">{{ t('agent.page.reconMore', { n: reconFindings.length - RECON_LIMIT }) }}</p>
-            </section>
-          </template>
-        </template>
-      </div>
-      <span class="browser-resize" :title="t('agent.page.resize')" @pointerdown="onReconResizeDown"></span>
     </section>
     </Transition>
 
@@ -2310,7 +2926,7 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .connection-hint{display:inline-flex;align-items:center;gap:7px;font-size:12px;color:var(--md-on-surface-variant);white-space:nowrap}
 .connection-hint i{width:8px;height:8px;border-radius:50%;background:var(--md-outline)}
 .connection-hint i.online{background:var(--md-success)}
-.browser-panel,.tree-panel,.usage-panel,.host-window,.file-panel,.term-panel,.recon-panel{position:fixed;left:0;top:0;z-index:var(--z-panel, 3000);display:flex;flex-direction:column;border:1px solid var(--md-outline-variant);border-radius:14px;overflow:hidden;background:var(--md-surface-container-low);box-shadow:var(--shadow-4)}
+.browser-panel,.tree-panel,.usage-panel,.host-window,.file-panel,.term-panel{position:fixed;left:0;top:0;z-index:var(--z-panel, 3000);display:flex;flex-direction:column;border:1px solid var(--md-outline-variant);border-radius:14px;overflow:hidden;background:var(--md-surface-container-low);box-shadow:var(--shadow-4)}
 .browser-panel-enter-active{transition:opacity 240ms var(--ease-emphasized-decel),transform 240ms var(--ease-emphasized-decel)}
 .browser-panel-leave-active{transition:opacity 140ms var(--ease-emphasized-accel),transform 140ms var(--ease-emphasized-accel)}
 .browser-panel-enter-from,.browser-panel-leave-to{opacity:0;transform:translateY(-6px) scale(.99)}
@@ -2348,6 +2964,8 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 
 .dock{width:58px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;gap:10px;padding:16px 0;border-radius:28px;background:var(--md-surface-container-low);box-shadow:var(--shadow-1)}
 .dock-btn{position:relative;width:42px;height:42px;display:grid;place-items:center;border:0;border-radius:14px;background:transparent;color:var(--md-on-surface-variant);transition:background-color 160ms,color 160ms,transform 160ms var(--ease-emphasized-decel)}
+.dock-badge{position:absolute;top:3px;right:3px;min-width:15px;height:15px;padding:0 4px;display:grid;place-items:center;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary);font-size:9.5px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums;animation:dock-pulse 1.6s ease-in-out infinite;pointer-events:none}
+@keyframes dock-pulse{0%,100%{box-shadow:0 0 0 0 color-mix(in srgb,var(--md-primary) 45%,transparent)}50%{box-shadow:0 0 0 4px transparent}}
 
 .dock-toggle{display:none}
 .dock-btn:hover:not(:disabled){background:var(--md-secondary-container);color:var(--md-on-surface)}
@@ -2451,7 +3069,123 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .recon-item small{display:block;margin-top:2px;font-size:11px;color:var(--md-on-surface-variant);opacity:.85}
 .recon-dot{flex:none;width:6px;height:6px;margin-top:6px;border-radius:50%;background:var(--md-outline-variant)}
 .recon-item.finding .recon-dot{background:var(--md-warning)}
-.recon-more{margin:6px 0 0;padding-left:14px;font-size:11px;color:var(--md-on-surface-variant);opacity:.85}
+.recon-task-search{display:flex;align-items:center;gap:6px}
+.recon-task-search input{flex:1;min-width:0;border:1px solid var(--md-outline-variant);border-radius:8px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);font-size:11.5px;padding:5px 9px;font-family:inherit}
+.recon-task-search select{border:1px solid var(--md-outline-variant);border-radius:8px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);font-size:11px;padding:5px 4px;font-family:inherit}
+.recon-task-count{color:var(--md-on-surface-variant);font-size:10.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.recon-idchip{font-family:ui-monospace,monospace;font-size:9.5px;color:var(--md-on-surface-variant);background:var(--md-surface-container-high);border-radius:5px;padding:1px 5px}
+.recon-task-headtext{min-width:0;flex:1}
+.recon-task-titleline{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.recon-task-chips{display:flex;align-items:center;gap:6px;margin-top:2px}
+.recon-pillardot{width:5px;height:5px;border-radius:50%;background:currentColor;margin-right:4px}
+.recon-sesslist-head{display:flex;align-items:baseline;justify-content:space-between;gap:8px;border-bottom:1px solid var(--md-outline-variant);padding-bottom:6px}
+.recon-sesslist-title{font-size:12px;font-weight:700;color:var(--md-on-surface)}
+.recon-sesslist-usage{font-size:10px;color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums}
+.recon-sessgroup{margin-top:10px}
+.recon-sessgroup h5{margin:0 0 4px;font-size:10.5px;letter-spacing:.04em;color:var(--md-on-surface-variant);font-weight:700}
+.recon-sessgroup h5 b{opacity:.7}
+.recon-sessitem{display:flex;align-items:center;gap:6px;width:100%;text-align:left;border:0;background:transparent;color:var(--md-on-surface);font-size:11.5px;padding:5px 8px;border-radius:8px;cursor:pointer;font-family:inherit}
+.recon-sessitem:hover,.recon-sessitem.open{background:var(--md-surface-container-high)}
+.recon-sessmark{flex:none;width:14px;text-align:center;font-size:10.5px;color:var(--md-on-surface-variant)}
+.recon-sessmark.done{color:#10b981}
+.recon-sessmark.running{color:#6366f1;animation:dock-pulse 1.6s ease-in-out infinite}
+.recon-sessmark.blocked{color:#ef4444}
+.recon-sessnum{flex:none;font-family:ui-monospace,monospace;font-size:10px;color:var(--md-on-surface-variant)}
+.recon-sesstext{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.recon-livebadge{flex:none;font-size:9.5px;font-weight:700;color:#6366f1;background:#6366f126;border-radius:999px;padding:1px 7px}
+.recon-tracebox{margin:2px 0 6px;padding:8px 10px;border-left:2px solid var(--md-outline-variant);background:var(--md-surface-container-low);border-radius:0 8px 8px 0}
+.recon-tracesteps{margin:0;padding-left:18px;font-size:11px;color:var(--md-on-surface-variant);display:flex;flex-direction:column;gap:4px}
+.recon-tracesteps li.fail{color:var(--md-error)}
+.recon-trace-action{font-family:ui-monospace,monospace;color:var(--md-on-surface);margin-right:6px}
+.recon-trace-detail{display:block;font-size:10.5px}
+.recon-usage{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--md-on-surface-variant);border:1px dashed var(--md-outline-variant);border-radius:10px;padding:6px 10px}
+.recon-usage-label{font-weight:700;color:var(--md-on-surface)}
+.recon-usage-item b{color:var(--md-on-surface);font-variant-numeric:tabular-nums}
+.recon-approval-args{margin:4px 0 6px;padding:8px;border-radius:8px;background:var(--md-surface-container);color:var(--md-on-surface-variant);font-size:10.5px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:140px;overflow:auto}
+.recon-report{margin:0;padding:10px;border:1px solid var(--md-outline-variant);border-radius:10px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);font-size:11px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere;max-height:60%;overflow:auto;font-family:ui-monospace,monospace}
+.recon-dot.planner{background:var(--md-primary)}
+.recon-dot.running{background:#6366f1;animation:dock-pulse 1.6s ease-in-out infinite}
+.recon-dot.system{background:#06b6d4}
+.recon-tabs{display:flex;flex-wrap:wrap;gap:3px;border-bottom:1px solid var(--md-outline-variant);padding-bottom:6px}
+.recon-pct{font-style:normal;opacity:.85}
+/* 任务详情住在左边侧边栏里：和任务列表共用一个滚动容器，不再是浮动窗口 */
+.task-detail{display:flex;flex-direction:column;gap:12px}
+.task-tab .recon-task-head{position:sticky;top:0;z-index:2;align-items:flex-start;background:var(--md-surface-container-low);padding-bottom:8px}
+.task-detail .recon-canvas{max-height:none;height:260px;flex:none}
+.task-detail .recon-report{max-height:340px}
+.recon-canvas{overflow:hidden;border:1px solid var(--md-outline-variant);border-radius:10px;background:var(--md-surface-container);max-height:52%;min-height:120px;cursor:grab;touch-action:none;user-select:none}
+.recon-canvas:active{cursor:grabbing}
+.recon-canvas svg{display:block}
+.recon-legend{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:10.5px;color:var(--md-on-surface-variant)}
+.recon-legend-spacer{flex:1}
+.recon-legend button{border:0;background:transparent;color:var(--md-on-surface-variant);font-size:12px;padding:2px 6px;border-radius:6px;cursor:pointer;font-family:inherit}
+.recon-legend button:hover,.recon-legend button.active{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+.recon-edge-label{font-size:9px;fill:var(--md-on-surface-variant);text-anchor:middle;dominant-baseline:middle;pointer-events:none}
+.recon-edge-label.proves{fill:#e11d48}
+.recon-node{cursor:pointer}
+.recon-node text{pointer-events:none}
+.recon-badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:10.5px;font-weight:700;background:var(--md-surface-container-high);color:var(--md-on-surface-variant)}
+.recon-badge.running{background:#3b82f626;color:#3b82f6}
+.recon-badge.paused{background:#f59e0b26;color:#b45309}
+.recon-badge.done{background:#10b98126;color:#059669}
+.recon-badge.cancelled{background:var(--md-surface-container-high);color:var(--md-on-surface-variant)}
+.recon-badge.failed{background:var(--md-error-container);color:var(--md-on-error-container)}
+.recon-badge.goal{background:#10b98126;color:#059669}
+.recon-badge.intent{background:#3b82f626;color:#2563eb}
+.recon-badge.fact{background:#f59e0b26;color:#b45309}
+.recon-badge.finding{background:#e11d4826;color:#e11d48}
+.recon-badge.hint{background:#a855f726;color:#9333ea}
+.recon-badge.digest{background:#06b6d426;color:#0891b2}
+.recon-taskbar{display:flex;justify-content:flex-end}
+.recon-newtask-btn{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--md-outline-variant);background:transparent;color:var(--md-on-surface);font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;cursor:pointer;font-family:inherit}
+.recon-newtask-btn.active,.recon-newtask-btn:hover{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+.recon-taskform{display:flex;flex-direction:column;gap:8px;border:1px dashed var(--md-outline-variant);border-radius:10px;padding:10px}
+.recon-taskform label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:600;color:var(--md-on-surface-variant)}
+.recon-taskform textarea,.recon-taskform input{border:1px solid var(--md-outline-variant);border-radius:8px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);font-size:12px;padding:6px 8px;font-family:inherit;resize:vertical}
+.recon-taskform button[type="submit"]{align-self:flex-end;border:0;background:var(--md-primary);color:var(--md-on-primary);font-size:12px;font-weight:700;padding:6px 14px;border-radius:999px;cursor:pointer;font-family:inherit}
+.recon-taskform button[type="submit"]:disabled{opacity:.5;cursor:default}
+.recon-task-head{display:flex;align-items:center;gap:8px}
+.recon-back{border:1px solid var(--md-outline-variant);background:transparent;color:var(--md-on-surface-variant);font-size:13px;width:24px;height:24px;border-radius:8px;cursor:pointer}
+.recon-task-stopped{color:var(--md-on-surface-variant);opacity:.8}
+.recon-task-objective{margin:0;font-size:13px;font-weight:600;color:var(--md-on-surface);line-height:1.45;overflow-wrap:anywhere}
+.recon-task-controls{display:flex;gap:6px}
+.recon-task-controls button{flex:1;border:1px solid var(--md-outline-variant);background:transparent;color:var(--md-on-surface);font-size:12px;font-weight:600;padding:5px 10px;border-radius:8px;cursor:pointer;font-family:inherit}
+.recon-task-controls button:hover{background:var(--md-surface-container-high)}
+.recon-task-controls button.danger{color:var(--md-error)}
+.recon-hintform{display:flex;gap:6px}
+.recon-hintform input{flex:1;border:1px solid var(--md-outline-variant);border-radius:8px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);font-size:12px;padding:5px 9px;font-family:inherit;min-width:0}
+.recon-hintform button{border:0;background:var(--md-secondary-container);color:var(--md-on-secondary-container);font-size:12px;font-weight:600;padding:4px 11px;border-radius:8px;cursor:pointer;font-family:inherit}
+.recon-hintform button:disabled{opacity:.5;cursor:default}
+.recon-taskrow{display:block;border:1px solid var(--md-outline-variant);border-radius:10px;padding:8px 11px;cursor:pointer}
+.recon-taskrow:hover{background:var(--md-surface-container-high)}
+.recon-taskrow p{margin:5px 0 4px;font-size:12.5px;font-weight:600;color:var(--md-on-surface);line-height:1.4;overflow-wrap:anywhere}
+.recon-taskrow-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.recon-taskrow-meta{display:flex;justify-content:space-between;gap:8px;color:var(--md-on-surface-variant);font-size:10.5px;opacity:.85}
+.recon-item.activity .recon-dot.finding{background:var(--md-warning)}
+.recon-item.activity .recon-dot.digest{background:#06b6d4}
+.recon-item.activity .recon-dot.hint{background:#a855f7}
+.recon-edge{fill:none;stroke:var(--md-outline-variant);stroke-width:1.3;opacity:.8}
+.recon-edge.proves{stroke:#e11d48;stroke-dasharray:4 3;stroke-width:1.6;opacity:1}
+.recon-edge.covers{stroke:#06b6d4;stroke-dasharray:2 3;opacity:.6}
+.recon-node rect{fill:var(--md-surface-container-lowest);stroke:var(--md-outline-variant);stroke-width:1.2}
+.recon-node text{font-size:10px;fill:var(--md-on-surface);font-family:inherit}
+.recon-node.goal rect{stroke:#10b981}
+.recon-node.goal.met rect{stroke-width:2.2;fill:color-mix(in srgb,#10b981 12%,var(--md-surface-container-lowest))}
+.recon-node.intent.open rect{stroke:#3b82f6}
+.recon-node.intent.running rect{stroke:#6366f1;stroke-width:2}
+.recon-node.intent.paused rect{stroke:#f59e0b;stroke-dasharray:3 2}
+.recon-node.intent.done rect{stroke:#64748b}
+.recon-node.intent.blocked rect,.recon-node.intent.exhausted rect{stroke:#ef4444}
+.recon-node.intent.stopped rect{stroke:#94a3b8}
+.recon-node.fact rect{stroke:#f59e0b}
+.recon-node.finding rect{stroke:#e11d48;stroke-width:1.8}
+.recon-node.hint rect{stroke:#a855f7}
+.recon-node.digest rect{stroke:#06b6d4;stroke-dasharray:4 2}
+.recon-item.goal .recon-dot{background:#10b981}
+.recon-item.goal.met .recon-dot{box-shadow:0 0 0 2px color-mix(in srgb,#10b981 35%,transparent)}
+.recon-item.running .recon-dot{background:#6366f1}
+.recon-item.blocked .recon-dot,.recon-item.exhausted .recon-dot{background:#ef4444}
+.recon-item.paused .recon-dot{background:#f59e0b}
 .recon-error{margin:0;font-size:12px;color:var(--md-error)}
 .usage-big{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
 .usage-big b{font-size:28px;font-weight:800;color:var(--md-primary);line-height:1;font-variant-numeric:tabular-nums}
@@ -2757,6 +3491,24 @@ button.subagent-card-head>strong{font-weight:700}
 #app .workspace .filter-bar button.chosen{background:var(--md-primary);color:var(--md-on-primary,#fff);font-weight:700;box-shadow:var(--shadow-1)}
 #app .workspace .filter-bar button.chosen:hover:not(:disabled){background:var(--md-primary);color:var(--md-on-primary,#fff)}
 #app .workspace .session-list{margin:0 -2px;padding:0 2px}
+/* 左边侧边栏的两个模式（会话 / 任务）：跟 filter-bar 同一套分段控件写法 */
+#app .workspace .sidebar-mode{display:flex;gap:4px;padding:4px;border-radius:999px;background:var(--md-surface-container-high)}
+#app .workspace .sidebar-mode button{min-height:0;flex:1;padding:7px 4px;border:0;border-radius:999px;background:transparent;color:var(--md-on-surface-variant);font-size:12.5px;font-weight:600}
+#app .workspace .sidebar-mode button:hover:not(:disabled){background:color-mix(in srgb,var(--md-on-surface) 6%,transparent);box-shadow:none}
+#app .workspace .sidebar-mode button.chosen{background:var(--md-surface-container-lowest);color:var(--md-primary);box-shadow:var(--shadow-1)}
+.sidebar-badge{display:inline-grid;place-items:center;min-width:16px;height:16px;margin-left:6px;padding:0 4px;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary);font-size:9.5px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
+/* 任务详情在 284px 的栏里：#app button 的 36px 底线会把 8 个页签撑成三行高楼 */
+#app .workspace .task-tab .recon-back{min-height:0;width:26px;height:26px;border-radius:8px;flex:none;font-size:12px}
+#app .workspace .task-tab .recon-tabs{gap:4px}
+#app .workspace .task-tab .recon-tabs button{min-height:0;padding:4px 9px;border:0;border-radius:999px;background:transparent;color:var(--md-on-surface-variant);font-size:11px;font-weight:600}
+#app .workspace .task-tab .recon-tabs button:hover:not(:disabled){background:var(--md-surface-container-high);box-shadow:none}
+#app .workspace .task-tab .recon-tabs button.active{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
+#app .workspace .task-tab .recon-task-controls button{min-height:0;padding:5px 8px;border-radius:8px;font-size:11.5px}
+#app .workspace .task-tab .recon-hintform button{min-height:0;padding:5px 10px}
+#app .workspace .task-tab .recon-newtask-btn{min-height:0;padding:5px 10px;font-size:11.5px}
+#app .workspace .task-tab .recon-taskform button[type="submit"]{min-height:0;padding:6px 12px}
+#app .workspace .task-tab .recon-sessitem{min-height:0}
+#app .workspace .task-tab .recon-legend button{min-height:0;padding:2px 6px}
 #app .workspace .session-card{
   gap:5px;margin-bottom:8px;padding:13px 15px;
   border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent);
