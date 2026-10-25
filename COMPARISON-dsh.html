@@ -1,0 +1,131 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>0KAY vs DeepSeek Harness (dsh) · 0KAY</title><style>
+:root{
+  color-scheme: light;
+  --md-primary:#4a5b8c; --md-on-primary:#ffffff;
+  --md-primary-container:#dbe1ff; --md-on-primary-container:#131b2e;
+  --md-secondary-container:#e0e2f0; --md-on-secondary-container:#181a24;
+  --md-surface:#fbf8ff; --md-surface-container-low:#f5f3fb;
+  --md-surface-container:#efedf6; --md-surface-container-high:#e9e7f0;
+  --md-surface-container-highest:#e3e1ea;
+  --md-on-surface:#1a1b21; --md-on-surface-variant:#45464f;
+  --md-outline:#757780; --md-outline-variant:#c5c6d0;
+  --md-success-container:#d7f5cf; --md-error-container:#ffdad6;
+  --md-shadow:rgba(20,18,36,.16);
+  --radius-sm:12px; --radius-md:16px; --radius-lg:24px; --radius-xl:28px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    color-scheme: dark;
+    --md-primary:#b3c5ff; --md-on-primary:#1b2b52;
+    --md-primary-container:#33436b; --md-on-primary-container:#dbe1ff;
+    --md-secondary-container:#3a3c47; --md-on-secondary-container:#e0e2f0;
+    --md-surface:#111318; --md-surface-container-low:#1a1b21;
+    --md-surface-container:#1e1f26; --md-surface-container-high:#292a31;
+    --md-surface-container-highest:#34353c;
+    --md-on-surface:#e3e1e9; --md-on-surface-variant:#c6c6d0;
+    --md-outline:#8f9099; --md-outline-variant:#45464f;
+    --md-success-container:#1f4d1a; --md-error-container:#93000a;
+    --md-shadow:rgba(0,0,0,.5);
+  }
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0; min-height:100vh; background:var(--md-surface); color:var(--md-on-surface);
+  font:400 15.5px/1.75 'Roboto','Segoe UI Variable','Segoe UI','PingFang SC','Microsoft YaHei',system-ui,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+::selection{background:var(--md-primary-container); color:var(--md-on-primary-container)}
+a{color:var(--md-primary); text-decoration:none}
+a:hover{text-decoration:underline}
+.shell{display:grid; grid-template-columns:300px minmax(0,1fr); min-height:100vh}
+/* ---------- Navigation drawer ---------- */
+.drawer{
+  position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  padding:22px 14px; background:var(--md-surface-container-low);
+  border-right:1px solid var(--md-outline-variant);
+}
+.brand{display:flex; align-items:center; gap:12px; padding:6px 10px 18px}
+.brand-mark{
+  width:46px; height:46px; display:grid; place-items:center; flex:none;
+  border-radius:16px 16px 16px 6px; background:var(--md-primary);
+  color:var(--md-on-primary); font-weight:800; letter-spacing:-1px; font-size:17px;
+}
+.brand-text b{display:block; font-size:16px; font-weight:800; letter-spacing:-.2px}
+.brand-text span{font-size:12px; color:var(--md-on-surface-variant)}
+.nav{display:flex; flex-direction:column; gap:4px}
+.nav-item{
+  position:relative; display:flex; align-items:center; gap:10px;
+  padding:11px 16px; border-radius:22px 22px 22px 8px;
+  color:var(--md-on-surface-variant); font-weight:600; font-size:14px;
+  transition:background-color .22s, color .16s;
+}
+.nav-item:hover{background:color-mix(in srgb, var(--md-primary) 12%, transparent); text-decoration:none; color:var(--md-on-surface)}
+.nav-item.active{background:var(--md-primary-container); color:var(--md-on-primary-container); font-weight:800}
+.nav-item .dot{width:7px; height:7px; border-radius:50%; background:currentColor; opacity:.5; flex:none}
+.drawer-foot{margin-top:18px; padding:12px 12px 0; border-top:1px solid var(--md-outline-variant); font-size:12px; color:var(--md-on-surface-variant)}
+.drawer-foot a{font-weight:700}
+/* ---------- Article ---------- */
+.article{padding:clamp(24px,4vw,56px) clamp(20px,4vw,64px) 80px; max-width:920px}
+.article>h1{
+  margin:0 0 6px; font-size:clamp(30px,4vw,42px); line-height:1.12;
+  font-weight:850; letter-spacing:-.02em;
+}
+.article>h1+p{color:var(--md-on-surface-variant); font-size:16px; margin-top:0}
+h2{font-size:24px; font-weight:800; letter-spacing:-.01em; margin:2.1em 0 .5em}
+h3{font-size:19px; font-weight:750; margin:1.7em 0 .4em}
+h4,h5,h6{font-size:16px; font-weight:750; margin:1.4em 0 .3em}
+p{margin:.7em 0}
+ul{margin:.6em 0; padding-left:22px}
+li{margin:.3em 0}
+hr{border:0; border-top:1px solid var(--md-outline-variant); margin:2em 0}
+strong{font-weight:750}
+code{
+  font-family:ui-monospace,'Cascadia Code','JetBrains Mono',Consolas,'SFMono-Regular',Menlo,monospace;
+  font-size:.88em; background:var(--md-surface-container-high);
+  padding:2px 6px; border-radius:8px;
+}
+pre{
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); padding:18px 20px; overflow:auto; margin:1.1em 0;
+}
+pre code{background:none; padding:0; font-size:13.5px; line-height:1.7}
+/* ---------- Tables ---------- */
+table{
+  border-collapse:separate; border-spacing:0; width:100%; margin:1.2em 0; font-size:14px;
+  background:var(--md-surface-container-low); border:1px solid var(--md-outline-variant);
+  border-radius:var(--radius-lg); overflow:hidden;
+}
+th,td{padding:11px 15px; text-align:left; vertical-align:top; border-bottom:1px solid var(--md-outline-variant)}
+th{background:var(--md-surface-container); font-weight:750; font-size:12.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--md-on-surface-variant)}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:color-mix(in srgb, var(--md-primary) 5%, transparent)}
+/* ---------- Chips / footer ---------- */
+.badge{
+  display:inline-flex; align-items:center; height:26px; padding:0 12px; border-radius:999px;
+  background:var(--md-secondary-container); color:var(--md-on-secondary-container);
+  font-size:12px; font-weight:700; margin-left:10px; vertical-align:middle;
+}
+/* ---------- Responsive ---------- */
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .drawer{position:static; height:auto; border-right:0; border-bottom:1px solid var(--md-outline-variant); padding:16px 14px}
+  .nav{flex-direction:row; flex-wrap:wrap}
+  .nav-item{padding:8px 14px; border-radius:999px}
+  .brand{padding-bottom:12px}
+}
+</style></head>
+<body><div class="shell">
+<aside class="drawer">
+  <a class="brand" href="index.html"><span class="brand-mark">0K</span>
+    <span class="brand-text"><b>0KAY</b><span>Plugin API</span></span></a>
+  <nav class="nav"><a class="nav-item" href="index.html"><span class="dot"></span>0KAY Plugin API</a><a class="nav-item" href="HTTP_API.html"><span class="dot"></span>HTTP API Reference</a><a class="nav-item" href="PLUGIN_API.html"><span class="dot"></span>0KAY Plugin API (v1)</a><a class="nav-item" href="plugin-lifecycle.html"><span class="dot"></span>Plugin Lifecycle</a><a class="nav-item" href="writing-a-plugin.html"><span class="dot"></span>Writing a Plugin</a><a class="nav-item" href="core-services.html"><span class="dot"></span>Core Services</a><a class="nav-item" href="agent-service.html"><span class="dot"></span>Agent Service</a><a class="nav-item" href="life-service.html"><span class="dot"></span>L.I.F.E Service</a><a class="nav-item" href="mocr-service.html"><span class="dot"></span>mocr Service</a><a class="nav-item" href="settings-ui.html"><span class="dot"></span>Settings and UI Patches</a><a class="nav-item" href="custom-pages.html"><span class="dot"></span>WebUI Custom Pages</a><a class="nav-item" href="design-system.html"><span class="dot"></span>WebUI Design System (Material 3 Expressive)</a><a class="nav-item" href="THINKING.html"><span class="dot"></span>Thinking Intensity and Execution</a><a class="nav-item" href="RELEASES.html"><span class="dot"></span>Releases and Updates</a><a class="nav-item" href="security.html"><span class="dot"></span>Security and Runtime Rules</a><a class="nav-item active" href="COMPARISON-dsh.html"><span class="dot"></span>0KAY vs DeepSeek Harness (dsh)</a><a class="nav-item" href="SANDBOX.html"><span class="dot"></span>Sandbox</a><a class="nav-item" href="asr.html"><span class="dot"></span>Speech-to-text (ASR): one Core endpoint, many plugins</a><a class="nav-item" href="devkit.html"><span class="dot"></span>API devkit</a><a class="nav-item" href="image.html"><span class="dot"></span>Image generation: one Core endpoint, many plugins</a><a class="nav-item" href="tianshu-adoption.html"><span class="dot"></span>从 天枢 (Tianshu-harness) 借鉴到 0KAY</a></nav>
+  <div class="drawer-foot">
+    <div><a href="https://github.com/RazureSOFT/0KAY">RazureSOFT/0KAY</a></div>
+    <div>MIT · © 2026 RazureSOFT</div>
+  </div>
+</aside>
+<main class="article" data-page="COMPARISON-dsh"><h1>0KAY vs DeepSeek Harness (dsh)</h1><p>对比基于本机 <code>D:\deepseek-harness</code>（v0.1.1-rc.2 源码，2104 个 TS 文件、55 个包）与本仓库当前状态。 不是评测报告，是给下一次架构决策用的差异清单。</p><h2>一句话定位</h2><table><tr><th></th><th>它</th><th>我们</th></tr><tr><td>是什么</td><td>Agent <strong>运行时</strong>（Model + Harness = Agent）</td><td>自托管 <strong>AI 伙伴</strong>，底下挂一个 agent</td></tr><tr><td>谁在用</td><td>开发者日常干活</td><td>一个人和自己机器上的角色相处，顺便让它干活</td></tr><tr><td>成功标准</td><td>换掉任何一层都不影响其它层</td><td>角色记得你、能说话、能做事，数据在自己盘上</td></tr></table><p>这不是同一场比赛。它比我们"更通用"，我们比它"更像一个活物"。下面按层拆。</p><h2>结构对比</h2><table><tr><th>维度</th><th>dsh</th><th>0KAY</th><th>差距</th></tr><tr><td>内核</td><td>Cordis 插件树，<strong>连 agent loop 都是插件</strong>，可热替换</td><td>Go Core + gRPC 插件；agent loop 写死在 agent 进程里</td><td><strong>明显落后</strong></td></tr><tr><td>插件粒度</td><td>55 个包，一个工具一个包（<code>tool-bash</code>、<code>tool-lsp</code>、<code>tool-subagent</code>…）</td><td>8 个插件，工具全塞在 <code>agent/src/tools/</code> 一个进程</td><td>落后</td></tr><tr><td>工具数</td><td>22 个工具包</td><td>~40 个工具（多出来的是逆向/渗透/爬虫/截图转码这类分析工具）</td><td>数量我们多，<strong>组织度我们差</strong></td></tr><tr><td>会话</td><td>append-only <code>SessionEvent</code> 事件流，jsonl/sqlite 双后端 + projection 缓存</td><td>SQLite 表 + JSON 文件，无事件溯源</td><td>落后</td></tr><tr><td>沙箱</td><td><code>sandbox</code> / <code>sandbox-local</code>（平台级）/ <code>sandbox-policy</code>（按会话）/ <code>e2b</code>（隔离环境）</td><td>路径白名单 + 审批门，<strong>没有进程隔离</strong></td><td><strong>最大安全差距</strong></td></tr><tr><td>审批</td><td>规则/模型分类 + <code>allow/deny</code>，<code>--yolo</code> 显式降级</td><td>审批门 + <code>always_allow_tools</code>，粒度粗</td><td>落后</td></tr><tr><td>多 agent</td><td><code>tool-subagent</code> ×3 + agent-team，原生</td><td>多实例注册 + executor 路由（本轮刚修好 failover）</td><td>落后</td></tr><tr><td>扩展分发</td><td>npm/git spec，<code>dsh plugin add</code>，profile+bundle+patch 三层</td><td><code>0kay-pm</code> + manifest.json + 区域镜像</td><td>各有千秋</td></tr><tr><td>生态</td><td>社区 700+ 仓库、5100+ 插件</td><td>自研为主</td><td>落后（但这是规模问题，不是设计问题）</td></tr><tr><td>陪伴层</td><td><strong>没有</strong>，全靠插件拼</td><td>原生：情绪、短期/长期记忆、关系、昼夜节律、主动消息</td><td><strong>我们独有</strong></td></tr><tr><td>多模态</td><td>插件（modlens 转视觉）</td><td>原生：ASR/TTS/Live2D/自拍/语音通话，一直打通到 prompt 和气泡</td><td><strong>我们领先</strong></td></tr><tr><td>部署</td><td><code>npx dsh web</code> 一行；另有 Electron、Docker、Python SDK</td><td><code>start-0kay.sh</code> / docker-compose / <code>0kay-pm</code>；要 Go+Python+Node 三件套</td><td>落后（我们在补）</td></tr></table><h2>我们明显更强的地方</h2><p>1. <strong>陪伴是一个系统，不是一个 prompt</strong>。情绪状态、记忆分层、睡眠/醒来、主动发消息、关系进展——dsh 的 <code>memory</code> 是社区插件，<code>persona</code> 根本没有这一层。 2. <strong>多模态是链路而不是接口</strong>。角色可以在句子里藏 <code>[[selfie:…]]</code>，UI 渲染成图，TTS 念出来，通话模式还能双向说话。dsh 的多模态是"把图转给视觉模型"。 3. <strong>自我迭代有明确的安全边界</strong>。<code>evolve_*</code> 只在 <code>self/&lt;slug&gt;</code> 的 worktree 里改自己，不碰用户工作区，不提 PR 就等于没发生。dsh 说 agent loop 可热替换，但没说替换失败怎么办。 4. <strong>本地数据是纯文件</strong>。SQLite + JSON，可以直接 <code>cat</code>、<code>git diff</code>、拷走。</p><h2>它明显更强、且我们应该抄的地方</h2><p>按"投入产出比"排序：</p><h3>1. 进程沙箱（最该做）</h3><p>它把沙箱做成三层：能力定义（<code>sandbox</code>）、平台后端（<code>sandbox-local</code>）、按会话策略（<code>sandbox-policy</code>），fail-closed。我们只有路径白名单——<code>shell</code> 工具一旦被批准，就是用户权限下的任意命令。</p><p><strong>能落地的版本</strong>：Windows 用 Job Object + 受限令牌，Linux 用 <code>bwrap</code>/<code>landlock</code>，macOS 用 <code>sandbox-exec</code>。不需要 e2b 那层云沙箱。</p><h3>2. 会话事件流</h3><p>它的 <code>SessionEvent</code> 是 append-only，能回放、能 projection、能被插件读。我们的会话是可变行，做不了"重放到第 3 步看看当时模型看到了什么"。</p><p><strong>能落地的版本</strong>：先加一张 <code>session_events</code> 表（seq, kind, payload），现有表改成 projection。不动 UI。</p><h3>3. 工具按包拆</h3><p>它一个工具一个包，我们 40 个工具在一个 1400 行的注册表里。拆开之后：工具可以独立版本、独立权限、独立测试，也才能做到"用户只装他要的工具"。</p><p><strong>能落地的版本</strong>：不必真拆成 22 个 npm 包，先把 <code>tools.ts</code> 按领域拆成 <code>tools/fs.ts</code>、<code>tools/web.ts</code>、<code>tools/analysis.ts</code>、<code>tools/evolve.ts</code>，注册表只做装配。</p><h3>4. 子 agent 作为工具</h3><p><code>tool-subagent</code> 是普通工具，模型自己决定要不要开子 agent、开几个。我们现在是"多实例注册"——运维视角，不是模型视角。</p><h2>不建议抄的</h2><ul><li><strong>Cordis 那种"一切皆插件"</strong>：连 agent loop 都能换，代价是所有东西都要通过 ctx 拿，读代码要先理解框架。我们的 Go Core + gRPC 边界更笨但更好 debug。真要换 loop，加一个 interface 就够，不必把整个内核变成插件树。</li><li><strong>55 个包的拆分粒度</strong>：它是给 5100 个社区插件准备的，我们没这个生态，拆太细只是增加发布成本。</li><li><strong>事件总线的复杂度</strong>：<code>agent/*</code>、<code>fs/*</code>、<code>tools/*</code> 三套事件域，学起来很贵。我们要事件溯源就只做 SessionEvent 一层。</li></ul><h2>结论</h2><p>我们在"陪伴"这个维度上没有对手，在"agent 运行时"这个维度上落后一整代。 下一步不该去追它的插件生态（追不上，也没意义），而应该补三件<strong>和我们自己的定位直接相关</strong>的事：</p><p>1. 沙箱——因为我们的角色有 <code>shell</code> 和桌面控制权限，这是真实风险； 2. 会话事件流——因为"角色记得你"这件事，需要能回放和审计； 3. 工具拆包——因为它决定用户能不能只装自己需要的部分。</p><p>生态规模是结果，不是目标。</p></main>
+</div></body></html>
