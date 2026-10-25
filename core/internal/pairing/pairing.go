@@ -53,6 +53,7 @@ type Store struct {
 	Devices        map[string]Device
 	requests       map[string]*Request
 	addresses      map[string]string
+	sessions       map[string]*webSession
 	TLS            *tls.Config
 	enforce        bool
 	trusted        []*net.IPNet
@@ -101,7 +102,7 @@ func New(directory string) (*Store, error) {
 		return nil, err
 	}
 	name, _ := os.Hostname()
-	s := &Store{Name: name, path: filepath.Join(directory, "paired_devices.json"), Devices: map[string]Device{}, requests: map[string]*Request{}, addresses: map[string]string{}, logins: map[string]*loginAttempt{}, enforce: os.Getenv("CORE_LAN_ENABLED") == "1", trusted: trustedNetworks(os.Getenv("CORE_TRUSTED_NETWORKS")), pinEnabled: true, loginEnabled: true}
+	s := &Store{Name: name, path: filepath.Join(directory, "paired_devices.json"), Devices: map[string]Device{}, requests: map[string]*Request{}, addresses: map[string]string{}, sessions: map[string]*webSession{}, logins: map[string]*loginAttempt{}, enforce: os.Getenv("CORE_LAN_ENABLED") == "1", trusted: trustedNetworks(os.Getenv("CORE_TRUSTED_NETWORKS")), pinEnabled: true, loginEnabled: true}
 	existingInstall := false
 	if data, err := os.ReadFile(s.path); err == nil {
 		existingInstall = true
@@ -209,6 +210,82 @@ func apiToken(token string) bool {
 	return expected != "" && token != "" && subtle.ConstantTimeCompare([]byte(token), []byte(expected)) == 1
 }
 
+// webSession is a server-side login session. The browser cookie carries only
+// the random session id; the underlying login token is kept as a hash so a
+// memory disclosure cannot recover it. Sessions are in-memory only and expire
+// (lazily, on use and on issue) after webSessionTTL.
+type webSession struct {
+	tokenHash []byte
+	expires   time.Time
+}
+
+var webSessionTTL = 30 * 24 * time.Hour
+
+const maxWebSessions = 4096
+
+// issueWebSession creates a new session bound to a valid login token and
+// returns the session id to place in the cookie. It returns "" when the id
+// cannot be generated, in which case no cookie is written (the raw token is
+// never sent back to the client).
+func (s *Store) issueWebSession(token string) string {
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return ""
+	}
+	id := hex.EncodeToString(raw)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	now := time.Now()
+	if s.sessions == nil {
+		s.sessions = map[string]*webSession{}
+	}
+	for key, session := range s.sessions {
+		if now.After(session.expires) {
+			delete(s.sessions, key)
+		}
+	}
+	if len(s.sessions) >= maxWebSessions {
+		return ""
+	}
+	s.sessions[id] = &webSession{tokenHash: sessionTokenHash([]byte(token)), expires: now.Add(webSessionTTL)}
+	return id
+}
+
+// webSessionValid reports whether the cookie value is a live session whose
+// login token is still accepted.
+func (s *Store) webSessionValid(value string) bool {
+	if value == "" {
+		return false
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	session := s.sessions[value]
+	if session == nil {
+		return false
+	}
+	if time.Now().After(session.expires) {
+		delete(s.sessions, value)
+		return false
+	}
+	return s.tokenHashValidLocked(session.tokenHash)
+}
+
+// tokenHashValidLocked reports whether hash matches any currently valid login
+// token, so sessions die when the underlying token is revoked or replaced.
+func (s *Store) tokenHashValidLocked(hash []byte) bool {
+	if expected := os.Getenv("CORE_API_TOKEN"); expected != "" {
+		if subtle.ConstantTimeCompare(sessionTokenHash([]byte(expected)), hash) == 1 {
+			return true
+		}
+	}
+	for _, device := range s.Devices {
+		if subtle.ConstantTimeCompare(sessionTokenHash([]byte(device.Token)), hash) == 1 {
+			return true
+		}
+	}
+	return false
+}
+
 const SessionCookie = "0kay_session"
 
 func bearerToken(header string) string {
@@ -232,7 +309,10 @@ func (s *Store) authorized(r *http.Request) (bool, string) {
 		return true, "token"
 	}
 	if cookie, err := r.Cookie(SessionCookie); err == nil && cookie.Value != "" {
-		if s.valid(cookie.Value) || apiToken(cookie.Value) || s.pinCookieValid(cookie.Value) {
+		// webSessionValid handles sessions issued by the current server;
+		// the raw-token checks keep cookies written by older builds working
+		// (smooth transition), they are not newly issued anymore.
+		if s.webSessionValid(cookie.Value) || s.valid(cookie.Value) || apiToken(cookie.Value) || s.pinCookieValid(cookie.Value) {
 			return true, "cookie"
 		}
 	}
@@ -244,7 +324,7 @@ func (s *Store) browserSession(r *http.Request) (bool, string) {
 	if err != nil || cookie.Value == "" {
 		return false, ""
 	}
-	if s.valid(cookie.Value) || apiToken(cookie.Value) || s.pinCookieValid(cookie.Value) {
+	if s.webSessionValid(cookie.Value) || s.valid(cookie.Value) || apiToken(cookie.Value) || s.pinCookieValid(cookie.Value) {
 		return true, "cookie"
 	}
 	return false, ""
@@ -369,12 +449,16 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 		pin := strings.TrimSpace(body.Pin)
 		host := remoteHost(r)
 		cookie := ""
+		sameSite := http.SameSiteStrictMode
 		switch {
 		case pin != "" && s.PinValid(pin), token != "" && s.PinValid(token):
 			cookie = s.pinCookieValue()
 			s.loginSucceeded(host)
 		case token != "" && (s.valid(token) || apiToken(token)):
-			cookie = token
+			// Never echo the login token back: mint a server-side session and
+			// let the cookie carry only its random id.
+			cookie = s.issueWebSession(token)
+			sameSite = http.SameSiteLaxMode
 			s.loginSucceeded(host)
 		case token == "" && pin == "" && s.trustedPeer(r.RemoteAddr):
 			s.loginSucceeded(host)
@@ -390,7 +474,7 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 				Path:     "/",
 				MaxAge:   30 * 24 * 3600,
 				HttpOnly: true,
-				SameSite: http.SameSiteStrictMode,
+				SameSite: sameSite,
 				Secure:   s.secureCookie(r),
 			})
 		}
@@ -409,6 +493,11 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 			"core_id":       s.ID,
 		})
 	case http.MethodDelete:
+		if cookie, err := r.Cookie(SessionCookie); err == nil && cookie.Value != "" {
+			s.mu.Lock()
+			delete(s.sessions, cookie.Value)
+			s.mu.Unlock()
+		}
 		http.SetCookie(w, &http.Cookie{
 			Name:     SessionCookie,
 			Value:    "",

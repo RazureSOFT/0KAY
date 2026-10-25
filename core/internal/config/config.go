@@ -41,6 +41,12 @@ func LoadConfig() *Config {
 		}
 	}
 
+	if v := os.Getenv("CORE_MAX_PLUGINS"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			cfg.MaxPlugins = n
+		}
+	}
+
 	if v := os.Getenv("CORE_HEARTBEAT_TIMEOUT"); v != "" {
 		if d, err := time.ParseDuration(v); err == nil && d > 0 {
 			cfg.HeartbeatTimeout = d

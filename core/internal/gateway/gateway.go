@@ -47,6 +47,9 @@ type Gateway struct {
 	conns     map[string]*grpc.ClientConn
 	lifeConns map[string]*grpc.ClientConn
 
+	submitMu   sync.Mutex
+	submitting map[string]struct{}
+
 	providerStore *providers.Store
 	settingsStore *settings.Store
 	uiPatches     *uiPatchStore
@@ -344,6 +347,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("POST /api/agent/browser/action", g.handleAgentBrowserAction)
 	mux.HandleFunc("GET /api/agent/computeruse", g.handleAgentComputerUse)
 	mux.HandleFunc("GET /api/agent/computeruse/stream", g.handleAgentComputerUseStream)
+	mux.HandleFunc("/api/agent/git", g.handleAgentGit)
 	mux.HandleFunc("/api/agent/compact", g.handleAgentCompact)
 	mux.HandleFunc("GET /api/agent/context", g.handleAgentContext)
 	mux.HandleFunc("GET /api/agent/context/search", g.handleAgentContextSearch)
@@ -398,6 +402,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/settings/", g.handleSettingsSection)
 	mux.HandleFunc("POST /api/settings/{id}/test", g.handleSettingsTest)
 	mux.HandleFunc("/ws", g.handleWebSocket)
+	g.obsRoutes(mux)
 
 	return logMiddleware(g.pluginGuard(mux))
 }
@@ -843,6 +848,13 @@ func (g *Gateway) handleLifeChat(w http.ResponseWriter, r *http.Request) {
 	if req.UserID == "" {
 		req.UserID = "webui"
 	}
+	// Check streaming support before the upstream call so a non-streamable
+	// writer fails fast instead of after LIFE already accepted the message.
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		unavailable(w, "streaming unavailable")
+		return
+	}
 	lifes := g.registry.GetPluginsByCapability("life")
 	if len(lifes) == 0 || lifes[0].Address == "" {
 		unavailable(w, "LIFE is unavailable")
@@ -858,11 +870,6 @@ func (g *Gateway) handleLifeChat(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		upstreamError(w, err.Error())
-		return
-	}
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		unavailable(w, "streaming unavailable")
 		return
 	}
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -1258,8 +1265,7 @@ func (g *Gateway) handleLifePermissions(w http.ResponseWriter, r *http.Request) 
 		json.NewEncoder(w).Encode(g.localCore.GetPermissions())
 	case http.MethodPost, http.MethodPut:
 		var p server.Permissions
-		if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
-			http.Error(w, "invalid request", http.StatusBadRequest)
+		if !decodeBody(w, r, &p, maxSmallBody) {
 			return
 		}
 		g.localCore.SetPermissions(p)
@@ -1842,12 +1848,24 @@ func (g *Gateway) handleLive2D(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				continue
 			}
-			data, err := io.ReadAll(io.LimitReader(src, 64<<20))
-			src.Close()
+			// Stream to a temp file next to the destination and rename into
+			// place, so large model archives never sit whole in memory.
+			tmp, err := os.CreateTemp(filepath.Dir(dstPath), "."+filepath.Base(dstPath)+".tmp*")
 			if err != nil {
+				src.Close()
 				continue
 			}
-			if err := os.WriteFile(dstPath, data, 0o644); err != nil {
+			tmpName := tmp.Name()
+			_, copyErr := io.Copy(tmp, io.LimitReader(src, 64<<20))
+			closeErr := tmp.Close()
+			src.Close()
+			if copyErr != nil || closeErr != nil {
+				_ = os.Remove(tmpName)
+				continue
+			}
+			_ = os.Remove(dstPath)
+			if err := os.Rename(tmpName, dstPath); err != nil {
+				_ = os.Remove(tmpName)
 				continue
 			}
 			saved++

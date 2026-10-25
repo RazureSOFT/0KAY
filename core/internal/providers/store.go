@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"0kay/core/internal/atomicio"
 )
 
 type ProviderConfig struct {
@@ -222,11 +224,7 @@ func (s *Store) saveLocked() error {
 	if err != nil {
 		return err
 	}
-	temporary := s.path + ".tmp"
-	if err := os.WriteFile(temporary, b, 0o600); err != nil {
-		return err
-	}
-	return os.Rename(temporary, s.path)
+	return atomicio.WriteFileAtomic(s.path, b, 0o600)
 }
 
 func (s *Store) Snapshot() File {

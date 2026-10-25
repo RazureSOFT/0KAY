@@ -411,13 +411,19 @@ func sensitiveRequest(r *http.Request) bool {
 		return !read
 	case strings.HasPrefix(path, "/api/plugins/") && method == http.MethodPatch:
 		return true
+	case pluginProxyPath(path):
+		// The gateway forwards /api/plugins/{name}/proxy/... to the plugin
+		// with the plugin service token attached, so it always requires an
+		// authenticated (PIN-satisfied) session.
+		return true
 	case path == "/api/security/pin":
 		return !read
 	case path == "/api/agent/file", path == "/api/agent/exec", path == "/api/run",
 		path == "/api/tools", path == "/api/tools/", path == "/api/tools/call",
 		path == "/api/agent/browser/action", path == "/api/agent/compact",
 		path == "/api/agent/messages", path == "/api/agent/workspace",
-		path == "/api/agent/workspaces", path == "/api/agent/sessions", path == "/api/tasks":
+		path == "/api/agent/workspaces", path == "/api/agent/sessions", path == "/api/tasks",
+		path == "/api/agent/git":
 		return !read
 	case strings.HasPrefix(path, "/api/settings/"):
 		return !read
@@ -425,6 +431,17 @@ func sensitiveRequest(r *http.Request) bool {
 		return method == http.MethodPost || method == http.MethodDelete
 	}
 	return false
+}
+
+// pluginProxyPath reports whether path targets the plugin HTTP proxy
+// (/api/plugins/{name}/proxy or /api/plugins/{name}/proxy/...).
+func pluginProxyPath(path string) bool {
+	rest, ok := strings.CutPrefix(path, "/api/plugins/")
+	if !ok {
+		return false
+	}
+	name, remainder, found := strings.Cut(rest, "/")
+	return found && name != "" && (remainder == "proxy" || strings.HasPrefix(remainder, "proxy/"))
 }
 
 func looksLikeBrowser(r *http.Request) bool {

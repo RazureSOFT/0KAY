@@ -1,8 +1,12 @@
 package gateway
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"net/http"
+	"os"
 	"path/filepath"
+	"strconv"
 
 	"0kay/core/internal/i18n"
 )
@@ -45,10 +49,39 @@ func (g *Gateway) handlePluginStrings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Strings change whenever a plugin bundle is rebuilt, and the client
+	// merges them once per session. Without cache headers, heuristic caching
+	// served a stale table after an update (new keys missing until a hard
+	// refresh); no-cache + an mtime ETag makes revalidation well-defined.
+	etag := stringsETag(root)
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("ETag", etag)
+	if r.Header.Get("If-None-Match") == etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
 	writeJSON(w, http.StatusOK, pluginStringsResponse{
 		Default: i18n.DefaultLocale,
 		Locales: bundle,
 	})
+}
+
+// stringsETag fingerprints the strings directory: per-file size+mtime, so an
+// edit to any locale file produces a new validator.
+func stringsETag(root string) string {
+	hash := sha256.New()
+	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		if info, statErr := d.Info(); statErr == nil {
+			hash.Write([]byte(d.Name()))
+			hash.Write([]byte(strconv.FormatInt(info.Size(), 10)))
+			hash.Write([]byte(info.ModTime().UTC().String()))
+		}
+		return nil
+	})
+	return `"` + hex.EncodeToString(hash.Sum(nil))[:16] + `"`
 }
 
 func cutBoth(value, prefix, suffix string) (string, bool) {

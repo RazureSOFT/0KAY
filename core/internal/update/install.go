@@ -14,9 +14,6 @@ func StartInstall(pkg string) (ApplyState, error) {
 	if !validInstallTarget(pkg) {
 		return ApplyState{Status: "idle"}, fmt.Errorf("invalid package %q", pkg)
 	}
-	if current := InstallStatus(); current.Status == "running" {
-		return current, fmt.Errorf("an install is already running")
-	}
 	pm, err := PMCommand()
 	if err != nil {
 		return ApplyState{Status: "idle"}, err
@@ -28,6 +25,9 @@ func StartInstall(pkg string) (ApplyState, error) {
 
 	startMu.Lock()
 	defer startMu.Unlock()
+	if current := InstallStatus(); current.Status == "running" {
+		return current, fmt.Errorf("an install is already running")
+	}
 
 	script, logPath, err := writeInstaller(dir, pm, pkg)
 	if err != nil {
@@ -44,6 +44,7 @@ func StartInstall(pkg string) (ApplyState, error) {
 	}
 	writeInstallStateFile(dir, state)
 	if err := launchDetached(script, logPath); err != nil {
+		markLaunchFailed(logPath)
 		state.Status = "failed"
 		state.Error = err.Error()
 		writeInstallStateFile(dir, state)
@@ -57,9 +58,6 @@ func StartUninstall(pkg string) (ApplyState, error) {
 	if !validInstallTarget(pkg) {
 		return ApplyState{Status: "idle"}, fmt.Errorf("invalid package %q", pkg)
 	}
-	if current := InstallStatus(); current.Status == "running" {
-		return current, fmt.Errorf("an operation is already running")
-	}
 	pm, err := PMCommand()
 	if err != nil {
 		return ApplyState{Status: "idle"}, err
@@ -71,6 +69,9 @@ func StartUninstall(pkg string) (ApplyState, error) {
 
 	startMu.Lock()
 	defer startMu.Unlock()
+	if current := InstallStatus(); current.Status == "running" {
+		return current, fmt.Errorf("an operation is already running")
+	}
 
 	script, logPath, err := writeUninstaller(dir, pm, pkg)
 	if err != nil {
@@ -87,6 +88,7 @@ func StartUninstall(pkg string) (ApplyState, error) {
 	}
 	writeInstallStateFile(dir, state)
 	if err := launchDetached(script, logPath); err != nil {
+		markLaunchFailed(logPath)
 		state.Status = "failed"
 		state.Error = err.Error()
 		writeInstallStateFile(dir, state)
@@ -128,21 +130,7 @@ func InstallStatus() ApplyState {
 	logRaw, _ := os.ReadFile(filepath.Join(dir, "install.log"))
 	text := string(logRaw)
 	state.Log = sanitizeLog(text)
-	switch {
-	case strings.Contains(text, markerDone):
-		state.Status = "done"
-		state.Error = ""
-	case strings.Contains(text, markerFailed):
-		state.Status = "failed"
-		if state.Error == "" {
-			state.Error = lastLogLine(state.Log)
-		}
-		if state.Error == "" {
-			state.Error = "install script reported a failure"
-		}
-	default:
-		state.Status = "running"
-	}
+	resolveStatus(&state, text, "install")
 	return state
 }
 

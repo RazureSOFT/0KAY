@@ -81,6 +81,38 @@ func PMCommand() (string, error) {
 	return path, nil
 }
 
+// applyStaleTimeout is how long a marker-less run may stay "running" before it
+// is reported as failed. Detached update scripts always terminate by echoing
+// markerDone or markerFailed, so a log without either marker for this long
+// means the run died without reporting (or the launcher never started it).
+const applyStaleTimeout = 30 * time.Minute
+
+// resolveStatus sets state.Status from the run log's terminal markers. When
+// neither marker is present it falls back to the apply.json Started
+// timestamp: older than applyStaleTimeout is "failed", otherwise "running".
+func resolveStatus(state *ApplyState, logText, noun string) {
+	switch {
+	case strings.Contains(logText, markerDone):
+		state.Status = "done"
+		state.Error = ""
+	case strings.Contains(logText, markerFailed):
+		state.Status = "failed"
+		if state.Error == "" {
+			state.Error = lastLogLine(state.Log)
+		}
+		if state.Error == "" {
+			state.Error = noun + " script reported a failure"
+		}
+	default:
+		if started, err := time.Parse(time.RFC3339, state.Started); err == nil && time.Since(started) > applyStaleTimeout {
+			state.Status = "failed"
+			state.Error = noun + " timed out"
+			return
+		}
+		state.Status = "running"
+	}
+}
+
 func State() ApplyState {
 	dir := updatesDir()
 	raw, err := os.ReadFile(filepath.Join(dir, "apply.json"))
@@ -94,21 +126,7 @@ func State() ApplyState {
 	logRaw, _ := os.ReadFile(filepath.Join(dir, "apply.log"))
 	text := string(logRaw)
 	state.Log = sanitizeLog(text)
-	switch {
-	case strings.Contains(text, markerDone):
-		state.Status = "done"
-		state.Error = ""
-	case strings.Contains(text, markerFailed):
-		state.Status = "failed"
-		if state.Error == "" {
-			state.Error = lastLogLine(state.Log)
-		}
-		if state.Error == "" {
-			state.Error = "update script reported a failure"
-		}
-	default:
-		state.Status = "running"
-	}
+	resolveStatus(&state, text, "update")
 	return state
 }
 
@@ -120,6 +138,8 @@ func Start(plugin, version string) (ApplyState, error) {
 			return ApplyState{Status: "idle"}, fmt.Errorf("unsupported component %q", plugin)
 		}
 	}
+	startMu.Lock()
+	defer startMu.Unlock()
 	if current := State(); current.Status == "running" {
 		return current, fmt.Errorf("an update is already running")
 	}
@@ -127,9 +147,6 @@ func Start(plugin, version string) (ApplyState, error) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return ApplyState{Status: "idle"}, err
 	}
-
-	startMu.Lock()
-	defer startMu.Unlock()
 
 	const umbrella = "@razuresoft/0kay"
 	switch {
@@ -175,6 +192,7 @@ func startPM(dir, plugin, pkg, version string) (ApplyState, error) {
 	}
 	writeStateFile(dir, state)
 	if err := launchDetached(script, logPath); err != nil {
+		markLaunchFailed(logPath)
 		state.Status = "failed"
 		state.Error = err.Error()
 		writeStateFile(dir, state)
@@ -203,6 +221,7 @@ func startSource(dir, plugin, version string) (ApplyState, error) {
 	}
 	writeStateFile(dir, state)
 	if err := launchDetached(script, logPath); err != nil {
+		markLaunchFailed(logPath)
 		state.Status = "failed"
 		state.Error = err.Error()
 		writeStateFile(dir, state)
@@ -214,6 +233,18 @@ func startSource(dir, plugin, version string) (ApplyState, error) {
 func writeStateFile(dir string, state ApplyState) {
 	raw, _ := json.MarshalIndent(state, "", "  ")
 	_ = os.WriteFile(filepath.Join(dir, "apply.json"), raw, 0o644)
+}
+
+// markLaunchFailed appends the failure marker to the run log when the detached
+// launcher itself fails. Without the marker an empty log would leave the run
+// permanently reported as "running" by State()/InstallStatus().
+func markLaunchFailed(logPath string) {
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+	_, _ = f.WriteString(markerFailed + "\n")
 }
 
 func lastLogLine(text string) string {

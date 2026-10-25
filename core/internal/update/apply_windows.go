@@ -141,7 +141,9 @@ func writeSourceUpdater(dir string, plan sourcePlan) (string, string, error) {
 		fmt.Fprintf(&b, "if errorlevel 1 (echo %s & exit /b 1)\r\n", markerFailed)
 	}
 	if plan.Port > 0 {
-		fmt.Fprintf(&b, "for /f \"tokens=5\" %%%%p in ('netstat -ano ^| findstr :%d ^| findstr LISTENING') do taskkill /F /PID %%%%p >nul 2>&1\r\n", plan.Port)
+		// Kill only listeners whose image plausibly belongs to the service this
+		// plan restarts; a stray program that grabbed the port must not be shot.
+		fmt.Fprintf(&b, "for /f \"tokens=5\" %%%%p in ('netstat -ano ^| findstr :%d ^| findstr LISTENING') do (tasklist /fi \"PID eq %%%%p\" /fo list 2^>nul ^| findstr /i /c:\"%s\" >nul 2>&1 && taskkill /F /PID %%%%p >nul 2>&1)\r\n", plan.Port, startImageBase(plan))
 		b.WriteString("ping -n 2 127.0.0.1 >nul\r\n")
 	}
 	if len(plan.Start) > 0 {

@@ -24,3 +24,24 @@ func TestComputerUseEndpointsWithoutExecutor(t *testing.T) {
 		t.Fatalf("stream without executor: %d %s", stream.Code, stream.Body.String())
 	}
 }
+
+func TestMJPEGFrameMimeWhitelist(t *testing.T) {
+	for _, allowed := range []string{"image/jpeg", "image/png", "image/gif", "image/webp", "multipart/x-mixed-replace; boundary=frame"} {
+		if got := mjpegFrameMime(allowed); got != allowed {
+			t.Errorf("mjpegFrameMime(%q) = %q, want passthrough", allowed, got)
+		}
+	}
+	for _, rejected := range []string{
+		"",
+		"text/html",
+		"image/svg+xml",
+		"image/png\r\nX-Evil: 1",
+		"image/jpeg\nContent-Length: 0",
+		"multipart/x-mixed-replace; boundary=a\r\n\r\nGET / HTTP/1.1",
+		"application/octet-stream",
+	} {
+		if got := mjpegFrameMime(rejected); got != "image/jpeg" {
+			t.Errorf("mjpegFrameMime(%q) = %q, want image/jpeg fallback", rejected, got)
+		}
+	}
+}

@@ -3,6 +3,7 @@ package server
 import (
 	"0kay/core/internal/pairing"
 	"context"
+	"crypto/subtle"
 	"log"
 	"strings"
 
@@ -56,7 +57,10 @@ func (s *PluginServiceServer) Register(ctx context.Context, req *corev1.Register
 	}
 
 	if s.settings != nil {
-		s.settings.UnregisterPluginSections(pluginID)
+		// Re-registration must not wipe the plugin's stored values first:
+		// plugins register on every start, so the previous "unregister then
+		// register" order discarded user-configured settings each boot.
+		// Values are dropped only on explicit unregistration.
 		for _, sec := range req.SettingsSections {
 			if sec == nil || sec.Id == "" {
 				continue
@@ -106,6 +110,26 @@ func (s *PluginServiceServer) Register(ctx context.Context, req *corev1.Register
 func (s *PluginServiceServer) Heartbeat(ctx context.Context, req *corev1.HeartbeatRequest) (*corev1.HeartbeatResponse, error) {
 	if req.PluginId == "" {
 		return nil, status.Error(codes.InvalidArgument, "plugin_id is required")
+	}
+
+	// The heartbeat must carry the service token issued to this plugin at
+	// registration (metadata "authorization: Bearer <token>"), so a third
+	// party cannot keep an arbitrary plugin id alive by spoofing heartbeats.
+	expected := s.registry.Token(req.PluginId)
+	if expected == "" {
+		return nil, status.Error(codes.PermissionDenied, "plugin service token required")
+	}
+	token := ""
+	if md, ok := metadata.FromIncomingContext(ctx); ok {
+		for _, value := range md.Get("authorization") {
+			if len(value) > 7 && strings.EqualFold(value[:7], "Bearer ") {
+				token = strings.TrimSpace(value[7:])
+				break
+			}
+		}
+	}
+	if subtle.ConstantTimeCompare([]byte(expected), []byte(token)) != 1 {
+		return nil, status.Error(codes.PermissionDenied, "plugin service token mismatch")
 	}
 
 	ok, shutdownSignal, err := s.registry.Heartbeat(req.PluginId, req.Status, req.ActiveTasks, req.Host)

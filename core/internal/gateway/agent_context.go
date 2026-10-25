@@ -55,22 +55,31 @@ func estimateTextTokens(text string) int {
 	return ascii/4 + wide
 }
 
+// sessionContextTokens estimates the session content that is actually in play:
+// only the agent turns recorded after the most recent done compaction plus
+// that compaction's summary. Turns already folded away by the compaction no
+// longer occupy model context (mirrors server.AgentSessionPrompt folding).
 func (g *Gateway) sessionContextTokens(sessionID string) int {
 	if g.localCore == nil {
 		return 0
 	}
+	// SessionTasks is ordered newest first.
 	total := 0
 	for _, task := range g.localCore.SessionTasks(sessionID) {
 		state, _ := task["state"].(string)
-		if state != "done" {
+		if task["kind"] == "compact" {
+			if state != "done" {
+				continue
+			}
+			result, _ := task["result"].(string)
+			return total + estimateTextTokens(result)
+		}
+		if state != "done" || task["kind"] != "agent" {
 			continue
 		}
-		switch task["kind"] {
-		case "agent", "compact":
-			prompt, _ := task["prompt"].(string)
-			result, _ := task["result"].(string)
-			total += estimateTextTokens(prompt) + estimateTextTokens(result)
-		}
+		prompt, _ := task["prompt"].(string)
+		result, _ := task["result"].(string)
+		total += estimateTextTokens(prompt) + estimateTextTokens(result)
 	}
 	return total
 }
@@ -117,30 +126,43 @@ func (g *Gateway) compactSession(ctx context.Context, sessionID, modelID string)
 		return "", fmt.Errorf("invalid session")
 	}
 	tasks := g.localCore.SessionTasks(sessionID)
+	for _, task := range tasks {
+		if task["state"] == "running" || task["state"] == "pending" {
+			return "", fmt.Errorf("wait for active work to finish")
+		}
+	}
 	history := []map[string]string{}
 	foldedIDs := []string{}
 	fromID, toID := "", ""
-	for i := len(tasks) - 1; i >= 0; i-- {
-		task := tasks[i]
+	// SessionTasks is ordered newest first: walk backwards in time,
+	// prepending turns so history stays chronological. At the most recent
+	// done compaction everything older was already folded into its summary,
+	// so stop there instead of feeding already-folded turns back into the
+	// compaction input.
+	for _, task := range tasks {
 		state, _ := task["state"].(string)
-		if state == "running" || state == "pending" {
-			return "", fmt.Errorf("wait for active work to finish")
-		}
 		if task["kind"] == "compact" && state == "done" {
-			history = []map[string]string{{"role": "system", "content": fmt.Sprint(task["result"])}}
+			summary := map[string]string{"role": "system", "content": fmt.Sprint(task["result"])}
+			history = append([]map[string]string{summary}, history...)
+			break
 		}
-		if task["kind"] == "agent" {
-			prompt, _ := task["prompt"].(string)
-			result, _ := task["result"].(string)
-			failure, _ := task["error"].(string)
-			history = append(history, map[string]string{"role": "user", "content": prompt}, map[string]string{"role": "assistant", "content": result + "\n" + failure})
-			if id, _ := task["task_id"].(string); id != "" {
-				if toID == "" {
-					toID = id
-				}
-				fromID = id
-				foldedIDs = append(foldedIDs, id)
+		if task["kind"] != "agent" {
+			continue
+		}
+		prompt, _ := task["prompt"].(string)
+		result, _ := task["result"].(string)
+		failure, _ := task["error"].(string)
+		turn := []map[string]string{
+			{"role": "user", "content": prompt},
+			{"role": "assistant", "content": result + "\n" + failure},
+		}
+		history = append(turn, history...)
+		if id, _ := task["task_id"].(string); id != "" {
+			if toID == "" {
+				toID = id
 			}
+			fromID = id
+			foldedIDs = append([]string{id}, foldedIDs...)
 		}
 	}
 	if len(history) == 0 {

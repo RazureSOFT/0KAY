@@ -187,16 +187,17 @@ func (g *Gateway) agentWorkspaceRoots() []string {
 			}
 		}
 	} else {
+		// Default roots stay anchored to the gateway process working
+		// directory (and its repository top level). $HOME and the system
+		// temp dir are deliberately NOT defaults — they would expose the
+		// entire user profile to git operations. Set AGENT_WORKSPACE_ROOTS
+		// (or the workspace.allowed_roots setting) to widen the scope.
 		if cwd, err := os.Getwd(); err == nil {
 			add(cwd)
 		}
 		if top := projectRoot(); top != "" {
 			add(top)
 		}
-		if home, err := os.UserHomeDir(); err == nil {
-			add(home)
-		}
-		add(os.TempDir())
 	}
 
 	for _, part := range g.extraWorkspaceRoots() {

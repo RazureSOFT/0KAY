@@ -86,7 +86,7 @@ func TestSetValuesRejectsUndeclaredKeys(t *testing.T) {
 	}
 }
 
-func TestRegisterSectionPrunesRetiredKeysFromDisk(t *testing.T) {
+func TestRegisterSectionKeepsRetiredKeysAcrossReregistration(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
 	seed := NewStore(path)
 	seed.RegisterSection(demoSection())
@@ -101,16 +101,19 @@ func TestRegisterSectionPrunesRetiredKeysFromDisk(t *testing.T) {
 	}
 	reloaded.RegisterSection(demoSection())
 
-	if _, present := reloaded.values["demo"]["gone"]; present {
-		t.Fatalf("retired key was not pruned: %v", reloaded.values["demo"])
+	// Plugins re-register on every start, so keys their current declaration no
+	// longer lists must survive — pruning here silently discarded what the user
+	// configured whenever a plugin temporarily dropped a field.
+	if _, present := reloaded.values["demo"]["gone"]; !present {
+		t.Fatalf("retired key was discarded on re-registration: %v", reloaded.values["demo"])
 	}
 	if reloaded.GetValues("demo")["name"] != "legacy" {
 		t.Fatalf("surviving value lost: %v", reloaded.GetValues("demo"))
 	}
 
 	third := NewStore(path)
-	if _, present := third.values["demo"]["gone"]; present {
-		t.Fatal("retired key persisted on disk after prune")
+	if _, present := third.values["demo"]["gone"]; !present {
+		t.Fatal("retired key did not survive to disk")
 	}
 	third.RegisterSection(demoSection())
 	if third.GetValues("demo")["name"] != "legacy" {

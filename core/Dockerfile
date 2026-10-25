@@ -29,7 +29,7 @@ WORKDIR /app/core
 RUN CGO_ENABLED=0 GOOS=linux go build -o /app/core-server ./cmd/core
 
 # Runtime
-FROM alpine:latest
+FROM alpine:3.20
 
 RUN apk --no-cache add ca-certificates
 
@@ -38,7 +38,10 @@ WORKDIR /app
 COPY --from=builder /app/core-server .
 COPY --from=ui /src/core/data/plugin-ui/ /opt/0kay-ui/plugin-ui/
 COPY webui/patches/ /opt/0kay-ui/ui/
-COPY core/data/ui/platform.patch core/data/ui/fluentui.patch core/data/ui/skillsguishow.patch /opt/0kay-ui/ui/
+COPY core/data/ui/platform.patch core/data/ui/skillsguishow.patch /opt/0kay-ui/ui/
+# fluentui.patch under core/data/ui is a gitignored runtime artifact; the
+# source of truth is the plugin's patches/ dir, so a fresh clone can build.
+COPY plugin-web/fluentui/patches/fluentui.patch /opt/0kay-ui/ui/fluentui.patch
 COPY core/docker-entrypoint.sh /usr/local/bin/0kay-entrypoint
 RUN chmod +x /usr/local/bin/0kay-entrypoint
 

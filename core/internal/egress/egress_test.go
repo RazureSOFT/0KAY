@@ -38,6 +38,9 @@ func TestAllowed(t *testing.T) {
 }
 
 func TestDoAllowAndDeny(t *testing.T) {
+	// httptest servers bind to loopback; the egress path is strict by
+	// default, so tests that must reach them opt out explicitly.
+	t.Setenv("CORE_SSRF_STRICT", "0")
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("X-Test", "ok")
 		_, _ = w.Write([]byte("hello " + r.URL.Path))
@@ -59,6 +62,7 @@ func TestDoAllowAndDeny(t *testing.T) {
 }
 
 func TestDoRedirectRechecked(t *testing.T) {
+	t.Setenv("CORE_SSRF_STRICT", "0")
 	target := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("should not reach"))
 	}))
@@ -77,5 +81,42 @@ func TestDoRedirectRechecked(t *testing.T) {
 func TestDoRejectsScheme(t *testing.T) {
 	if _, err := Do(context.Background(), Request{URL: "file:///etc/passwd"}, []string{"*"}); err == nil {
 		t.Fatal("expected unsupported scheme error")
+	}
+}
+
+func TestDoBlocksLoopbackByDefault(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("should not reach"))
+	}))
+	defer upstream.Close()
+	host := strings.TrimPrefix(upstream.URL, "http://")
+
+	if _, err := Do(context.Background(), Request{Method: "GET", URL: upstream.URL + "/x"}, []string{host}); err == nil {
+		t.Fatal("expected loopback egress to be denied by default")
+	} else if !strings.Contains(err.Error(), "not permitted") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDoLoopbackAllowedOnlyWithExplicitOptOut(t *testing.T) {
+	t.Setenv("CORE_SSRF_STRICT", "0")
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("pong"))
+	}))
+	defer upstream.Close()
+	host := strings.TrimPrefix(upstream.URL, "http://")
+
+	resp, err := Do(context.Background(), Request{Method: "GET", URL: upstream.URL + "/ping"}, []string{host})
+	if err != nil {
+		t.Fatalf("opted-out loopback egress: %v", err)
+	}
+	if resp.Status != 200 || string(resp.Body) != "pong" {
+		t.Fatalf("unexpected response: %+v", resp)
+	}
+}
+
+func TestDoBlocksPrivateAddressByDefault(t *testing.T) {
+	if _, err := Do(context.Background(), Request{Method: "GET", URL: "http://192.168.1.10/x"}, []string{"192.168.1.10"}); err == nil {
+		t.Fatal("expected private-address egress to be denied by default")
 	}
 }

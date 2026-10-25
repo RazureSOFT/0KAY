@@ -40,11 +40,22 @@ type SessionEvent struct {
 type SessionLog struct {
 	dir string
 	mu  sync.Mutex
+	// seqTail caches each file's last seq with the size+mtime it was observed
+	// at, so Append does not rescan the whole log per message. The stat check
+	// keeps two instances (or an external edit) honest: any change to the file
+	// falls back to a scan.
+	seqTail map[string]seqTailEntry
+}
+
+type seqTailEntry struct {
+	seq  int
+	size int64
+	mod  time.Time
 }
 
 func NewSessionLog(dir string) *SessionLog {
 	_ = os.MkdirAll(dir, 0o700)
-	return &SessionLog{dir: dir}
+	return &SessionLog{dir: dir, seqTail: map[string]seqTailEntry{}}
 }
 
 // A session id arrives from the network, so it never reaches the filesystem
@@ -98,7 +109,19 @@ func (l *SessionLog) Append(sessionID string, msgs ...*corev1.ChatMessage) error
 			return err
 		}
 	}
-	return writer.Flush()
+	if err := writer.Flush(); err != nil {
+		return err
+	}
+	l.rememberSeqLocked(file, seq)
+	return nil
+}
+
+// rememberSeqLocked refreshes the tail cache after a successful append: stat
+// after close so size and mtime reflect what is on disk.
+func (l *SessionLog) rememberSeqLocked(file string, seq int) {
+	if info, err := os.Stat(file); err == nil {
+		l.seqTail[file] = seqTailEntry{seq: seq, size: info.Size(), mod: info.ModTime()}
+	}
 }
 
 // Read returns the last `limit` messages, oldest first.
@@ -153,9 +176,16 @@ func (l *SessionLog) Events(sessionID string, after int) []SessionEvent {
 }
 
 // lastSeqLocked finds the current tail so appends stay ordered across restarts.
-// The file is small enough to scan; a separate index file is not worth the way
-// it can disagree with the log.
+// The cached tail is used only while the file's size and mtime are unchanged;
+// anything else falls back to a scan, which keeps two instances sharing a
+// directory honest without a separate index file that could disagree with the
+// log.
 func (l *SessionLog) lastSeqLocked(file string) int {
+	if cached, ok := l.seqTail[file]; ok {
+		if info, err := os.Stat(file); err == nil && info.Size() == cached.size && info.ModTime().Equal(cached.mod) {
+			return cached.seq
+		}
+	}
 	handle, err := os.Open(file)
 	if err != nil {
 		return 0
@@ -170,6 +200,9 @@ func (l *SessionLog) lastSeqLocked(file string) int {
 			last = event.Seq
 		}
 	}
+	if info, statErr := handle.Stat(); statErr == nil {
+		l.seqTail[file] = seqTailEntry{seq: last, size: info.Size(), mod: info.ModTime()}
+	}
 	return last
 }
 
@@ -177,5 +210,8 @@ func (l *SessionLog) lastSeqLocked(file string) int {
 func (l *SessionLog) Delete(sessionID string) {
 	if file, ok := l.path(sessionID); ok {
 		_ = os.Remove(file)
+		l.mu.Lock()
+		delete(l.seqTail, file)
+		l.mu.Unlock()
 	}
 }

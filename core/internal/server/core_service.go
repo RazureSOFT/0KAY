@@ -17,6 +17,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"0kay/core/internal/atomicio"
 	"0kay/core/internal/egress"
 	"0kay/core/internal/messaging"
 	"0kay/core/internal/pairing"
@@ -158,7 +159,11 @@ func NewUsageStore(path string) *UsageStore {
 	u := &UsageStore{file: path, records: nil, indexed: map[string]struct{}{}}
 	if path != "" {
 		if data, err := os.ReadFile(path); err == nil {
-			_ = json.Unmarshal(data, &u.records)
+			if err := json.Unmarshal(data, &u.records); err != nil {
+				// A truncated or corrupt ledger still loads whatever parsed;
+				// silently pretending it was fine hides the data loss.
+				log.Printf("usage store %s: ignoring corrupt payload: %v", path, err)
+			}
 		}
 	}
 	for _, rec := range u.records {
@@ -212,11 +217,7 @@ func (u *UsageStore) saveLocked() {
 		return
 	}
 	_ = os.MkdirAll(filepath.Dir(u.file), 0o755)
-	temporary := u.file + ".tmp"
-	if err := os.WriteFile(temporary, data, 0o644); err != nil {
-		return
-	}
-	if err := os.Rename(temporary, u.file); err != nil {
+	if err := atomicio.WriteFileAtomic(u.file, data, 0o644); err != nil {
 		return
 	}
 	u.lastSave = time.Now()
@@ -1152,16 +1153,22 @@ func (s *CoreServiceServer) ListAgents(ctx context.Context, req *corev1.ListAgen
 
 func (s *CoreServiceServer) RunDirect(ctx context.Context, req *corev1.RunDirectRequest) (response *corev1.RunDirectResponse, callErr error) {
 	id := fmt.Sprintf("direct-tool:%d", time.Now().UnixNano())
-	_ = s.RecordTask(TaskEvent{TaskID: id, CallerID: "core", SessionID: req.SessionId, Kind: "tool", Prompt: req.Tool, State: "running"})
-	defer func() {
-		if callErr != nil {
-			s.finishTask(id, "failed", "", callErr.Error())
-		} else if response != nil && response.Success {
-			s.finishTask(id, "done", response.Result, "")
-		} else if response != nil {
-			s.finishTask(id, "failed", response.Result, response.Error)
-		}
-	}()
+	// UI panels poll some tools every few seconds (recon graph, assessment
+	// tasks). Those calls are plumbing, not history: journaling them buried
+	// the session's real turns under a pile of poll rows.
+	poll := req.Tool == "recon_graph" || req.Tool == "assessments"
+	if !poll {
+		_ = s.RecordTask(TaskEvent{TaskID: id, CallerID: "core", SessionID: req.SessionId, Kind: "tool", Prompt: req.Tool, State: "running"})
+		defer func() {
+			if callErr != nil {
+				s.finishTask(id, "failed", "", callErr.Error())
+			} else if response != nil && response.Success {
+				s.finishTask(id, "done", response.Result, "")
+			} else if response != nil {
+				s.finishTask(id, "failed", response.Result, response.Error)
+			}
+		}()
+	}
 	if req.Tool == "" {
 		return nil, status.Error(codes.InvalidArgument, "tool is required")
 	}

@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+
+	"0kay/core/internal/atomicio"
 )
 
 type Field struct {
@@ -74,11 +76,7 @@ func (s *Store) saveLocked() error {
 	if err != nil {
 		return err
 	}
-	temporary := s.path + ".tmp"
-	if err := os.WriteFile(temporary, b, 0o600); err != nil {
-		return err
-	}
-	return os.Rename(temporary, s.path)
+	return atomicio.WriteFileAtomic(s.path, b, 0o600)
 }
 
 func (s *Store) RegisterSection(sec Section) {
@@ -106,15 +104,10 @@ func (s *Store) RegisterSection(sec Section) {
 			}
 		}
 	}
-	declared := make(map[string]struct{}, len(sec.Fields))
-	for _, f := range sec.Fields {
-		declared[f.Key] = struct{}{}
-	}
-	for k := range s.values[sec.ID] {
-		if _, ok := declared[k]; !ok {
-			delete(s.values[sec.ID], k)
-		}
-	}
+	// Values for keys this declaration no longer lists are deliberately kept:
+	// plugins re-register on every start, and a temporarily-removed field must
+	// not silently discard what the user configured. Only explicit unregistration
+	// (UnregisterPluginSections) drops a plugin's values.
 	_ = s.saveLocked()
 }
 

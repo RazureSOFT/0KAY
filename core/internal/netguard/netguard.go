@@ -46,6 +46,20 @@ func Strict() bool {
 	return false
 }
 
+// EgressStrict reports whether the plugin egress path applies strict network
+// policy (block loopback and private ranges). Unlike Strict, the plugin egress
+// path is strict BY DEFAULT; only an explicit CORE_SSRF_STRICT=0 (or
+// false/no/off) opts out. Core's own outbound traffic keeps using Strict(),
+// whose default is permissive, so internal endpoints (e.g. the mocr gRPC
+// service on localhost) are unaffected.
+func EgressStrict() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv("CORE_SSRF_STRICT"))) {
+	case "0", "false", "no", "off":
+		return false
+	}
+	return true
+}
+
 func blockedIP(ip net.IP, strict bool) bool {
 	if ip == nil {
 		return true
@@ -86,7 +100,9 @@ func CheckURL(raw string, strict bool) error {
 		}
 		return nil
 	}
-	ips, err := net.DefaultResolver.LookupIPAddr(context.Background(), host)
+	resolveCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	ips, err := net.DefaultResolver.LookupIPAddr(resolveCtx, host)
 	if err != nil {
 		return err
 	}
@@ -145,8 +161,15 @@ func DialContext(strict bool) func(ctx context.Context, network, addr string) (n
 }
 
 func Transport(strict bool) *http.Transport {
+	// In strict mode the HTTP proxy is disabled: routing the connection
+	// through a proxy would bypass the dial-time target checks and make the
+	// strict policy meaningless.
+	proxy := http.ProxyFromEnvironment
+	if strict {
+		proxy = nil
+	}
 	return &http.Transport{
-		Proxy:               http.ProxyFromEnvironment,
+		Proxy:               proxy,
 		DialContext:         DialContext(strict),
 		ForceAttemptHTTP2:   true,
 		MaxIdleConns:        100,

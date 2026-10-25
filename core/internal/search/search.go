@@ -349,11 +349,11 @@ func fetchDuckDuckGo(ctx context.Context, query string, limit int) ([]Result, er
 	for i, m := range links {
 		href := html.UnescapeString(m[1])
 		if strings.Contains(href, "uddg=") {
+			// Query().Get already percent-decodes once; a second QueryUnescape
+			// would corrupt targets that legitimately contain %xx sequences.
 			if parsed, err := url.Parse(href); err == nil {
 				if target := parsed.Query().Get("uddg"); target != "" {
-					if decoded, err := url.QueryUnescape(target); err == nil {
-						href = decoded
-					}
+					href = target
 				}
 			}
 		}

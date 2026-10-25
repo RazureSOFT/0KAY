@@ -159,6 +159,11 @@ func (s *CoreServiceServer) ManageAgentSession(id, action string) error {
 		session.Prompt = ""
 		session.Result = ""
 		session.Error = ""
+		// The on-disk log is the durable history; leaving it behind would keep
+		// the "deleted" conversation recoverable forever.
+		if s.sessionLog != nil {
+			s.sessionLog.Delete(id)
+		}
 	default:
 		return fmt.Errorf("unknown session action")
 	}

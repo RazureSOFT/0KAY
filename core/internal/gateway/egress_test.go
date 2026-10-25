@@ -31,6 +31,9 @@ func egressTestGateway(t *testing.T, egressList []string) (*Gateway, string) {
 }
 
 func TestHandleEgress(t *testing.T) {
+	// The upstream is a loopback httptest server; the plugin egress path is
+	// strict by default, so this test explicitly opts out.
+	t.Setenv("CORE_SSRF_STRICT", "0")
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("pong"))
 	}))

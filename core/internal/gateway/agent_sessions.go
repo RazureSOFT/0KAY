@@ -150,6 +150,29 @@ func (g *Gateway) manageAgentSession(w http.ResponseWriter, method, sessionID, a
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+// acquireSessionSubmit reserves the submit slot for a session and reports
+// whether this caller won it. It closes the check-then-submit window in
+// handleAgentMessage where two concurrent posts could both observe "no
+// active task" and double-submit. Release with releaseSessionSubmit.
+func (g *Gateway) acquireSessionSubmit(sessionID string) bool {
+	g.submitMu.Lock()
+	defer g.submitMu.Unlock()
+	if g.submitting == nil {
+		g.submitting = map[string]struct{}{}
+	}
+	if _, busy := g.submitting[sessionID]; busy {
+		return false
+	}
+	g.submitting[sessionID] = struct{}{}
+	return true
+}
+
+func (g *Gateway) releaseSessionSubmit(sessionID string) {
+	g.submitMu.Lock()
+	delete(g.submitting, sessionID)
+	g.submitMu.Unlock()
+}
+
 func (g *Gateway) handleAgentMessage(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodPost) {
 		return
@@ -178,6 +201,14 @@ func (g *Gateway) handleAgentMessage(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusNotFound, "not_found", "session not found")
 		return
 	}
+	// Hold a per-session submit slot from the "no active task" check through
+	// the UseAgent call so two concurrent posts cannot both pass the check
+	// and double-submit into the same session.
+	if !g.acquireSessionSubmit(body.SessionID) {
+		writeErr(w, http.StatusConflict, "conflict", "session already has an active task")
+		return
+	}
+	defer g.releaseSessionSubmit(body.SessionID)
 	for _, task := range g.localCore.SessionTasks(body.SessionID) {
 		if task["state"] == "running" || task["state"] == "pending" {
 			writeErr(w, http.StatusConflict, "conflict", "session already has an active task")

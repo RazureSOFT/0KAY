@@ -40,6 +40,10 @@ type stdioClient struct {
 	pending map[int]chan rpcReply
 	readErr error
 	closed  bool
+
+	// stdin.Write must be serialized: concurrent writes interleave bytes and
+	// corrupt the JSON-RPC stream (one line per message is the framing).
+	writeMu sync.Mutex
 }
 
 type rpcReply struct {
@@ -170,8 +174,11 @@ func (c *stdioClient) call(ctx context.Context, method string, params any) (json
 	if err != nil {
 		return nil, err
 	}
-	if _, err := c.stdin.Write(append(encoded, '\n')); err != nil {
-		return nil, err
+	c.writeMu.Lock()
+	_, writeErr := c.stdin.Write(append(encoded, '\n'))
+	c.writeMu.Unlock()
+	if writeErr != nil {
+		return nil, writeErr
 	}
 	select {
 	case reply := <-ch:
@@ -193,7 +200,9 @@ func (c *stdioClient) notify(method string, params any) error {
 	if err != nil {
 		return err
 	}
+	c.writeMu.Lock()
 	_, err = c.stdin.Write(append(encoded, '\n'))
+	c.writeMu.Unlock()
 	return err
 }
 

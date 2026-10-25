@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"0kay/core/internal/registry"
 	"0kay/obs"
 )
 
@@ -245,6 +246,40 @@ func TestConsoleClear(t *testing.T) {
 	}
 	if got := len(obs.RecentSpans(10, "")); got != 0 {
 		t.Fatalf("%d spans survived the clear", got)
+	}
+}
+
+func TestHandlerServesConsoleRoutes(t *testing.T) {
+	obs.Component("test").Info("routed through the mux")
+
+	g := &Gateway{registry: registry.NewRegistry()}
+	handler := g.Handler()
+
+	get := func(path string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		return rec
+	}
+
+	rec := get("/api/console/logs?limit=5")
+	if rec.Code != http.StatusOK || !json.Valid(rec.Body.Bytes()) {
+		t.Fatalf("GET /api/console/logs: %d %s", rec.Code, rec.Body.String())
+	}
+	if !strings.Contains(rec.Body.String(), "routed through the mux") {
+		t.Fatalf("console logs payload missing entries: %s", rec.Body.String())
+	}
+	if rec.Header().Get(RequestIDHeader) == "" {
+		t.Fatal("request id not echoed through the full mux")
+	}
+
+	if rec := get("/api/console/spans"); rec.Code != http.StatusOK || !json.Valid(rec.Body.Bytes()) {
+		t.Fatalf("GET /api/console/spans: %d %s", rec.Code, rec.Body.String())
+	}
+
+	rec = httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/console/clear", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("POST /api/console/clear: %d %s", rec.Code, rec.Body.String())
 	}
 }
 

@@ -6,6 +6,9 @@ mkdir -p "$data/plugin-ui" "$data/ui"
 # Ship version-matched built-in bundles into fresh and existing data volumes.
 # Keep custom plugin directories and user-edited patches intact.
 for source in "$seed"/plugin-ui/*; do
+  # POSIX sh iterates the literal glob when nothing matches; without this
+  # guard an empty seed dir would crash the entrypoint under set -e.
+  [ -d "$source" ] || continue
   name=$(basename "$source")
   stage="$data/plugin-ui/.$name.new"
   rm -rf "$stage"

@@ -1,6 +1,7 @@
 package registry
 
 import (
+	"0kay/core/internal/config"
 	"crypto/hmac"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -301,6 +302,10 @@ func (r *Registry) Register(info *pluginv1.PluginInfo, capabilities []string, ad
 			p.RegisteredAt = now
 		}
 		return id, nil
+	}
+
+	if max := config.LoadConfig().MaxPlugins; max > 0 && len(r.plugins) >= max {
+		return "", status.Errorf(codes.ResourceExhausted, "plugin limit reached (%d); raise CORE_MAX_PLUGINS or unregister a plugin first", max)
 	}
 
 	pluginID := stableID

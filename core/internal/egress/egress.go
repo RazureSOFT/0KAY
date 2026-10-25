@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"0kay/core/internal/netguard"
@@ -16,7 +17,25 @@ import (
 
 const maxResponseBytes = 32 << 20
 
-var guardedTransport = netguard.Transport(netguard.Strict())
+// The plugin egress path is strict by default (loopback and private ranges
+// are blocked); only an explicit CORE_SSRF_STRICT=0 opts out. The flag is
+// read per call so tests and runtime changes are honored. Transports are
+// cached per strictness so connection pooling still works.
+var (
+	transportsMu sync.Mutex
+	transports   = map[bool]*http.Transport{}
+)
+
+func guardedTransport(strict bool) *http.Transport {
+	transportsMu.Lock()
+	defer transportsMu.Unlock()
+	if t, ok := transports[strict]; ok {
+		return t
+	}
+	t := netguard.Transport(strict)
+	transports[strict] = t
+	return t
+}
 
 type Request struct {
 	Method  string
@@ -100,7 +119,8 @@ func Do(ctx context.Context, req Request, allowlist []string) (Response, error) 
 	if !HostAllowed(allowlist, parsed) {
 		return Response{}, fmt.Errorf("egress to %q is not permitted", parsed.Host)
 	}
-	if err := netguard.CheckURL(parsed.String(), netguard.Strict()); err != nil {
+	strict := netguard.EgressStrict()
+	if err := netguard.CheckURL(parsed.String(), strict); err != nil {
 		return Response{}, err
 	}
 
@@ -110,7 +130,7 @@ func Do(ctx context.Context, req Request, allowlist []string) (Response, error) 
 	}
 	client := &http.Client{
 		Timeout:   timeout,
-		Transport: guardedTransport,
+		Transport: guardedTransport(strict),
 		CheckRedirect: func(next *http.Request, via []*http.Request) error {
 			if len(via) >= 10 {
 				return fmt.Errorf("too many redirects")
@@ -118,7 +138,7 @@ func Do(ctx context.Context, req Request, allowlist []string) (Response, error) 
 			if !HostAllowed(allowlist, next.URL) {
 				return fmt.Errorf("redirect to %q is not permitted", next.URL.Host)
 			}
-			if err := netguard.CheckURL(next.URL.String(), netguard.Strict()); err != nil {
+			if err := netguard.CheckURL(next.URL.String(), strict); err != nil {
 				return err
 			}
 			return nil

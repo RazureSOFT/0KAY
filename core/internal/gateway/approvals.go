@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
 	"0kay/core/internal/pairing"
+	"0kay/core/internal/server"
 	agentv1 "0kay/gen/agent/v1"
 )
 
@@ -71,10 +73,85 @@ func (g *Gateway) handleAgentInbox(w http.ResponseWriter, r *http.Request) {
 		writeAgentErr(w, err)
 		return
 	}
+	// Session cosmetics ride the same poll: an agent-side `session` tool call
+	// (set_title, notify) queues a directive, and this drains it — the UI sees
+	// a rename or a toast within one inbox interval, no matter how deep inside
+	// a task run the tool was called.
+	g.applySessionDirectives(r)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"approvals": approvals,
 		"questions": questions,
 	})
+}
+
+// applySessionDirectives drains each agent's queued session directives and
+// applies them: a title renames the session, a toast is recorded as a task
+// event so the UI's task stream carries it to whichever page is open. Calls
+// the agent's RunDirect RPC directly — CoreServiceServer.RunDirect would
+// journal every poll as a tool event, and the inbox fires every 1.5 seconds.
+// Best-effort end to end: a rename that cannot apply (unknown session) is
+// acked and dropped rather than retried forever.
+func (g *Gateway) applySessionDirectives(r *http.Request) {
+	for _, agent := range g.registry.GetAgents(true) {
+		conn, err := g.dial(agent.Address)
+		if err != nil {
+			continue
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		raw, _ := json.Marshal(map[string]any{})
+		result, err := agentv1.NewAgentServiceClient(conn).RunDirect(
+			pairing.CallbackContext(ctx, agent.Address),
+			&agentv1.RunDirectRequest{Tool: "session_directives", Args: string(raw)},
+		)
+		cancel()
+		if err != nil || !result.Success || result.Result == "" {
+			continue
+		}
+		var directives []struct {
+			ID        string `json:"id"`
+			SessionID string `json:"session_id"`
+			Kind      string `json:"kind"`
+			Title     string `json:"title"`
+			Text      string `json:"text"`
+			Level     string `json:"level"`
+		}
+		if err := json.Unmarshal([]byte(result.Result), &directives); err != nil || len(directives) == 0 {
+			continue
+		}
+		applied := []string{}
+		for _, directive := range directives {
+			switch directive.Kind {
+			case "title":
+				if directive.Title != "" {
+					_ = g.localCore.RenameAgentSession(directive.SessionID, directive.Title)
+				}
+				applied = append(applied, directive.ID)
+			case "toast":
+				if directive.Text == "" {
+					continue
+				}
+				payload, _ := json.Marshal(map[string]any{"text": directive.Text, "level": directive.Level})
+				_ = g.localCore.RecordTask(server.TaskEvent{
+					TaskID: fmt.Sprintf("notify:%s", directive.ID),
+					Kind:   "notification",
+					Prompt: directive.Text,
+					State:  "done",
+					Result: string(payload),
+				})
+				applied = append(applied, directive.ID)
+			}
+		}
+		if len(applied) == 0 {
+			continue
+		}
+		ackCtx, ackCancel := context.WithTimeout(r.Context(), 3*time.Second)
+		ackRaw, _ := json.Marshal(map[string]any{"ids": applied})
+		_, _ = agentv1.NewAgentServiceClient(conn).RunDirect(
+			pairing.CallbackContext(ackCtx, agent.Address),
+			&agentv1.RunDirectRequest{Tool: "session_directives_ack", Args: string(ackRaw)},
+		)
+		ackCancel()
+	}
 }
 
 type agentError struct {

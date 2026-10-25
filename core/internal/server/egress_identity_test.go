@@ -14,6 +14,9 @@ import (
 )
 
 func TestEgressBindsIdentityToServiceToken(t *testing.T) {
+	// The plugin egress path blocks loopback by default (EgressStrict); this
+	// test pins identity binding, not the SSRF policy, so it opts out.
+	t.Setenv("CORE_SSRF_STRICT", "0")
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("ok")) }))
 	defer upstream.Close()
 	reg := registry.NewRegistry()

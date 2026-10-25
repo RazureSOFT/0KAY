@@ -58,8 +58,13 @@ func allowedOriginList() []string {
 	return out
 }
 
+// allowedWebuiPorts builds the loopback webui port allowlist. Only ports
+// explicitly opted in via WEBUI_PORT / CORE_WEBUI_PORT (or full origins via
+// CORE_ALLOWED_ORIGINS) are accepted; there is no unconditional default. For
+// local development on the default Vite port, set WEBUI_PORT=3000 or add the
+// origin to CORE_ALLOWED_ORIGINS.
 func allowedWebuiPorts() map[string]bool {
-	ports := map[string]bool{"3000": true}
+	ports := map[string]bool{}
 	for _, key := range []string{"WEBUI_PORT", "CORE_WEBUI_PORT"} {
 		if value := strings.TrimSpace(os.Getenv(key)); value != "" {
 			ports[value] = true

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
+	"strings"
 	"time"
 
 	corev1 "0kay/gen/core/v1"
@@ -11,6 +13,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/metadata"
 )
 
 func main() {
@@ -22,7 +25,11 @@ func main() {
 
 	client := corev1.NewPluginServiceClient(conn)
 
-	registerResp, err := client.Register(context.Background(), &corev1.RegisterRequest{
+	registerCtx := context.Background()
+	if token := strings.TrimSpace(os.Getenv("CORE_PLUGIN_REGISTRATION_TOKEN")); token != "" {
+		registerCtx = metadata.AppendToOutgoingContext(registerCtx, "x-0kay-registration-token", token)
+	}
+	registerResp, err := client.Register(registerCtx, &corev1.RegisterRequest{
 		PluginInfo: &pluginv1.PluginInfo{
 			Name:        "echo-plugin",
 			Version:     "0.1.2",
@@ -40,8 +47,12 @@ func main() {
 	fmt.Printf("Success: %v\n", registerResp.Success)
 	fmt.Printf("Message: %s\n", registerResp.Message)
 
+	heartbeatCtx := context.Background()
+	if registerResp.ServiceToken != "" {
+		heartbeatCtx = metadata.AppendToOutgoingContext(heartbeatCtx, "authorization", "Bearer "+registerResp.ServiceToken)
+	}
 	for i := 0; i < 3; i++ {
-		heartbeatResp, err := client.Heartbeat(context.Background(), &corev1.HeartbeatRequest{
+		heartbeatResp, err := client.Heartbeat(heartbeatCtx, &corev1.HeartbeatRequest{
 			PluginId:    registerResp.PluginId,
 			Status:      corev1.PluginStatus_PLUGIN_STATUS_HEALTHY,
 			ActiveTasks: 0,

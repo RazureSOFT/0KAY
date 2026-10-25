@@ -140,6 +140,7 @@ func (g *Gateway) handleAgentBrowserStream(w http.ResponseWriter, r *http.Reques
 		var payload struct {
 			Running bool   `json:"running"`
 			Image   string `json:"image"`
+			Mime    string `json:"mime"`
 			At      int64  `json:"at"`
 		}
 		if result.Success && result.Result != "" && json.Unmarshal([]byte(result.Result), &payload) == nil {
@@ -149,7 +150,7 @@ func (g *Gateway) handleAgentBrowserStream(w http.ResponseWriter, r *http.Reques
 			if payload.Image != "" && payload.At != 0 && payload.At != lastAt {
 				lastAt = payload.At
 				if raw, derr := base64.StdEncoding.DecodeString(payload.Image); derr == nil && len(raw) > 0 {
-					fmt.Fprintf(w, "--okayframe\r\nContent-Type: image/jpeg\r\nContent-Length: %d\r\n\r\n", len(raw))
+					fmt.Fprintf(w, "--okayframe\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n", mjpegFrameMime(payload.Mime), len(raw))
 					if _, werr := w.Write(raw); werr != nil {
 						return
 					}

@@ -9,6 +9,19 @@ import (
 	"strings"
 )
 
+// startImageBase is the expected process name of the service this plan
+// restarts. The restart scripts use it to kill only PIDs that plausibly belong
+// to the service being updated, never an unrelated program that happened to
+// grab the port.
+func startImageBase(plan sourcePlan) string {
+	if len(plan.Start) == 0 {
+		return ""
+	}
+	first := strings.TrimPrefix(plan.Start[0], "./")
+	base := strings.ToLower(filepath.Base(filepath.ToSlash(first)))
+	return strings.TrimSuffix(base, ".exe")
+}
+
 type sourcePlan struct {
 	Name    string
 	Package string

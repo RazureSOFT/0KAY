@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"0kay/core/internal/pairing"
@@ -18,6 +19,25 @@ type computerUseFrame struct {
 	Image   string `json:"image"`
 	Mime    string `json:"mime"`
 	At      int64  `json:"at"`
+}
+
+// mjpegFrameMime sanitizes a plugin-reported frame MIME type before it is
+// written into an MJPEG stream part header. Only well-known image types (and
+// a CRLF-free multipart/x-mixed-replace; boundary= value) pass through;
+// anything else — including header-injection attempts containing CR or LF —
+// falls back to image/jpeg.
+func mjpegFrameMime(mime string) string {
+	if strings.ContainsAny(mime, "\r\n") {
+		return "image/jpeg"
+	}
+	switch mime {
+	case "image/jpeg", "image/png", "image/gif", "image/webp":
+		return mime
+	}
+	if strings.HasPrefix(mime, "multipart/x-mixed-replace; boundary=") {
+		return mime
+	}
+	return "image/jpeg"
 }
 
 func (g *Gateway) handleAgentComputerUse(w http.ResponseWriter, r *http.Request) {
@@ -103,11 +123,7 @@ func (g *Gateway) handleAgentComputerUseStream(w http.ResponseWriter, r *http.Re
 			if payload.Image != "" && payload.At != 0 && payload.At != lastAt {
 				lastAt = payload.At
 				if raw, derr := base64.StdEncoding.DecodeString(payload.Image); derr == nil && len(raw) > 0 {
-					mime := payload.Mime
-					if mime == "" {
-						mime = "image/jpeg"
-					}
-					fmt.Fprintf(w, "--okayframe\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n", mime, len(raw))
+					fmt.Fprintf(w, "--okayframe\r\nContent-Type: %s\r\nContent-Length: %d\r\n\r\n", mjpegFrameMime(payload.Mime), len(raw))
 					if _, werr := w.Write(raw); werr != nil {
 						return
 					}

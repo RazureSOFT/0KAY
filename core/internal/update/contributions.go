@@ -87,7 +87,10 @@ func PluginContributions() Contributions {
 		}
 		for _, rel := range caps.Skills {
 			absolute := filepath.Clean(filepath.Join(record.Root, filepath.FromSlash(rel)))
-			if !strings.HasPrefix(absolute, filepath.Clean(record.Root)) {
+			// A raw prefix check admits sibling dirs like C:\pkg-evil for a
+			// root of C:\pkg; Rel rejects anything that escapes the root.
+			relToRoot, relErr := filepath.Rel(filepath.Clean(record.Root), absolute)
+			if relErr != nil || relToRoot == ".." || strings.HasPrefix(relToRoot, ".."+string(filepath.Separator)) {
 				continue
 			}
 			if info, err := os.Stat(absolute); err != nil || !info.IsDir() {

@@ -99,6 +99,14 @@ func (s *uiPatchStore) Reload() {
 	s.mu.Unlock()
 }
 
+// LoadedAt reports when the patch set was last (re)loaded. Safe for
+// concurrent use with Reload.
+func (s *uiPatchStore) LoadedAt() time.Time {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.loaded
+}
+
 func (s *uiPatchStore) List(includeDisabled bool) []UIPatchFile {
 	s.mu.RLock()
 	defer s.mu.RUnlock()

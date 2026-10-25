@@ -119,7 +119,10 @@ func writeSourceUpdater(dir string, plan sourcePlan) (string, string, error) {
 		fmt.Fprintf(&b, "%s\n", joinArgs(cmd))
 	}
 	if plan.Port > 0 {
-		fmt.Fprintf(&b, "for pid in $(lsof -ti tcp:%d -sTCP:LISTEN 2>/dev/null); do kill \"$pid\" 2>/dev/null || true; done\n", plan.Port)
+		// Kill only listeners whose command plausibly belongs to the service
+		// this plan restarts; a stray program that grabbed the port must not
+		// be shot.
+		fmt.Fprintf(&b, "for pid in $(lsof -ti tcp:%d -sTCP:LISTEN 2>/dev/null); do comm=$(ps -p \"$pid\" -o comm= 2>/dev/null); case \"$comm\" in *%s*) kill \"$pid\" 2>/dev/null || true;; esac; done\n", plan.Port, startImageBase(plan))
 		b.WriteString("sleep 1\n")
 	}
 	if len(plan.Start) > 0 {

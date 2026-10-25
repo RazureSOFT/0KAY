@@ -104,14 +104,15 @@ func main() {
 		reply:     *reply,
 	}
 	pluginv1.RegisterMessageServiceServer(server, plugin)
-	go func() {
-		if err := server.Serve(listener); err != nil {
-			log.Fatalf("serve: %v", err)
-		}
-	}()
-	defer server.Stop()
 
-	registered, err := corev1.NewPluginServiceClient(conn).Register(context.Background(), &corev1.RegisterRequest{
+	// Register before serving, and assign the service token before Serve
+	// starts: Core may invoke SendMessage as soon as it knows our address,
+	// and the handler must never race an unsynchronized token write.
+	registerCtx := context.Background()
+	if token := strings.TrimSpace(os.Getenv("CORE_PLUGIN_REGISTRATION_TOKEN")); token != "" {
+		registerCtx = metadata.AppendToOutgoingContext(registerCtx, "x-0kay-registration-token", token)
+	}
+	registered, err := corev1.NewPluginServiceClient(conn).Register(registerCtx, &corev1.RegisterRequest{
 		PluginInfo: &pluginv1.PluginInfo{
 			Name:        pluginName,
 			Version:     "0.1.0",
@@ -138,17 +139,29 @@ func main() {
 		log.Fatalf("Core refused registration: %s", registered.GetMessage())
 	}
 	plugin.token = registered.GetServiceToken()
+
+	go func() {
+		if err := server.Serve(listener); err != nil {
+			log.Fatalf("serve: %v", err)
+		}
+	}()
+	defer server.Stop()
+
 	fmt.Printf("registered as %s (callback %s)\n", registered.GetPluginId(), address)
 
-	go heartbeat(conn, registered.GetPluginId())
+	go heartbeat(conn, registered.GetPluginId(), registered.GetServiceToken())
 	subscribe(plugin)
 }
 
-func heartbeat(conn *grpc.ClientConn, pluginID string) {
+func heartbeat(conn *grpc.ClientConn, pluginID, token string) {
 	client := corev1.NewPluginServiceClient(conn)
 	for {
 		time.Sleep(10 * time.Second)
-		if _, err := client.Heartbeat(context.Background(), &corev1.HeartbeatRequest{
+		ctx := context.Background()
+		if token != "" {
+			ctx = metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+token)
+		}
+		if _, err := client.Heartbeat(ctx, &corev1.HeartbeatRequest{
 			PluginId: pluginID,
 			Status:   corev1.PluginStatus_PLUGIN_STATUS_HEALTHY,
 		}); err != nil {
