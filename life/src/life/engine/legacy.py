@@ -2243,12 +2243,11 @@ class LifeEngine:
         think = LifeEngine.ThinkStage()
         async for event in self._stage_think(turn, message, stage, think):
             yield event
-        plan = think.plan
-        guidance = think.guidance
-        summaries = think.summaries
-        tool_success = think.tool_success
-        tool_failure = think.tool_failure
-        think_usage_info = think.usage
+        # Speaking is its own stage now: the plan/act loop produces state, the
+        # output stage turns it into a reply and writes the turn history.
+        async for event in self._stage_output(turn, message, stage, think):
+            yield event
+
     @dataclass
     class ThinkStage:
         """What the plan/act loop produces.
@@ -2386,6 +2385,28 @@ class LifeEngine:
         out.tool_success = tool_success
         out.tool_failure = tool_failure
         out.usage = think_usage_info
+    async def _stage_output(self, turn, message, recall, think):
+        """Say it — guidance shaping, model call, streaming and the record.
+
+        Split out of _stage_think: planning and speaking fail for different reasons
+        and are read by different people, and keeping them in one method meant the
+        output path was invisible to anyone looking for it.
+        """
+        plan = think.plan
+        guidance = think.guidance
+        summaries = think.summaries
+        tool_success = think.tool_success
+        tool_failure = think.tool_failure
+        think_usage_info = think.usage
+        memory_context = recall.memory_context
+        control = recall.control
+        scope = recall.scope
+        self_statement = recall.self_statement
+        inner_thread = recall.inner_thread
+        over_budget = recall.over_budget
+        budget = recall.budget
+        custom_prompt = recall.custom_prompt
+
 
         guidance += "\nRelevant memory:\n" + memory_context + "\nTool results:\n" + "\n".join(summaries)
         intent = getattr(turn, "intent", "")
@@ -2516,6 +2537,7 @@ class LifeEngine:
                "think_summary": (plan.to_json() if plan else "")}
 
     @staticmethod
+
     def _sanitize_emotion_delta(delta: dict) -> dict:
         out = {}
         for key in ("valence", "arousal", "connection", "irritation"):
