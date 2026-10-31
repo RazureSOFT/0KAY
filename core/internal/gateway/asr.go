@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"0kay/core/internal/netguard"
+	"0kay/core/internal/providers"
 )
 
 var asrSections = []string{"asr", "soniox", "genieasr", "whisper-asr"}
@@ -27,11 +28,17 @@ const (
 type asrBackend struct {
 	Endpoint string
 	Provider string
+	Token    string
 }
 
 func (g *Gateway) asrConfiguredEndpoint() (asrBackend, bool) {
 	if value := strings.TrimSpace(os.Getenv("ASR_ENDPOINT")); value != "" {
 		return asrBackend{Endpoint: value, Provider: "env"}, true
+	}
+	if g.providerStore != nil {
+		if p, ok := g.providerStore.DefaultForKind(providers.KindASR); ok && strings.TrimSpace(p.BaseURL) != "" {
+			return asrBackend{Endpoint: strings.TrimRight(strings.TrimSpace(p.BaseURL), "/"), Provider: p.ID, Token: p.APIKey}, true
+		}
 	}
 	if g.settingsStore == nil {
 		return asrBackend{}, false
@@ -124,7 +131,7 @@ func (g *Gateway) asrTranscribe(ctx context.Context, audio []byte, filename, lan
 		return asrResult{}, err
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	if token := strings.TrimSpace(os.Getenv("ASR_SERVICE_TOKEN")); token != "" {
+	if token := firstNonEmpty(backend.Token, os.Getenv("ASR_SERVICE_TOKEN")); token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	client := &http.Client{

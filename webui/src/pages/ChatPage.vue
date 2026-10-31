@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ChatPanel from '../components/ChatPanel.vue'
+import { warnIframeSlot } from '../composables/deprecations'
 import StatusPanel from '../components/StatusPanel.vue'
 import Live2DStage from '../components/Live2DStage.vue'
 import { useUIPatchesStore } from '../stores/uiPatches'
@@ -15,6 +16,15 @@ const isMobile = ref(false)
 const stageSlots = computed(() => ui.chatRegion('stage'))
 const chatSlots = computed(() => ui.chatRegion('chat'))
 const hasChat = computed(() => chatSlots.value.some((s) => s.component === 'chat'))
+
+// iframe slots still render, but say so once: a separate document cannot share
+// the host's stores/theme, which is the whole reason the contract moved to ES
+// modules.
+watchEffect(() => {
+  for (const slot of [...stageSlots.value, ...chatSlots.value]) {
+    if (slot.component === 'iframe') warnIframeSlot(String(slot.id || ''))
+  }
+})
 
 const RATIO_KEY = '0kay.web.chat_panel_width_ratio'
 const MIN_CHAT = 320

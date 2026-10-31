@@ -72,12 +72,29 @@
   gap: 6px;
   position: sticky;
   top: 8px;
+  /* The rail scrolls on its own: without a bound it grew past the viewport and,
+     being sticky, kept repositioning while the right-hand column scrolled, which
+     read as "the settings items drag the left list around". */
+  max-height: calc(100dvh - 132px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   padding: 12px;
   background: var(--md-surface-container-low);
   border: 1px solid color-mix(in srgb, var(--md-outline-variant) 55%, transparent);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-1);
 }
+#app .settings-page .nav-group {
+  margin: 8px 0 2px;
+  padding: 0 18px;
+  font: 700 11px/1 var(--font-family);
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--md-on-surface-variant);
+  opacity: .72;
+}
+#app .settings-page .nav-group:first-child { margin-top: 0; }
 #app .settings-page .nav-item {
   position: relative;
   isolation: isolate;
@@ -143,6 +160,9 @@
 }
 
 .settings-page .settings-content { min-width: 0; }
+/* The provider tab wraps its panel and the plugin fields in one element so
+   <Transition> gets a single child; keep the stacked-card rhythm inside it. */
+.settings-page .tab-stack { display: flex; flex-direction: column; gap: 16px; }
 
 /* ---------- Expressive content card ---------- */
 #app .settings-page .content-card {

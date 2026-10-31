@@ -15,6 +15,10 @@ const modelMeta = ref('')
 const loadState = ref<'idle' | 'loading' | 'ok' | 'error' | 'disabled' | 'no-libs'>('idle')
 const errorMsg = ref('')
 
+/** `bare` drops the card, the gradient and the overlays, so the desktop pet can
+ *  draw straight onto the desktop instead of inside a panel. */
+const props = withDefaults(defineProps<{ bare?: boolean }>(), { bare: false })
+const isBare = computed(() => props.bare)
 const enabled = computed(() => wizard.live2d.enabled)
 const modelUrl = computed(() => wizard.live2d.modelUrl.trim())
 const mood = computed(() => life.emotionMood)
@@ -533,7 +537,10 @@ function endDrag(e?: PointerEvent) {
 
 function onStageWheel(e: WheelEvent) {
   if (!live2dModel || loadState.value !== 'ok') return
-  if (!e.ctrlKey && !e.metaKey) return
+  // Plain wheel zooms the model. It used to require Ctrl/Cmd, which read as
+  // "zooming is broken" — the modifier now goes the other way: hold Shift to let
+  // the wheel scroll the page instead.
+  if (e.shiftKey) return
   e.preventDefault()
   const step = e.deltaY < 0 ? 1.06 : 0.94
   const next = clamp(live2dModel.scale.x * step, 0.08, 3.2)
@@ -731,7 +738,7 @@ watch(mood, (value) => {
 </script>
 
 <template>
-  <div class="live2d-stage" :class="{ on: enabled }">
+  <div class="live2d-stage" :class="{ on: enabled, bare: isBare }">
     <div ref="stageEl" class="stage-viewport" :style="{ '--mood': accent }" :title="enabled && loadState === 'ok' ? t('live2d.interactHint') : ''">
       <canvas ref="canvasEl" class="stage-canvas"></canvas>
 
@@ -776,6 +783,17 @@ watch(mood, (value) => {
   inherits: true;
   initial-value: #6750A4;
 }
+
+.live2d-stage.bare,
+.live2d-stage.bare .stage-viewport {
+  background: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  min-height: 0;
+}
+.live2d-stage.bare .stage-gradient,
+.live2d-stage.bare .stage-hint,
+.live2d-stage.bare .stage-reset { display: none !important; }
 
 .live2d-stage {
   display: flex;

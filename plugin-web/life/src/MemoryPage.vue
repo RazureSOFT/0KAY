@@ -506,6 +506,41 @@ const skeletonCount = 4
 </template>
 
 <style scoped>
+/* ---- Layout skeleton ----
+   These class names were used in the template with no rules behind them, so cards
+   had no surface, sections no rhythm and the tabs no shape: the page read as one
+   long column of text. Only additive rules live here. */
+.pcp .card { background: var(--md-surface-container-lowest, #fff); border: 1px solid color-mix(in srgb, var(--md-outline-variant) 60%, transparent); border-radius: 24px; padding: 22px; box-shadow: 0 1px 2px #0000000a; }
+.pcp .section { display: flex; flex-direction: column; gap: 14px; }
+.pcp .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pcp .section-head h2, .pcp .section-head h3 { margin: 0; font-size: 15px; font-weight: 700; }
+.pcp .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.pcp .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.pcp .panel { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 18px; background: var(--md-surface-container); }
+.pcp .tabs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.pcp .tab { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; border: 1px solid transparent; background: transparent; color: var(--md-on-surface-variant); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background .12s ease, color .12s ease; }
+.pcp .tab:hover { background: color-mix(in srgb, var(--md-on-surface) 8%, transparent); }
+.pcp .tab.active, .pcp .tab.filled { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.pcp .tab-ic { display: grid; place-items: center; opacity: .85; }
+.pcp .head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pcp .switches { display: flex; flex-direction: column; gap: 8px; }
+.pcp .preset-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.pcp .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.pcp .meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--md-on-surface-variant); }
+.pcp .desc, .pcp .hint, .pcp .tiny, .pcp .sub-label { font-size: 12px; color: var(--md-on-surface-variant); line-height: 1.5; }
+.pcp .tiny { font-size: 11px; opacity: .85; }
+.pcp .empty { padding: 22px; text-align: center; color: var(--md-on-surface-variant); font-size: 12.5px; border-radius: 16px; background: var(--md-surface-container); }
+.pcp .feed { display: flex; flex-direction: column; gap: 10px; }
+.pcp .i, .pcp .k { font-style: normal; }
+.pcp .banner { padding: 10px 14px; border-radius: 12px; font-size: 12.5px; background: var(--md-surface-container); }
+.pcp .banner.err { background: color-mix(in srgb, var(--md-error, #ba1a1a) 14%, transparent); color: var(--md-error, #ba1a1a); }
+.pcp .banner.ok { background: color-mix(in srgb, #2e7d52 14%, transparent); color: #2e7d52; }
+.pcp .banner.warn { background: color-mix(in srgb, #b26a00 16%, transparent); color: #b26a00; }
+.pcp .eyebrow { margin: 0 0 4px; font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--md-primary); }
+.pcp .expanded { max-height: none; }
+.pcp .settings-grid .sm { max-width: 160px; }
+.pcp .wm-routes-col { display: flex; flex-direction: column; gap: 8px; }
+
 
 .page-header{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--space-lg);margin-bottom:var(--space-xl);flex-wrap:wrap}
 .page-header h1{margin:0;font-size:clamp(24px,2.8vw,34px);font-weight:800;letter-spacing:-.02em}
@@ -634,4 +669,18 @@ const skeletonCount = 4
 
 @media(max-width:900px){.stat-grid{grid-template-columns:repeat(2,1fr)}.grid-notes{grid-template-columns:1fr}}
 @media(max-width:640px){.header-actions{padding-top:0}.memory-list{grid-template-columns:1fr}}
+
+/* Remaining semantic hooks: `btn`/`tonic`/`danger` are modifiers on the shared
+   button, `fld` marks a field wrapper, `sw` a switch row. */
+.pcp .btn { padding: 8px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 600; }
+.pcp .btn.tonic { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.pcp .btn.danger { background: color-mix(in srgb, var(--md-error, #ba1a1a) 14%, transparent); color: var(--md-error, #ba1a1a); }
+.pcp .fld { display: flex; flex-direction: column; gap: 4px; }
+.pcp .sw { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pcp .pdetails { display: flex; flex-direction: column; gap: 6px; }
+.pcp .cognition, .pcp .circadianNow { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+
+/* keep page sections from being squashed by the flex column parent */
+.pcp .hero, .pcp .section, .pcp .card { flex: 0 0 auto; min-height: fit-content; }
+.pcp .hero { overflow: visible; }
 </style>

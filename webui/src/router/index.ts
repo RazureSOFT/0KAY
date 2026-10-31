@@ -2,12 +2,15 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useUIPatchesStore } from '../stores/uiPatches'
 import PluginModuleHost from '../components/PluginModuleHost.vue'
 import PatchPage from '../pages/PatchPage.vue'
+import PetPage from '../pages/PetPage.vue'
 
 const installedPatchRoutes = new Map<string, string>()
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
+    // The desktop pet: a frameless Electron window loads this and nothing else.
+    { path: '/pet', name: 'pet', component: PetPage },
     { path: '/:pathMatch(.*)*', name: 'catch-all', component: PatchPage },
   ],
 })

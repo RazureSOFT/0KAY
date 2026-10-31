@@ -4,6 +4,30 @@ import json
 
 from . import lexicon
 
+# Where each axis settles when nothing is happening. Arousal and connection
+# settle at the middle of their range, not at zero: zero arousal is not "calm",
+# it is flatlined, and a character that drifts there stops feeling like a person.
+NEUTRAL = {"valence": 0.0, "arousal": 0.5, "connection": 0.5, "irritation": 0.0}
+RANGE = {"valence": (-1.0, 1.0), "arousal": (0.0, 1.0), "connection": (0.0, 1.0), "irritation": (0.0, 1.0)}
+
+
+def _number(value, default: float) -> float:
+    """Coerce anything to a usable float. None, NaN and junk all mean `default`."""
+    if value is None:
+        return default
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return default
+    if number != number:  # NaN
+        return default
+    return number
+
+
+def _clamp(axis: str, value: float) -> float:
+    low, high = RANGE[axis]
+    return max(low, min(high, value))
+
 
 @dataclass
 class EmotionState:
@@ -14,18 +38,24 @@ class EmotionState:
     last_updated: datetime = field(default_factory=datetime.now)
 
     def apply_delta(self, delta: dict) -> None:
-        self.valence = max(-1.0, min(1.0, self.valence + delta.get("valence", 0.0)))
-        self.arousal = max(0.0, min(1.0, self.arousal + delta.get("arousal", 0.0)))
-        self.connection = max(0.0, min(1.0, self.connection + delta.get("connection", 0.0)))
-        self.irritation = max(0.0, min(1.0, self.irritation + delta.get("irritation", 0.0)))
+        delta = delta if isinstance(delta, dict) else {}
+        for axis in ("valence", "arousal", "connection", "irritation"):
+            current = _number(getattr(self, axis), NEUTRAL[axis])
+            self.__dict__[axis] = _clamp(axis, current + _number(delta.get(axis), 0.0))
         self.last_updated = datetime.now()
 
     def decay(self, seconds: float) -> None:
-        seconds = max(0.0, float(seconds))
+        seconds = max(0.0, _number(seconds, 0.0))
         rate = min(0.5, 0.001 * seconds)
-        self.valence *= (1.0 - rate)
-        self.arousal *= (1.0 - rate * 0.5)
-        self.irritation *= (1.0 - min(0.9, rate * 2))
+        if rate <= 0.0:
+            return
+        # Each axis relaxes toward its own neutral. Valence and irritation move
+        # fastest; arousal and connection are slower, so a good evening is not
+        # erased by the next morning.
+        self.valence = _clamp("valence", self.valence + (NEUTRAL["valence"] - self.valence) * rate)
+        self.arousal = _clamp("arousal", self.arousal + (NEUTRAL["arousal"] - self.arousal) * rate * 0.5)
+        self.connection = _clamp("connection", self.connection + (NEUTRAL["connection"] - self.connection) * rate * 0.5)
+        self.irritation = _clamp("irritation", self.irritation + (NEUTRAL["irritation"] - self.irritation) * min(0.9, rate * 2))
 
     def to_dict(self) -> dict:
         return {
@@ -37,11 +67,12 @@ class EmotionState:
 
     @classmethod
     def from_dict(cls, data: dict) -> "EmotionState":
+        data = data if isinstance(data, dict) else {}
         return cls(
-            valence=data.get("valence", 0.0),
-            arousal=data.get("arousal", 0.5),
-            connection=data.get("connection", 0.5),
-            irritation=data.get("irritation", 0.0),
+            valence=_clamp("valence", _number(data.get("valence"), NEUTRAL["valence"])),
+            arousal=_clamp("arousal", _number(data.get("arousal"), NEUTRAL["arousal"])),
+            connection=_clamp("connection", _number(data.get("connection"), NEUTRAL["connection"])),
+            irritation=_clamp("irritation", _number(data.get("irritation"), NEUTRAL["irritation"])),
         )
 
 

@@ -11,16 +11,14 @@ const { t } = useI18n()
 const wizard = useWizardStore()
 const emit = defineEmits<{ complete: [] }>()
 
-const STEP_KEY = ['chooseLanguage', 'welcome', 'selectProvider', 'apiConfig', 'selectModels', 'createPersona', 'live2d', 'complete']
+const STEP_KEY = ['chooseLanguage', 'welcome', 'selectProvider', 'apiConfig', 'selectModels', 'complete']
 const ICONS: Record<number, string> = {
   1: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18',
   2: 'M4 11l8-7 8 7v8a2 2 0 0 1-2 2h-4v-6H10v6H6a2 2 0 0 1-2-2z',
   3: 'M7 18a4 4 0 0 1 .7-7.94A5.5 5.5 0 0 1 18 11.5a3.5 3.5 0 0 1-.5 6.5z',
   4: 'M15 3a6 6 0 0 0-5.6 8.1L4 16.5V20h3.5l5.4-5.4A6 6 0 1 0 15 3zm1.5 6.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z',
   5: 'M12 3l9 5-9 5-9-5 9-5zm9 9l-9 5-9-5',
-  6: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20a7 7 0 0 1 14 0',
-  7: 'M4 5h16v14H4zM4 15l5-5 3 3 3-3 5 5',
-  8: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm-4 9l3 3 5-6',
+  6: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zm-4 9l3 3 5-6',
 }
 
 const currentLang = ref(getLanguage())
@@ -36,52 +34,6 @@ function goStep(id: number) { if (id <= wizard.currentStep) wizard.currentStep =
 const customModels = ref('')
 const isLoading = ref(false)
 const error = ref('')
-const fileInput = ref<HTMLInputElement | null>(null)
-const uploadedFileName = ref('')
-const folderInput = ref<HTMLInputElement | null>(null)
-const uploadingFolder = ref(false)
-const folderMessage = ref('')
-
-function openFilePicker() { fileInput.value?.click() }
-
-function onFileSelected(e: Event) {
-  const input = e.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (file) {
-    wizard.live2d.modelData = file
-    uploadedFileName.value = file.name
-  }
-}
-
-function openFolderPicker() { folderInput.value?.click() }
-
-async function onFolderSelected(e: Event) {
-  const input = e.target as HTMLInputElement
-  const files = Array.from(input.files || [])
-  input.value = ''
-  if (!files.length) return
-  uploadingFolder.value = true
-  folderMessage.value = ''
-  try {
-    const form = new FormData()
-    const paths: string[] = []
-    for (const file of files) {
-      const relative = (file as any).webkitRelativePath || file.name
-      paths.push(relative)
-      form.append('files', file, file.name)
-    }
-    form.append('paths', JSON.stringify(paths))
-    const response = await fetch('/api/live2d', { method: 'POST', body: form })
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    const body = await response.json()
-    if (body.model_url) wizard.live2d.modelUrl = body.model_url
-    wizard.live2d.enabled = true
-    folderMessage.value = t('wizard.uploadedCount', { count: files.length })
-  } catch (error: any) {
-    folderMessage.value = error?.message || t('wizard.uploadFailed')
-  } finally { uploadingFolder.value = false }
-}
-
 onMounted(() => {
   wizard.loadFromStorage()
 })
@@ -172,7 +124,7 @@ function useCustomModels() {
     <div class="wizard-sheet">
             <aside class="wizard-rail">
         <div class="rail-brand">
-          <span class="brand-mark">0K</span>
+          <img class="brand-mark" src="/okay-logo.svg" alt="" width="44" height="44" />
           <div class="brand-text">
             <strong>{{ t('wizard.title') }}</strong>
             <span>{{ t('wizard.subtitle') }}</span>
@@ -239,10 +191,6 @@ function useCustomModels() {
               <div class="feature">
                 <span class="feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M7 18a4 4 0 0 1 .7-7.94A5.5 5.5 0 0 1 18 11.5a3.5 3.5 0 0 1-.5 6.5z" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
                 <b>{{ t('wizard.featureProvider') }}</b>
-              </div>
-              <div class="feature">
-                <span class="feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20a7 7 0 0 1 14 0" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-                <b>{{ t('wizard.featurePersona') }}</b>
               </div>
               <div class="feature">
                 <span class="feature-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H9l-5 4V6z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg></span>
@@ -321,80 +269,7 @@ function useCustomModels() {
             </div>
           </div>
 
-                    <div v-if="wizard.currentStep === 6" class="pane">
-            <div class="form-row">
-              <div class="field">
-                <label>{{ t('wizard.name') }} *</label>
-                <input v-model="wizard.persona.name" :placeholder="t('wizard.namePlaceholder')" class="wiz-input" />
-              </div>
-              <div class="field">
-                <label>{{ t('wizard.birthDate') }}</label>
-                <input v-model="wizard.persona.birthDate" type="date" class="wiz-input" />
-              </div>
-            </div>
-            <div class="field">
-              <label>{{ t('wizard.avatarUrl') }}</label>
-              <input v-model="wizard.persona.avatar" :placeholder="t('wizard.avatarPlaceholder')" class="wiz-input" />
-            </div>
-            <div class="field">
-              <label>{{ t('wizard.description') }}</label>
-              <textarea v-model="wizard.persona.description" :placeholder="t('wizard.descriptionPlaceholder')" class="wiz-input" rows="3"></textarea>
-            </div>
-            <div class="field">
-              <label>{{ t('wizard.personality') }}</label>
-              <textarea v-model="wizard.persona.personality" :placeholder="t('wizard.personalityPlaceholder')" class="wiz-input" rows="3"></textarea>
-            </div>
-            <div class="field">
-              <label>{{ t('wizard.greeting') }}</label>
-              <textarea v-model="wizard.persona.greeting" :placeholder="t('wizard.greetingPlaceholder')" class="wiz-input" rows="2"></textarea>
-            </div>
-          </div>
-
-                    <div v-if="wizard.currentStep === 7" class="pane">
-            <label class="switch-row">
-              <span class="switch-text">
-                <b>{{ t('wizard.enableLive2d') }}</b>
-                <span>{{ t('wizard.live2dDesc') }}</span>
-              </span>
-              <span class="switch">
-                <input type="checkbox" v-model="wizard.live2d.enabled" />
-                <span class="switch-track"><span class="switch-thumb"></span></span>
-              </span>
-            </label>
-
-            <div v-if="wizard.live2d.enabled" class="live2d-config">
-              <div class="field">
-                <label>{{ t('wizard.modelUrl') }}</label>
-                <input v-model="wizard.live2d.modelUrl" :placeholder="t('wizard.modelUrlPlaceholder')" class="wiz-input" />
-                <p class="helper-text">
-                  {{ t('wizard.live2dHelp') }}
-                  <a href="https://www.live2d.com/en/learn/sample/" target="_blank">{{ t('wizard.live2dSamples') }}</a>
-                </p>
-              </div>
-
-              <div class="field">
-                <label>{{ t('wizard.orUpload') }}</label>
-                <div class="dropzone" @click="openFilePicker">
-                  <input ref="fileInput" type="file" accept=".moc3,.model3.json" @change="onFileSelected" class="hidden-input" />
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 16V4M7 9l5-5 5 5M5 20h14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  <span v-if="uploadedFileName" class="file-name">{{ uploadedFileName }}</span>
-                  <span v-else>{{ t('wizard.uploadHint') }}</span>
-                </div>
-              </div>
-
-              <div class="field">
-                <label>{{ t('wizard.uploadFolder') }}</label>
-                <div class="dropzone" @click="openFolderPicker">
-                  <input ref="folderInput" type="file" webkitdirectory directory multiple hidden @change="onFolderSelected" />
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 7a2 2 0 0 1 2-2h3l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/></svg>
-                  <span>{{ uploadingFolder ? t('wizard.uploading') : t('wizard.uploadFolderHint') }}</span>
-                </div>
-                <p v-if="folderMessage" class="helper-text">{{ folderMessage }}</p>
-              </div>
-            </div>
-          </div>
-
-                    <div v-if="wizard.currentStep === 8" class="pane complete">
+                    <div v-if="wizard.currentStep === 6" class="pane complete">
             <div class="complete-emblem">
               <svg width="40" height="40" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4 10-11" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
             </div>
@@ -407,14 +282,6 @@ function useCustomModels() {
               <div class="summary-row">
                 <span class="label">{{ t('wizard.defaultModel') }}</span>
                 <span class="value">{{ wizard.defaultModel || '—' }}</span>
-              </div>
-              <div class="summary-row">
-                <span class="label">{{ t('wizard.name') }}</span>
-                <span class="value">{{ wizard.persona.name || '—' }}</span>
-              </div>
-              <div class="summary-row">
-                <span class="label">{{ t('wizard.live2d') }}</span>
-                <span class="value">{{ wizard.live2d.enabled ? '✓' : '✗' }}</span>
               </div>
             </div>
 
@@ -440,7 +307,7 @@ function useCustomModels() {
           <button class="btn btn-tonal" @click="wizard.prevStep()" :disabled="wizard.currentStep === 1">{{ t('wizard.back') }}</button>
           <div class="footer-right">
                         <p v-if="!wizard.canProceed && wizard.blockedHint" class="blocked-hint" role="status">{{ t(wizard.blockedHint) }}</p>
-            <button v-if="wizard.currentStep < 8" class="btn btn-primary" @click="wizard.nextStep()" :disabled="!wizard.canProceed">{{ t('wizard.next') }}</button>
+            <button v-if="wizard.currentStep < 6" class="btn btn-primary" @click="wizard.nextStep()" :disabled="!wizard.canProceed">{{ t('wizard.next') }}</button>
             <button v-else class="btn btn-primary" :disabled="savingPin" @click="finish">{{ t('wizard.startChatting') }}</button>
           </div>
         </footer>
@@ -489,13 +356,11 @@ function useCustomModels() {
   flex: none;
   width: 44px;
   height: 44px;
-  display: grid;
-  place-items: center;
+  display: block;
+  /* The logo is its own tile; cover keeps its silhouette inside the brand
+     radius instead of framing a second one around it. */
+  object-fit: cover;
   border-radius: 15px 15px 15px 5px;
-  background: var(--md-primary);
-  color: var(--md-on-primary);
-  font-weight: 750;
-  letter-spacing: -0.5px;
 }
 #app .brand-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 #app .brand-text strong { font-size: 15px; }
@@ -665,7 +530,6 @@ function useCustomModels() {
 #app .switch-thumb { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform 240ms var(--ease-spring, ease); }
 #app .switch input:checked + .switch-track { background: var(--md-primary); }
 #app .switch input:checked + .switch-track .switch-thumb { transform: translateX(20px); }
-#app .live2d-config { display: flex; flex-direction: column; gap: 16px; animation: pane-in 240ms ease both; }
 #app .dropzone { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 22px; border: 2px dashed var(--md-outline-variant); border-radius: 18px; color: var(--md-on-surface-variant); text-align: center; cursor: pointer; transition: border-color 180ms, background-color 180ms; }
 #app .dropzone:hover { border-color: var(--md-primary); background: var(--md-surface-container-low); color: var(--md-primary); }
 #app .hidden-input { display: none; }

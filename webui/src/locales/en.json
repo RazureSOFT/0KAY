@@ -40,6 +40,7 @@
     "version": "Version"
   },
   "app": {
+    "openPet": "Desktop pet",
     "settings": "Settings",
     "status": "Status",
     "switchLang": "Switch language",
@@ -380,6 +381,11 @@
     "loading": "Loading plugin module…"
   },
   "plugins": {
+    "reconnect": "Reconnect",
+    "reconnectHint": "Drop the cached connection and let the plugin announce itself again. No stack restart needed.",
+    "reconnected": "Reconnected · closed {n} connection(s)",
+    "healthDegraded": "Degraded",
+    "healthStale": "Not responding",
     "actionFailed": "Action failed",
     "builtinFullPerms": "Built-in plugin · all permissions and egress allowed",
     "callsCore": "Calls Core API",
@@ -464,6 +470,8 @@
     "removePinConfirm": "This removes the stored access PIN from this machine. Continue?"
   },
   "settings": {
+    "groupCore": "Core",
+    "groupPlugins": "Plugins",
     "about": {
       "available": "Update available",
       "beta": "Beta (sync repo)",
@@ -602,6 +610,7 @@
     "removeModel": "Remove {name}",
     "modelExists": "“{name}” is already in the list",
     "noProviders": "No providers configured yet. Click add above.",
+    "noProvidersForKind": "No providers of this type yet.",
     "pageDesc": "Manage providers, models, persona, and Live2D avatar",
     "pathPickTitle": "Choose a folder",
     "pathUp": "Up one level",
@@ -627,6 +636,12 @@
     "pluginSourcePlaceholder": "https://gh-proxy.com",
     "pluginSourceTitle": "Plugin source",
     "provider": "Provider",
+    "providerKindLLM": "LLM",
+    "providerKindTTS": "Speech synthesis",
+    "providerKindASR": "Speech recognition",
+    "providerKindImage": "Image",
+    "providerKindLabel": "Provider type",
+    "providerKindHint": "What this provider serves. Chat models are LLM; speech synthesis and recognition are separate services with their own endpoints.",
     "providerDesc": "Choose an AI provider and configure API credentials",
     "providerDescMulti": "Add multiple providers and models; chat uses the default model, intelligent selection is Agent-only",
     "providerModelType": "Model type",
@@ -732,6 +747,8 @@
     "slider": "Thinking effort slider"
   },
   "usage": {
+    "colModel": "Model",
+    "colShare": "Share",
     "byDay": "By day",
     "byModel": "By model",
     "clear": "Clear usage",
@@ -830,5 +847,18 @@
     "useModels": "Use These Models",
     "welcome": "Welcome to 0kay!",
     "welcomeDesc": "Let's get you set up in just a few steps."
+  },
+  "pet": {
+    "holdToTalk": "Hold to talk",
+    "releaseToSend": "Release to send",
+    "transcribing": "Transcribing…",
+    "tooShort": "Too short",
+    "heardNothing": "Did not catch that",
+    "noSpeech": "No speech detected, try again closer to the mic",
+    "asrNotConfigured": "ASR is not configured yet",
+    "asrBadKey": "ASR key is invalid",
+    "asrTooLong": "That recording is too long",
+    "asrFailed": "Speech service error",
+    "replyFailed": "Reply failed"
   }
 }

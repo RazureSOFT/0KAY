@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Optional
 import ipaddress
 import json
@@ -342,11 +343,13 @@ class ComputerUseTool(Tool):
 
     @property
     def name(self) -> str:
-        return "computeruse"
+        return "send_computer"
 
     @property
     def description(self) -> str:
-        return "Operate the computer where the healthy Agent runs: screenshot, mouse, keyboard. Requires the L.I.F.E computer-use permission."
+        return ("Operate the user's computer: screenshot, list windows, move, click, type, "
+                "press a key. Ask before doing anything visible, and report what actually "
+                "happened. Requires the L.I.F.E computer-use permission.")
 
     def parameters(self) -> dict:
         return {"type": "object", "required": ["action"], "properties": {
@@ -544,6 +547,94 @@ class AdapterStatusTool(Tool):
                                            "running", "connected", "address", "config_id")}
                 for row in runtime.status()]
         return ToolResult(True, {"instances": rows})
+
+
+class LookWatchTool(Tool):
+    """Read the clock and the day's schedule.
+
+    THINK is told to call this before saying what time it is or what happens
+    next, because a model reciting a timestamp from its context is always a
+    little stale and sometimes a whole day off. Read-only: no approval, safe to
+    call in the autonomy loop.
+    """
+
+    WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+
+    def __init__(self, companion=None, clock=None):
+        self.companion = companion
+        self.clock = clock or datetime.now
+
+    @property
+    def name(self) -> str:
+        return "look_watch"
+
+    @property
+    def description(self) -> str:
+        return ("Look at the clock: current local date and time, weekday, part of the day, "
+                "today's schedule and how long until the next item. Read-only. Call this "
+                "before stating the time or what you are about to do next — do not guess.")
+
+    def parameters(self) -> dict:
+        return {"type": "object", "properties": {}}
+
+    @staticmethod
+    def _parse(value: str) -> datetime | None:
+        text = str(value or "").strip().replace("T", " ")
+        if not text:
+            return None
+        for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+            try:
+                return datetime.strptime(text[:19], fmt)
+            except ValueError:
+                continue
+        try:
+            return datetime.fromisoformat(text)
+        except ValueError:
+            return None
+
+    async def execute(self, **kwargs) -> ToolResult:
+        try:
+            now = self.clock()
+        except Exception as error:  # noqa: BLE001 - a broken clock is not fatal
+            return ToolResult(False, None, str(error) or "clock unavailable")
+        from ..worldsim.scene import daypart
+        payload: dict[str, Any] = {
+            "now": now.strftime("%Y-%m-%d %H:%M"),
+            "weekday": self.WEEKDAYS[now.weekday()],
+            "part_of_day": daypart(now.hour),
+            "agenda_today": [],
+            "next": None,
+        }
+        if self.companion is None:
+            return ToolResult(True, payload)
+        try:
+            rows = await asyncio.to_thread(self.companion.agenda_for_day, now.strftime("%Y-%m-%d"))
+        except Exception as error:  # noqa: BLE001 - schedule is optional
+            return ToolResult(True, {**payload, "agenda_error": str(error)})
+        upcoming: list[tuple[datetime, dict]] = []
+        scheduled: list[tuple[datetime, dict]] = []
+        for row in rows or []:
+            start = self._parse(str((row or {}).get("start_at") or ""))
+            if start is None:
+                continue
+            item = {
+                "title": str(row.get("title") or ""),
+                "start": start.strftime("%H:%M"),
+                "detail": str(row.get("detail") or "")[:200],
+                "status": str(row.get("status") or ""),
+            }
+            scheduled.append((start, item))
+            if start >= now:
+                upcoming.append((start, item))
+        # The stored order is whatever the database returned; a clock reads
+        # top-down, so hand it back in time order.
+        scheduled.sort(key=lambda pair: pair[0])
+        payload["agenda_today"] = [item for _, item in scheduled]
+        upcoming.sort(key=lambda pair: pair[0])
+        if upcoming:
+            start, item = upcoming[0]
+            payload["next"] = {**item, "in_minutes": int((start - now).total_seconds() // 60)}
+        return ToolResult(True, payload)
 
 
 class MinecraftTool(Tool):
@@ -886,6 +977,9 @@ class ToolRegistry:
 
     def __init__(self):
         self.tools: dict[str, Tool] = {}
+        # Aliases are dispatch-only: they never appear in the schema the model
+        # sees, so one action cannot be advertised under two names.
+        self.aliases: dict[str, str] = {}
         self.recorder = None
         self.approver = None
         self.approval_tools: set[str] = set()
@@ -893,10 +987,19 @@ class ToolRegistry:
     def register(self, tool: Tool) -> None:
         self.tools[tool.name] = tool
 
+    def register_alias(self, alias: str, target: str) -> None:
+        alias, target = str(alias or "").strip(), str(target or "").strip()
+        if alias and target and alias != target:
+            self.aliases[alias] = target
+
+    def resolve(self, name: str) -> str:
+        return self.aliases.get(str(name or ""), str(name or ""))
+
     def get(self, name: str) -> Optional[Tool]:
-        return self.tools.get(name)
+        return self.tools.get(self.resolve(name))
 
     def needs_approval(self, name: str, kwargs: dict) -> bool:
+        name = self.resolve(name)
         if name in self.approval_tools:
             return True
         if name == "mcp" and str(kwargs.get("action") or "") == "call":
@@ -947,6 +1050,8 @@ def create_default_registry(core_client=None, config: RuntimeToolConfig | None =
     registry.register(UseAgentTool(core_client=core_client))
     registry.register(WebBrowseTool())
     registry.register(ComputerUseTool(core_client, config))
+    registry.register_alias("computeruse", "send_computer")
+    registry.register(LookWatchTool(companion))
     registry.register(McpTool(core_client, config))
     registry.register(MinecraftTool(config))
     registry.register(SendOneBotTool(config, companion))

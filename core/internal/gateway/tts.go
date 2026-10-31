@@ -12,9 +12,22 @@ import (
 	"time"
 
 	"0kay/core/internal/netguard"
+	"0kay/core/internal/providers"
 )
 
 var ttsSections = []string{"genietts", "deepseek-tts"}
+
+// firstNonEmpty returns the first trimmed non-empty value. Used to prefer a
+// provider's own credential over the legacy environment variable without
+// duplicating the precedence rules in every media path.
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
+}
 
 func isTTSSection(id string) bool {
 	for _, candidate := range ttsSections {
@@ -25,14 +38,21 @@ func isTTSSection(id string) bool {
 	return false
 }
 
-func (g *Gateway) ttsEndpoint() string {
+func (g *Gateway) ttsTarget() (endpoint, token string) {
 	// env wins, fuck the settings store. somebody who sets TTS_ENDPOINT in a
 	// container means it, and a stale value from the UI must not overrule that.
 	if value := strings.TrimSpace(os.Getenv("TTS_ENDPOINT")); value != "" {
-		return value
+		return value, strings.TrimSpace(os.Getenv("TTS_SERVICE_TOKEN"))
+	}
+	// A provider registered with kind=tts is the first-class answer: base_url is
+	// the synthesis endpoint, api_key is its bearer token.
+	if g.providerStore != nil {
+		if p, ok := g.providerStore.DefaultForKind(providers.KindTTS); ok && strings.TrimSpace(p.BaseURL) != "" {
+			return strings.TrimRight(strings.TrimSpace(p.BaseURL), "/"), p.APIKey
+		}
 	}
 	if g.settingsStore == nil {
-		return ""
+		return "", ""
 	}
 	for _, id := range ttsSections {
 		values := g.settingsStore.GetValues(id)
@@ -43,19 +63,24 @@ func (g *Gateway) ttsEndpoint() string {
 			continue
 		}
 		if endpoint, ok := values["endpoint"].(string); ok && strings.TrimSpace(endpoint) != "" {
-			return strings.TrimSpace(endpoint)
+			return strings.TrimSpace(endpoint), strings.TrimSpace(os.Getenv("TTS_SERVICE_TOKEN"))
 		}
 	}
 	if value, ok := g.settingsStore.GetValues("life")["tts_endpoint"].(string); ok && strings.TrimSpace(value) != "" {
-		return strings.TrimSpace(value)
+		return strings.TrimSpace(value), strings.TrimSpace(os.Getenv("TTS_SERVICE_TOKEN"))
 	}
-	return ""
+	return "", ""
+}
+
+func (g *Gateway) ttsEndpoint() string {
+	endpoint, _ := g.ttsTarget()
+	return endpoint
 }
 
 func (g *Gateway) ttsSynthesize(ctx context.Context, text, voice string) (string, []byte, error) {
-	endpoint := g.ttsEndpoint()
+	endpoint, token := g.ttsTarget()
 	if endpoint == "" {
-		return "", nil, fmt.Errorf("TTS is not configured (Settings → LIFE → TTS endpoint)")
+		return "", nil, fmt.Errorf("TTS is not configured (add a provider with kind=tts, or set TTS_ENDPOINT)")
 	}
 	payload, _ := json.Marshal(map[string]string{"text": text, "voice": voice})
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(payload))
@@ -63,7 +88,7 @@ func (g *Gateway) ttsSynthesize(ctx context.Context, text, voice string) (string
 		return "", nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if token := os.Getenv("TTS_SERVICE_TOKEN"); token != "" {
+	if token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	client := &http.Client{Timeout: 90 * time.Second, Transport: netguard.Transport(netguard.Strict()), CheckRedirect: func(req *http.Request, via []*http.Request) error { return http.ErrUseLastResponse }}

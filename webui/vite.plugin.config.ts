@@ -134,7 +134,10 @@ function injectCss(styleId: string) {
 }
 
 export default defineConfig({
-  plugins: [vue(), rewriteSharedToHost(), injectCss('webui-plugin-style')],
+  // One id per page on purpose: a shared id made the second page's injection a
+  // no-op ("already present"), so only the first page ever got its CSS and the
+  // rest rendered with no styles at all.
+  plugins: [vue(), rewriteSharedToHost(), injectCss(`webui-plugin-style-${ENTRY}`)],
   resolve: {
     alias: { '@webui': src },
   },

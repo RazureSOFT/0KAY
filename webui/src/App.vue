@@ -1,5 +1,14 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+
+// The desktop pet is an Electron window, not a route: the shell exposes a bridge
+// only when the page runs inside it.
+const desktopAvailable = computed(() => typeof window !== 'undefined' && !!(window as any).okayDesktop?.openCompanion)
+function openPet() {
+  const host = (window as any).okayDesktop
+  if (!host?.openCompanion) return
+  void host.openCompanion()
+}
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useWizardStore } from './stores/wizard'
@@ -25,6 +34,16 @@ const life = useLifeStore()
 const chat = useChatStore()
 const ui = useUIPatchesStore()
 const route = useRoute()
+
+const isPetRoute = computed(() => route.name === 'pet')
+
+// The pet's transparent-page CSS is keyed on `html.pet-mode`. Toggling it from the
+// router (not from the page's lifecycle) is what guarantees it is gone the moment
+// you leave the pet: a missed unmount left the whole app with padding 0 and
+// overflow hidden, which collapsed the settings page.
+watch(isPetRoute, (on) => {
+  document.documentElement.classList.toggle('pet-mode', on)
+}, { immediate: true })
 
 // Some embedded WebViews never dispatch transitionend (fetch/JS fine, CSS
 // transitions visibly run). Vue's mode="out-in" waits for that event, so
@@ -347,8 +366,12 @@ async function onSetupSubmit() {
   </Teleport>
 
   <Transition name="shell" mode="out-in">
+    <!-- The desktop pet renders on its own: no shell, no header, no nav, and no
+         page background, so the Electron window can be transparent. -->
+    <RouterView v-if="isPetRoute" key="pet" />
+
     <SetupWizard
-      v-if="!wizard.isCompleted"
+      v-else-if="!wizard.isCompleted"
       key="wizard"
       @complete="onWizardComplete"
     />
@@ -380,6 +403,20 @@ async function onSetupSubmit() {
           :aria-label="t('app.switchLang')"
           @update:model-value="changeLang"
         />
+        <button
+          v-if="desktopAvailable"
+          class="icon-btn"
+          :title="t('app.openPet')"
+          :aria-label="t('app.openPet')"
+          @click="openPet"
+        >
+          <!-- Desktop only: the pet is a frameless Electron window, so a browser
+               tab has nothing to put her in. -->
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="3.5" y="4.5" width="17" height="12" rx="2.5" stroke="currentColor" stroke-width="1.7"/>
+            <path d="M9 20h6M12 16.5V20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          </svg>
+        </button>
         <button
           class="icon-btn settings-btn"
           :class="{ active: route.name === 'settings' }"

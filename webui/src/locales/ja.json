@@ -40,6 +40,7 @@
     "version": "バージョン"
   },
   "app": {
+    "openPet": "デスクトップペット",
     "settings": "設定",
     "status": "ステータス",
     "switchLang": "言語を切り替え",
@@ -380,6 +381,11 @@
     "loading": "プラグインモジュールを読み込み中…"
   },
   "plugins": {
+    "reconnect": "再接続",
+    "reconnectHint": "キャッシュされた接続を捨てて、プラグインに再登録させます。スタック全体の再起動は不要です。",
+    "reconnected": "再接続しました · {n} 件の接続を閉じました",
+    "healthDegraded": "応答が遅い",
+    "healthStale": "応答なし",
     "actionFailed": "操作に失敗しました",
     "builtinFullPerms": "組み込みプラグイン · 権限と外部通信はすべて許可済み",
     "callsCore": "Core API の呼び出し",
@@ -464,6 +470,8 @@
     "removePinConfirm": "このマシンに保存されたアクセス PIN を削除します。続行しますか？"
   },
   "settings": {
+    "groupCore": "基本",
+    "groupPlugins": "プラグイン",
     "about": {
       "available": "更新があります",
       "beta": "ベータ（リポジトリ同期）",
@@ -602,6 +610,7 @@
     "removeModel": "{name} を削除",
     "modelExists": "“{name}” は既に一覧にあります",
     "noProviders": "プロバイダーが未設定です。上部の追加をクリックしてください。",
+    "noProvidersForKind": "この種類のプロバイダーはまだありません。",
     "pageDesc": "プロバイダー、モデル、ペルソナ、Live2D アバターを管理",
     "pathPickTitle": "フォルダーを選択",
     "pathUp": "1 つ上へ",
@@ -627,6 +636,12 @@
     "pluginSourcePlaceholder": "https://gh-proxy.com",
     "pluginSourceTitle": "プラグインソース",
     "provider": "プロバイダー",
+    "providerKindLLM": "LLM",
+    "providerKindTTS": "音声合成",
+    "providerKindASR": "音声認識",
+    "providerKindImage": "画像",
+    "providerKindLabel": "プロバイダーの種類",
+    "providerKindHint": "このプロバイダーが提供するもの。対話モデルは LLM、音声合成と音声認識はそれぞれ独立したサービスです。",
     "providerDesc": "AI プロバイダーを選択して API 認証情報を設定",
     "providerDescMulti": "複数のプロバイダーとモデルを追加できます。チャットはデフォルトモデルを使用し、インテリジェント選択は Agent 専用です",
     "providerModelType": "モデル種別",
@@ -732,6 +747,8 @@
     "slider": "思考の強度スライダー"
   },
   "usage": {
+    "colModel": "モデル",
+    "colShare": "割合",
     "byDay": "日別",
     "byModel": "モデル別",
     "clear": "使用量を消去",
@@ -830,5 +847,18 @@
     "useModels": "これらのモデルを使用",
     "welcome": "0kay へようこそ！",
     "welcomeDesc": "数ステップで設定が完了します。"
+  },
+  "pet": {
+    "holdToTalk": "押して話す",
+    "releaseToSend": "離して送信",
+    "transcribing": "認識中…",
+    "tooShort": "短すぎます",
+    "heardNothing": "聞き取れませんでした",
+    "noSpeech": "音声が検出されません",
+    "asrNotConfigured": "ASR が未設定です",
+    "asrBadKey": "ASR キーが無効です",
+    "asrTooLong": "録音が長すぎます",
+    "asrFailed": "音声サービスでエラー",
+    "replyFailed": "返信に失敗しました"
   }
 }

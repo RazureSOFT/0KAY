@@ -66,6 +66,11 @@ class WorldRuntime:
         self.path = Path(data_dir) / "world.json"
         self.shadow_path = Path(data_dir) / "shadow_log.jsonl"
         self._load()
+        from ..cast import CastContexts
+        self.cast_context = CastContexts(
+            Path(data_dir) / "cast.json",
+            names={str(a["id"]): str(a["name"]) for a in self.world_map.get("actors", [])
+                   if a.get("id") and a.get("name")})
 
     def _load(self) -> None:
         try:
@@ -91,6 +96,7 @@ class WorldRuntime:
         temporary = self.path.with_suffix(".tmp")
         temporary.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
         temporary.replace(self.path)
+        self.cast_context.save()
 
     def _template(self, template_id: str):
         for template in self.templates:
@@ -204,8 +210,13 @@ class WorldRuntime:
     def render_actor_beat(self, actor_id: str, kind: str) -> str:
         name = self._actor_name(actor_id)
         if kind == "upset":
-            return f"{name} 有点生你的气了：这么久都没个消息，ta 觉得你是不是把 ta 忘了。"
-        return f"{name} 主动来找你：最近过得怎么样？好久没好好聊过了。"
+            text = f"{name} 有点生你的气了：这么久都没个消息，ta 觉得你是不是把 ta 忘了。"
+        else:
+            text = f"{name} 主动来找你：最近过得怎么样？好久没好好聊过了。"
+        # Kept per actor: this is what *this* person said, and it must not show
+        # up when somebody else is talking.
+        self.cast_context.observe(actor_id, "actor", text)
+        return text
 
     def apply_actor_beat(self, actor_id: str, kind: str) -> None:
         actor = self.sim.state.get("actors", {}).get(actor_id)
@@ -281,15 +292,21 @@ class WorldRuntime:
         except Exception as _exc:
             logger.debug("suppressed error: %s", _exc)
 
-    def _render_with_llm(self, llm, event: dict, fallback: str) -> str:
-        premise = f"这个虚构世界的前提：{self.premise}\n" if self.premise else ""
-        prompt = f"{premise}把这件事用 2-3 句自然的中文写出来，不要加新的人名或事实：{fallback}"
+    def _render_with_llm(self, llm, event: dict, fallback: str, *, actor_id: str = "") -> str:
+        actor_id = actor_id or str((event.get("bindings") or {}).get("actor") or "")
+        premise = f"Setting: {self.premise}\n" if self.premise else ""
+        context = self.cast_context.prompt_for(actor_id) + "\n" if actor_id else ""
+        prompt = (f"{premise}{context}"
+                  f"Rewrite this as two or three natural sentences of Chinese dialogue or narration. "
+                  f"Do not invent new names or facts: {fallback}")
         try:
             text = str(llm(prompt)).strip() or fallback
         except Exception:
             return fallback
         if self.validate(text, event):
             return fallback
+        if actor_id:
+            self.cast_context.observe(actor_id, "actor", text)
         return text
 
     def _consume(self, engine, event: dict, text: str, density: str) -> None:

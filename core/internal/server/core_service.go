@@ -113,6 +113,13 @@ type TaskInfo struct {
 	Args        string
 	Reasoning   string
 	Attachments string
+	// Progress is the agent's own completeness estimate (0-100) and Phase is
+	// what it is doing right now. Both are advisory: the agent updates them
+	// through the progress tool, Core only stores them.
+	Progress int
+	Phase    string
+	Note     string
+	Plan     string
 }
 
 type persistedTask struct {
@@ -131,6 +138,10 @@ type persistedTask struct {
 	Args        string    `json:"args,omitempty"`
 	Reasoning   string    `json:"reasoning,omitempty"`
 	Attachments string    `json:"attachments,omitempty"`
+	Progress    int       `json:"progress,omitempty"`
+	Phase       string    `json:"phase,omitempty"`
+	Note        string    `json:"note,omitempty"`
+	Plan        string    `json:"plan,omitempty"`
 }
 
 type UsageRecord struct {
@@ -336,6 +347,10 @@ func NewCoreServiceServer(reg *registry.Registry, dataDir ...string) *CoreServic
 				tasks[item.TaskID].Args = copy.Args
 				tasks[item.TaskID].Reasoning = copy.Reasoning
 				tasks[item.TaskID].Attachments = copy.Attachments
+				tasks[item.TaskID].Progress = copy.Progress
+				tasks[item.TaskID].Phase = copy.Phase
+				tasks[item.TaskID].Note = copy.Note
+				tasks[item.TaskID].Plan = copy.Plan
 				if copy.State == "running" || copy.State == "pending" {
 					tasks[item.TaskID].State = "failed"
 					tasks[item.TaskID].Error = "Core restarted before execution was acknowledged"
@@ -430,6 +445,10 @@ func persistedFrom(t *TaskInfo) persistedTask {
 		Args:        clipField(t.Args, persistedArgsLimit),
 		Reasoning:   clipField(t.Reasoning, persistedReasoningLimit),
 		Attachments: clipField(t.Attachments, persistedAttachmentsLimit),
+		Progress:    t.Progress,
+		Phase:       t.Phase,
+		Note:        clipField(t.Note, 300),
+		Plan:        clipField(t.Plan, 24000),
 	}
 }
 
@@ -1820,6 +1839,18 @@ func (s *CoreServiceServer) taskRowLocked(t *TaskInfo) map[string]interface{} {
 	}
 	if refs := decodeAttachments(t.Attachments); len(refs) > 0 {
 		item["attachments"] = refs
+	}
+	if t.Progress > 0 {
+		item["progress"] = t.Progress
+	}
+	if t.Phase != "" {
+		item["phase"] = t.Phase
+	}
+	if t.Note != "" {
+		item["note"] = t.Note
+	}
+	if t.Plan != "" {
+		item["plan"] = t.Plan
 	}
 	return item
 }

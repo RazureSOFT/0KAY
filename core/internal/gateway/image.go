@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"0kay/core/internal/netguard"
+	"0kay/core/internal/providers"
 )
 
 // same table as tts and asr: one endpoint, whatever the fuck you point at it.
@@ -26,11 +27,17 @@ const (
 type imageBackend struct {
 	Endpoint string
 	Provider string
+	Token    string
 }
 
 func (g *Gateway) imageConfiguredEndpoint() (imageBackend, bool) {
 	if value := strings.TrimSpace(os.Getenv("IMAGE_ENDPOINT")); value != "" {
 		return imageBackend{Endpoint: value, Provider: "env"}, true
+	}
+	if g.providerStore != nil {
+		if p, ok := g.providerStore.DefaultForKind(providers.KindImage); ok && strings.TrimSpace(p.BaseURL) != "" {
+			return imageBackend{Endpoint: strings.TrimRight(strings.TrimSpace(p.BaseURL), "/"), Provider: p.ID, Token: p.APIKey}, true
+		}
 	}
 	if g.settingsStore == nil {
 		return imageBackend{}, false
@@ -78,7 +85,7 @@ func (g *Gateway) imageDraw(ctx context.Context, prompt, size string) (string, [
 		return "", nil, err
 	}
 	req.Header.Set("Content-Type", "application/json")
-	if token := os.Getenv("IMAGE_SERVICE_TOKEN"); token != "" {
+	if token := firstNonEmpty(backend.Token, os.Getenv("IMAGE_SERVICE_TOKEN")); token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
 	}
 	client := &http.Client{Timeout: 120 * time.Second, Transport: netguard.Transport(netguard.Strict()), CheckRedirect: func(req *http.Request, via []*http.Request) error { return http.ErrUseLastResponse }}

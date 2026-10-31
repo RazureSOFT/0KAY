@@ -23,10 +23,104 @@ const navItems = [
   { key: 'cognition', i: '01', labelKey: 'life.companion.nav.cognition', icon: '◉' },
   { key: 'persona', i: '02', labelKey: 'life.companion.nav.persona', icon: '✎' },
   { key: 'world', i: '03', labelKey: 'life.companion.nav.world', icon: '✦' },
+  { key: 'behavior', i: '06', labelKey: 'life.companion.beh.nav', icon: '⚙' },
   { key: 'adapters', i: '04', labelKey: 'life.companion.nav.adapters', icon: '✉' },
   { key: 'state', i: '05', labelKey: 'life.companion.nav.state', icon: '☺' },
 ]
 const ADAPTERS_SETTINGS_TAB = 'life_adapters'
+
+// Behavioural settings: the keys the backend always had defaults for but the
+// panel never exposed, so the only way to change them was to edit the database.
+// The table drives both the form and the payload; a new key is one line here.
+type BehType = 'bool' | 'int' | 'float' | 'text' | 'stage' | 'longtext'
+interface BehField { key: string; label: string; type: BehType; min?: number; max?: number; step?: number }
+interface BehGroup { title: string; fields: BehField[] }
+
+const STAGE_LADDER = ['警惕', '疏离', '陌生', '认识', '熟悉', '友好', '亲近', '亲密']
+// Stored as the backend literal: the gate validates against this ladder, so a
+// translated label here would be rejected on save.
+const stageCapOptions = STAGE_LADDER.map((s) => ({ value: s, label: s }))
+
+const BEHAVIOR_GROUPS: BehGroup[] = [
+  { title: 'life.companion.beh.groupProactive', fields: [
+    { key: 'enable_proactive', label: 'life.companion.beh.enableProactive', type: 'bool' },
+    { key: 'proactive_daily_limit', label: 'life.companion.beh.proactiveDailyLimit', type: 'int', min: 0, max: 50 },
+    { key: 'proactive_target_limit', label: 'life.companion.beh.proactiveTargetLimit', type: 'int', min: 0, max: 20 },
+    { key: 'min_interval_minutes', label: 'life.companion.beh.minIntervalMinutes', type: 'int', min: 0, max: 1440 },
+    { key: 'idle_minutes', label: 'life.companion.beh.idleMinutes', type: 'int', min: 1, max: 1440 },
+    { key: 'check_interval_seconds', label: 'life.companion.beh.checkIntervalSeconds', type: 'int', min: 30, max: 86400 },
+    { key: 'burst_max', label: 'life.companion.beh.burstMax', type: 'int', min: 1, max: 20 },
+    { key: 'quiet_start', label: 'life.companion.beh.quietStart', type: 'int', min: 0, max: 23 },
+    { key: 'quiet_end', label: 'life.companion.beh.quietEnd', type: 'int', min: 0, max: 23 },
+    { key: 'reply_deceleration', label: 'life.companion.beh.replyDeceleration', type: 'bool' },
+    { key: 'daily_token_limit', label: 'life.companion.beh.dailyTokenLimit', type: 'int', min: 0, max: 1000000000 },
+  ] },
+  { title: 'life.companion.beh.groupBond', fields: [
+    { key: 'enable_exclusive_bond', label: 'life.companion.beh.enableExclusiveBond', type: 'bool' },
+    { key: 'enable_group_observe', label: 'life.companion.beh.enableGroupObserve', type: 'bool' },
+    { key: 'enable_dream', label: 'life.companion.beh.enableDream', type: 'bool' },
+    { key: 'affinity_decay_per_day', label: 'life.companion.beh.affinityDecayPerDay', type: 'float', min: 0, max: 1, step: 0.01 },
+    { key: 'affinity_decay_after_days', label: 'life.companion.beh.affinityDecayAfterDays', type: 'int', min: 0, max: 365 },
+  ] },
+  { title: 'life.companion.beh.groupEnvironment', fields: [
+    { key: 'enable_environment_fetch', label: 'life.companion.beh.enableEnvironmentFetch', type: 'bool' },
+    { key: 'env_timezone', label: 'life.companion.beh.envTimezone', type: 'text' },
+    { key: 'env_city', label: 'life.companion.beh.envCity', type: 'text' },
+    { key: 'env_latitude', label: 'life.companion.beh.envLatitude', type: 'float', min: -90, max: 90, step: 0.0001 },
+    { key: 'env_longitude', label: 'life.companion.beh.envLongitude', type: 'float', min: -180, max: 180, step: 0.0001 },
+    { key: 'weather_cache_minutes', label: 'life.companion.beh.weatherCacheMinutes', type: 'int', min: 5, max: 1440 },
+  ] },
+  { title: 'life.companion.beh.groupContent', fields: [
+    { key: 'enable_content_fetch', label: 'life.companion.beh.enableContentFetch', type: 'bool' },
+    { key: 'news_feeds', label: 'life.companion.beh.newsFeeds', type: 'longtext' },
+    { key: 'content_items_per_feed', label: 'life.companion.beh.contentItemsPerFeed', type: 'int', min: 1, max: 20 },
+  ] },
+  { title: 'life.companion.beh.groupVoice', fields: [
+    { key: 'tts_endpoint', label: 'life.companion.beh.ttsEndpoint', type: 'text' },
+    { key: 'proactive_tts', label: 'life.companion.beh.proactiveTts', type: 'bool' },
+  ] },
+  { title: 'life.companion.beh.groupAccess', fields: [
+    { key: 'owner_user_ids', label: 'life.companion.beh.ownerUserIds', type: 'text' },
+    { key: 'secondary_user_ids', label: 'life.companion.beh.secondaryUserIds', type: 'text' },
+    { key: 'owner_opacity', label: 'life.companion.beh.ownerOpacity', type: 'bool' },
+    { key: 'other_stage_cap', label: 'life.companion.beh.otherStageCap', type: 'stage' },
+    { key: 'secondary_stage_cap', label: 'life.companion.beh.secondaryStageCap', type: 'stage' },
+  ] },
+  { title: 'life.companion.beh.groupAdvanced', fields: [
+    { key: 'model_routes', label: 'life.companion.beh.modelRoutes', type: 'longtext' },
+    { key: 'persona_traits_override', label: 'life.companion.beh.personaTraitsOverride', type: 'longtext' },
+    { key: 'attachment_override', label: 'life.companion.beh.attachmentOverride', type: 'longtext' },
+    { key: 'tsundere_override', label: 'life.companion.beh.tsundereOverride', type: 'longtext' },
+    { key: 'personadyn_override', label: 'life.companion.beh.personadynOverride', type: 'longtext' },
+  ] },
+]
+const BEHAVIOR_FIELDS = BEHAVIOR_GROUPS.flatMap((group) => group.fields)
+
+// The backend sends every setting on load, defaults included, so the panel keeps
+// no second copy of the defaults that could drift out of date.
+function coerceBehavior(field: BehField, raw: unknown): any {
+  if (field.type === 'bool') return String(raw ?? '0') === '1'
+  if (field.type === 'int') { const n = Number(raw); return Number.isFinite(n) ? n : 0 }
+  if (field.type === 'float') {
+    if (raw === '' || raw === null || raw === undefined) return ''
+    const n = Number(raw)
+    return Number.isFinite(n) ? n : ''
+  }
+  return String(raw ?? '')
+}
+function syncBehavior() {
+  const settings = data.value.settings || {}
+  for (const field of BEHAVIOR_FIELDS) settingsForm.value[field.key] = coerceBehavior(field, settings[field.key])
+}
+function behaviorPayload(): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const field of BEHAVIOR_FIELDS) {
+    const value = settingsForm.value[field.key]
+    if (field.type === 'bool') out[field.key] = value ? '1' : '0'
+    else out[field.key] = value === '' || value === null || value === undefined ? '' : String(value)
+  }
+  return out
+}
 
 function flash(message: string) { notice.value = message; setTimeout(() => { if (notice.value === message) notice.value = '' }, FLASH_MS) }
 function openAdapterSettings() {
@@ -387,6 +481,7 @@ const interactionEffect = (i: string) => (INTERACTIONS.includes(i) ? t(`life.com
 
 const settingsForm = ref<Record<string, any>>({})
 const worldDensity = ref('off')
+const worldScene = ref(true)
 const worldDensityOptions = computed(() => [
   { value: 'off', label: t('life.companion.worldDensity.off') },
   { value: 'texture', label: t('life.companion.worldDensity.texture') },
@@ -677,7 +772,9 @@ onUnmounted(() => { if (leafletMap) { leafletMap.remove(); leafletMap = null; ma
 
 function syncSettings() {
   settingsForm.value = { ...syncCogSettings() }
+  syncBehavior()
   worldDensity.value = String(data.value.settings?.world_density || 'off')
+  worldScene.value = String(data.value.settings?.world_scene ?? '1') !== '0'
   worldFictional.value = String(data.value.settings?.world_fictional || 'fictional')
   worldCountry.value = String(data.value.settings?.world_country || '')
   worldCity.value = String(data.value.settings?.world_city || '')
@@ -696,7 +793,7 @@ const saving = ref(false)
 // The form is a draft until 保存设置; without a visible difference users
 // tab away and lose edits, or believe stale values are live.
 function settingsSnapshot(): string {
-  return JSON.stringify({ ...cogPayload(), world_density: worldDensity.value,
+  return JSON.stringify({ ...cogPayload(), ...behaviorPayload(), world_density: worldDensity.value, world_scene: worldScene.value ? '1' : '0',
     world_fictional: worldFictional.value, world_country: worldCountry.value,
     world_city: worldCity.value, world_district: worldDistrict.value,
     world_premise: worldPremise.value, world_actors: worldActors.value, world_places: worldPlaces.value,
@@ -733,7 +830,7 @@ async function saveSettings() {
   if (saving.value) return
   saving.value = true
   try {
-    const settings = { ...cogPayload(), world_density: worldDensity.value,
+    const settings = { ...cogPayload(), ...behaviorPayload(), world_density: worldDensity.value, world_scene: worldScene.value ? '1' : '0',
       world_fictional: worldFictional.value, world_country: worldCountry.value,
       world_city: worldCity.value, world_district: worldDistrict.value,
       world_premise: worldPremise.value, world_actors: worldActors.value, world_places: worldPlaces.value,
@@ -1473,7 +1570,9 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
         <h3>{{ t('life.companion.world.density') }}</h3>
         <div class="settings-grid">
           <label><span>{{ t('life.companion.world.density') }}</span><AppSelect v-model="worldDensity" :options="worldDensityOptions" :aria-label="t('life.companion.world.densityAria')" /></label>
+          <label class="sw"><input type="checkbox" v-model="worldScene" /><span>{{ t('life.companion.world.scene') }}</span></label>
         </div>
+        <p class="hint">{{ t('life.companion.world.sceneHint') }}</p>
         <p class="hint">{{ t('life.companion.world.densityHint') }}</p>
       </article>
       <article class="card">
@@ -1567,6 +1666,34 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
       </article>
     </section>
 
+        <section v-show="tab === 'behavior'" data-panel="behavior" class="panel">
+      <div class="section-head"><div><h2>{{ t('life.companion.beh.title') }}</h2><p class="desc">{{ t('life.companion.beh.hint') }}</p></div>
+        <div class="head-actions"><button class="btn filled sm" @click="saveSettings">{{ t('life.companion.saveSettings') }}</button></div>
+      </div>
+      <article v-for="group in BEHAVIOR_GROUPS" :key="group.title" class="card">
+        <h3>{{ t(group.title) }}</h3>
+        <div class="settings-grid">
+          <template v-for="field in group.fields" :key="field.key">
+            <label v-if="field.type === 'bool'" class="sw">
+              <input type="checkbox" v-model="settingsForm[field.key]" /><span>{{ t(field.label) }}</span>
+            </label>
+            <label v-else-if="field.type === 'stage'">
+              <span>{{ t(field.label) }}</span>
+              <AppSelect v-model="settingsForm[field.key]" :options="stageCapOptions" :aria-label="t(field.label)" />
+            </label>
+            <label v-else-if="field.type === 'longtext'" class="world-field">
+              <span class="world-label">{{ t(field.label) }}</span>
+              <textarea v-model="settingsForm[field.key]" class="world-text" rows="2"></textarea>
+            </label>
+            <label v-else>
+              <span>{{ t(field.label) }}</span>
+              <input v-model="settingsForm[field.key]" :type="field.type === 'text' ? 'text' : 'number'"
+                :min="field.min" :max="field.max" :step="field.step" class="field" />
+            </label>
+          </template>
+        </div>
+      </article>
+    </section>
             <section v-show="tab === 'adapters'" data-panel="adapters" class="panel">
             <AdapterSettingsPage />
     </section>
@@ -1656,6 +1783,72 @@ injectStyle('life-plugin-kit', lifeKitCss('pcp'))
 </template>
 
 <style scoped>
+/* ---- Layout skeleton ----
+   These class names were used in the template with no rules behind them, so cards
+   had no surface, sections no rhythm and the tabs no shape: the page read as one
+   long column of text. Only additive rules live here. */
+.pcp .card { background: var(--md-surface-container-lowest, #fff); border: 1px solid color-mix(in srgb, var(--md-outline-variant) 60%, transparent); border-radius: 24px; padding: 22px; box-shadow: 0 1px 2px #0000000a; }
+.pcp .section { display: flex; flex-direction: column; gap: 14px; }
+.pcp .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.pcp .section-head h2, .pcp .section-head h3 { margin: 0; font-size: 15px; font-weight: 700; }
+.pcp .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.pcp .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.pcp .panel { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 18px; background: var(--md-surface-container); }
+.pcp .tabs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.pcp .tab { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 999px; border: 1px solid transparent; background: transparent; color: var(--md-on-surface-variant); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background .12s ease, color .12s ease; }
+.pcp .tab:hover { background: color-mix(in srgb, var(--md-on-surface) 8%, transparent); }
+.pcp .tab.active, .pcp .tab.filled { background: var(--md-primary-container); color: var(--md-on-primary-container); }
+.pcp .tab-ic { display: grid; place-items: center; opacity: .85; }
+.pcp .head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pcp .switches { display: flex; flex-direction: column; gap: 8px; }
+.pcp .preset-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.pcp .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.pcp .meta { display: flex; gap: 10px; flex-wrap: wrap; font-size: 12px; color: var(--md-on-surface-variant); }
+.pcp .desc, .pcp .hint, .pcp .tiny, .pcp .sub-label { font-size: 12px; color: var(--md-on-surface-variant); line-height: 1.5; }
+.pcp .tiny { font-size: 11px; opacity: .85; }
+.pcp .empty { padding: 22px; text-align: center; color: var(--md-on-surface-variant); font-size: 12.5px; border-radius: 16px; background: var(--md-surface-container); }
+.pcp .feed { display: flex; flex-direction: column; gap: 10px; }
+.pcp .i, .pcp .k { font-style: normal; }
+.pcp .banner { padding: 10px 14px; border-radius: 12px; font-size: 12.5px; background: var(--md-surface-container); }
+.pcp .banner.err { background: color-mix(in srgb, var(--md-error, #ba1a1a) 14%, transparent); color: var(--md-error, #ba1a1a); }
+.pcp .banner.ok { background: color-mix(in srgb, #2e7d52 14%, transparent); color: #2e7d52; }
+.pcp .banner.warn { background: color-mix(in srgb, #b26a00 16%, transparent); color: #b26a00; }
+.pcp .eyebrow { margin: 0 0 4px; font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--md-primary); }
+.pcp .expanded { max-height: none; }
+.pcp .settings-grid .sm { max-width: 160px; }
+.pcp .wm-routes-col { display: flex; flex-direction: column; gap: 8px; }
+
+/* Page shell + hero.
+   These class names were used in the template with no rules behind them, so the
+   heading, the action row and the status pills all stacked as plain blocks and
+   the header read as broken. */
+.pcp { display: flex; flex-direction: column; gap: 18px; padding: 22px 24px 40px; max-width: 1180px; margin: 0 auto; }
+.pcp .hero { display: flex; flex-direction: column; gap: 12px;
+  /* A flex child shrinks by default: the hero was being squashed to 50px and
+     then clipped by its own overflow:hidden, which is why the title and the
+     action row were cut in half. */
+  flex: 0 0 auto; min-height: fit-content; overflow: visible; }
+.pcp .hero-main { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.pcp .hero-copy { min-width: 0; }
+.pcp .eyebrow { margin: 0 0 4px; font-size: 11px; font-weight: 700; letter-spacing: .12em; color: var(--md-primary); }
+.pcp .hero-copy h1 { margin: 0; font-size: 26px; line-height: 1.2; font-weight: 700; }
+.pcp .hero-copy .sub { margin: 6px 0 0; font-size: 13px; color: var(--md-on-surface-variant); max-width: 60ch; }
+.pcp .hero-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.pcp .hero-actions .btn { padding: 8px 14px; border-radius: 10px; font-size: 12.5px; white-space: nowrap; }
+.pcp .hero-actions .fab { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 999px; font-size: 12.5px; white-space: nowrap; }
+.pcp .hero-actions .fab-ic { font-size: 12px; opacity: .9; }
+.pcp .state-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pcp .state-row .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px; font-size: 11.5px; font-weight: 600; background: var(--md-surface-container); color: var(--md-on-surface-variant); }
+.pcp .state-row .pill.soft { opacity: .85; font-weight: 500; }
+.pcp .state-row .pill.bad { background: color-mix(in srgb, var(--md-error, #ba1a1a) 16%, transparent); color: var(--md-error, #ba1a1a); }
+.pcp .banner { margin: 0; padding: 10px 14px; border-radius: 10px; font-size: 12.5px; }
+.pcp .banner.err { background: color-mix(in srgb, var(--md-error, #ba1a1a) 14%, transparent); color: var(--md-error, #ba1a1a); }
+@media (max-width: 720px) {
+  .pcp { padding: 16px 14px 32px; }
+  .pcp .hero-actions { justify-content: flex-start; }
+  .pcp .hero-copy h1 { font-size: 22px; }
+}
+
 /* Transparency affordances: draft-vs-saved pill, per-card active badge,
    default-value hints on bare numeric parameters. */
 .dirty-pill{display:inline-block;vertical-align:middle;margin-left:10px;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em;background:var(--md-tertiary-container,#e8def8);color:var(--md-on-tertiary-container,#1d192b)}
@@ -1832,4 +2025,14 @@ html[data-theme="dark"] .leaflet-container{background:#10151c}
 .leaflet-container{font-family:inherit;background:#e8edf2;border-radius:16px}
 .leaflet-container a{color:#2f6fed}
 .leaflet-popup-content{font-size:13px;line-height:1.5}
+
+/* Remaining semantic hooks: `btn`/`tonic`/`danger` are modifiers on the shared
+   button, `fld` marks a field wrapper, `sw` a switch row. */
+.pcp .btn { padding: 8px 14px; border-radius: 10px; font-size: 12.5px; font-weight: 600; }
+.pcp .btn.tonic { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.pcp .btn.danger { background: color-mix(in srgb, var(--md-error, #ba1a1a) 14%, transparent); color: var(--md-error, #ba1a1a); }
+.pcp .fld { display: flex; flex-direction: column; gap: 4px; }
+.pcp .sw { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pcp .pdetails { display: flex; flex-direction: column; gap: 6px; }
+.pcp .cognition, .pcp .circadianNow { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 </style>

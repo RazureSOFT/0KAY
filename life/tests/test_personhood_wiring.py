@@ -307,7 +307,7 @@ class ContinuityTests(unittest.TestCase):
         prompt = self.think.build_prompt(user_message="hi", emotion_context="{}", energy_context="",
                                          memory_context="", self_statement="现在挺好",
                                          inner_thread="今天有点累；想找人说话")
-        self.assertIn("你最近的状态脉络", prompt)
+        self.assertIn("recent thread of your state", prompt)
         self.assertIn("今天有点累", prompt)
 
     def test_prompt_skips_continuity_when_absent(self):
@@ -365,7 +365,7 @@ class FirstPersonWiring(unittest.TestCase):
         prompt = self.engine.think.build_prompt(
             user_message="hi", emotion_context="{}", energy_context="",
             memory_context="", self_statement="今天有点想你")
-        self.assertIn("我自己刚写下的状态", prompt)
+        self.assertIn("What I wrote down about my own state", prompt)
         self.assertIn("今天有点想你", prompt)
 
     def test_no_self_statement_keeps_the_prompt_clean(self):

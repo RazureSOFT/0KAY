@@ -280,6 +280,12 @@
   <string name="page.restore">恢复</string>
   <string name="page.restoreToChat">恢复会话后可以继续对话</string>
   <string name="page.run">运行</string>
+  <string name="page.planReady">计划已就绪</string>
+  <string name="page.planSteps">{n} 步</string>
+  <string name="page.planBuild">开始执行</string>
+  <string name="page.planHide">收起计划</string>
+  <string name="page.planShow">展开计划</string>
+  <string name="page.planBuildMessage">执行上面的计划。按步骤推进，始终只保留一个进行中的步骤，并随时汇报进度。如果某一步发现是错的，先停下来说明变化，再偏离计划。</string>
   <string name="page.running">正在执行</string>
   <string name="page.sampled">采样</string>
   <string name="page.sampling">等待采样…</string>
@@ -325,6 +331,17 @@
   <string name="page.typeCommand">输入命令…</string>
   <string name="page.ungrouped">未分组</string>
   <string name="page.unsaved">未保存</string>
+  <string name="page.runRunning">进行中</string>
+  <string name="page.runDone">已完成</string>
+  <string name="page.queuedTitle">排队中的消息</string>
+  <string name="page.queuedRemove">从队列移除</string>
+  <string name="page.evolve">自我改进</string>
+  <string name="page.evolveHint">起草一条自我改进请求，发送前你可以先看和改</string>
+  <string name="page.evolvePrompt">用 evolve_begin 在独立 worktree 里改自己。只在该 worktree 内动手，主分支保持不变，改完跑测试，并在 `evolve_finish(open_pr=true)` 之前先问我。</string>
+  <string name="page.planReview">逐步评审</string>
+  <string name="page.planRejectedNote">以下步骤已被否决，不要执行；请先把它们作为 open_questions 向我确认：
+{steps}</string>
+  <string name="page.runFinished">「{title}」已完成</string>
   <string name="page.untitledSession">未命名会话</string>
   <string name="page.uploading">上传中…</string>
   <string name="page.viewSource">查看源码</string>

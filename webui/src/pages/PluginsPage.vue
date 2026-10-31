@@ -22,6 +22,11 @@ interface RuntimePlugin {
   type: string
   capabilities: string[]
   status: string
+  health?: string
+  /** installed | starting | healthy | degraded | stopped | failed */
+  lifecycle?: string
+  needs_attention?: boolean
+  heartbeat_age_seconds?: number
   active_tasks: number
   disabled?: boolean
   builtin?: boolean
@@ -49,6 +54,11 @@ interface PluginRow {
   type: string
   capabilities: string[]
   status: string
+  /** healthy | degraded | stale | unhealthy | disabled | unknown */
+  health?: string
+  /** installed | starting | healthy | degraded | stopped | failed */
+  lifecycle?: string
+  needs_attention?: boolean
   active_tasks: number
   disabled?: boolean
   runtime: boolean
@@ -63,6 +73,7 @@ const loading = ref(false)
 const error = ref('')
 const notice = ref('')
 const toggling = ref<string>('')
+const reconnecting = ref('')
 const uninstalling = ref<string>('')
 let timer: ReturnType<typeof setInterval> | null = null
 
@@ -193,6 +204,9 @@ async function fetchPlugins(background = false) {
         type: rt?.type || '',
         capabilities: rt?.capabilities || [],
         status: rt?.status || '',
+        health: rt?.health || '',
+        lifecycle: rt?.lifecycle || '',
+        needs_attention: rt?.needs_attention,
         active_tasks: rt?.active_tasks || 0,
         disabled: rt?.disabled,
         runtime: !!rt,
@@ -213,6 +227,9 @@ async function fetchPlugins(background = false) {
         type: p.type,
         capabilities: p.capabilities || [],
         status: p.status,
+        health: p.health || '',
+        lifecycle: p.lifecycle || '',
+        needs_attention: p.needs_attention,
         active_tasks: p.active_tasks,
         disabled: p.disabled,
         runtime: true,
@@ -257,6 +274,24 @@ async function togglePlugin(p: PluginRow) {
   }
 }
 
+// Reconnect is the recovery path that does not need a stack restart: it drops
+// the cached connection and lets the plugin re-announce itself.
+async function reconnectPlugin(p: PluginRow) {
+  const name = p.name || p.id
+  reconnecting.value = name
+  try {
+    const res = await fetch(`/api/plugins/${encodeURIComponent(name)}/reconnect`, { method: 'POST' })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json().catch(() => ({}) as any)
+    await fetchPlugins()
+    toast(t('plugins.reconnected', { n: Number(data?.connections_closed) || 0 }))
+  } catch (e: any) {
+    error.value = e.message || t('plugins.actionFailed')
+    toast(e.message || t('plugins.actionFailed'), 'error')
+  } finally {
+    reconnecting.value = ''
+  }
+}
 async function waitForOp() {
   for (let i = 0; i < 180; i++) {
     await new Promise((r) => setTimeout(r, 1000))
@@ -314,7 +349,21 @@ function openSettings(p: PluginRow) {
 
 function statusLabel(p: PluginRow) {
   if (p.disabled) return t('plugins.disabled')
-  if (p.runtime) return isHealthy(p) ? t('agents.healthy') : p.status
+  if (p.runtime) {
+    // `lifecycle` is Core's own one-word phase (installed/starting/healthy/
+    // degraded/stopped/failed); `health` is the finer detail behind it. Prefer
+    // the phase so the badge says the same thing as the API.
+    switch (p.lifecycle) {
+      case 'degraded': return t('plugins.healthDegraded')
+      case 'failed': return t('plugins.healthStale')
+      case 'starting': return t('plugins.phaseStarting')
+      case 'installed': return t('plugins.phaseInstalled')
+      case 'healthy': return t('agents.healthy')
+    }
+    if (p.health === 'degraded') return t('plugins.healthDegraded')
+    if (p.health === 'stale') return t('plugins.healthStale')
+    return isHealthy(p) ? t('agents.healthy') : p.status
+  }
   return p.installedSource === 'pm' ? t('plugins.installedLabel') : t('plugins.platformComponent')
 }
 
@@ -550,6 +599,14 @@ onUnmounted(() => {
               :disabled="toggling === detail.name"
               @click="togglePlugin(detail)"
             >{{ detail.disabled ? t('plugins.enable') : t('plugins.disable') }}</button>
+            <button
+              v-if="detail.runtime && !detail.disabled"
+              class="btn btn-tonal"
+              type="button"
+              :disabled="reconnecting === (detail.name || detail.id)"
+              :title="t('plugins.reconnectHint')"
+              @click="reconnectPlugin(detail)"
+            >{{ t('plugins.reconnect') }}</button>
             <button
               v-if="detail.installedSource === 'pm'"
               class="btn btn-danger-tonal"

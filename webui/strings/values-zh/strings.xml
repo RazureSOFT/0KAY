@@ -36,6 +36,7 @@
   <string name="agents.tasks">任务数</string>
   <string name="agents.title">Agent 列表</string>
   <string name="agents.version">版本</string>
+  <string name="app.openPet">桌面宠物</string>
   <string name="app.settings">设置</string>
   <string name="app.status">状态</string>
   <string name="app.switchLang">切换语言</string>
@@ -328,6 +329,11 @@
   <string name="patch.renderFailed">页面渲染失败</string>
   <string name="patch.retry">重试</string>
   <string name="pluginPane.loading">正在加载插件模块…</string>
+  <string name="plugins.reconnect">重新连接</string>
+  <string name="plugins.reconnectHint">丢掉缓存的连接，让插件重新报到；不用重启整栈。</string>
+  <string name="plugins.reconnected">已重连 · 关闭 {n} 条连接</string>
+  <string name="plugins.healthDegraded">响应变慢</string>
+  <string name="plugins.healthStale">已失联</string>
   <string name="plugins.actionFailed">操作失败</string>
   <string name="plugins.builtinFullPerms">内置插件 · 权限与出网已全部放行</string>
   <string name="plugins.callsCore">调用 Core API</string>
@@ -394,6 +400,8 @@
   <string name="security.pinUnset">未设置 PIN</string>
   <string name="security.removePin">清除 PIN</string>
   <string name="security.removePinConfirm">删除后本机不再保存访问 PIN，确定继续？</string>
+  <string name="settings.groupCore">常用</string>
+  <string name="settings.groupPlugins">插件</string>
   <string name="settings.about.available">有新版本可更新</string>
   <string name="settings.about.beta">测试版（同步仓库）</string>
   <string name="settings.about.betaHint">直接从代码仓库 main 分支同步，而非发布版标签（可能不稳定）。</string>
@@ -506,6 +514,7 @@
   <string name="settings.removeModel">移除 {name}</string>
   <string name="settings.modelExists">“{name}” 已在列表中</string>
   <string name="settings.noProviders">尚未配置供应商，点击上方添加。</string>
+  <string name="settings.noProvidersForKind">还没有这类供应商。</string>
   <string name="settings.pageDesc">管理供应商、模型、人设与 Live2D 形象</string>
   <string name="settings.pathPickTitle">选择目录</string>
   <string name="settings.pathUp">上一级</string>
@@ -531,6 +540,12 @@
   <string name="settings.pluginSourcePlaceholder">https://gh-proxy.com</string>
   <string name="settings.pluginSourceTitle">插件源</string>
   <string name="settings.provider">供应商</string>
+  <string name="settings.providerKindLLM">LLM</string>
+  <string name="settings.providerKindTTS">语音合成</string>
+  <string name="settings.providerKindASR">语音识别</string>
+  <string name="settings.providerKindImage">图像</string>
+  <string name="settings.providerKindLabel">供应商类型</string>
+  <string name="settings.providerKindHint">这个供应商提供什么。对话模型选 LLM；语音合成与语音识别是独立服务，各自有自己的接口地址。</string>
   <string name="settings.providerDesc">选择 AI 供应商并配置 API 凭证</string>
   <string name="settings.providerDescMulti">可添加多个供应商与多个模型；聊天使用默认模型，智能选型仅 Agent 使用</string>
   <string name="settings.providerModelType">模型类型</string>
@@ -624,6 +639,8 @@
   <string name="thinking.max">全力思考 · 已达到最高档</string>
   <string name="thinking.providerNote">实际推理参数取决于供应商；最高档可能映射为高档。</string>
   <string name="thinking.slider">思考强度滑块</string>
+  <string name="usage.colModel">模型</string>
+  <string name="usage.colShare">占比</string>
   <string name="usage.byDay">按日</string>
   <string name="usage.byModel">按模型</string>
   <string name="usage.clear">清除用量</string>
@@ -720,4 +737,15 @@
   <string name="wizard.useModels">使用这些模型</string>
   <string name="wizard.welcome">欢迎使用 0kay！</string>
   <string name="wizard.welcomeDesc">只需几步即可完成设置。</string>
+  <string name="pet.holdToTalk">按住说话</string>
+  <string name="pet.releaseToSend">松开结束</string>
+  <string name="pet.transcribing">识别中…</string>
+  <string name="pet.tooShort">说话太短</string>
+  <string name="pet.heardNothing">没听清，再说一次？</string>
+  <string name="pet.noSpeech">没听到声音，靠近麦克风再试</string>
+  <string name="pet.asrNotConfigured">ASR 还没配置（设置 → 供应商 → 语音）</string>
+  <string name="pet.asrBadKey">ASR 密钥无效</string>
+  <string name="pet.asrTooLong">这段录音太长了</string>
+  <string name="pet.asrFailed">语音服务出错</string>
+  <string name="pet.replyFailed">回复失败</string>
 </resources>

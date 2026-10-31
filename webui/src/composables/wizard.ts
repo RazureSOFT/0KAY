@@ -10,20 +10,6 @@ export interface Provider {
   format?: string
 }
 
-export interface ProviderConfig {
-  id: string
-  provider: string
-  name?: string
-  api_key: string
-  base_url: string
-  models: string[]
-  disabled_models?: string[]
-  default_model: string
-  enabled: boolean
-  format?: string
-  model_types?: Record<string, string>
-}
-
 export interface PersonaConfig {
   name: string
   avatar: string
@@ -38,6 +24,24 @@ export interface Live2DConfig {
   enabled: boolean
   modelUrl: string
   modelData: File | null
+}
+
+export interface ProviderConfig {
+  id: string
+  provider: string
+  /** What this provider serves: llm (default), tts, asr, image, embedding. */
+  kind?: string
+  name?: string
+  api_key: string
+  base_url: string
+  models: string[]
+  disabled_models?: string[]
+  default_model: string
+  enabled: boolean
+  format?: string
+  model_types?: Record<string, string>
+  /** Per-model metadata, including the context window the agent budgets against. */
+  entries?: Array<{ id: string; kind?: string; context_window?: number; max_output?: number; capabilities?: string[] }>
 }
 
 export const DEFAULT_LIVE2D_MODELS: { id: string; label: string; url: string }[] = []
@@ -108,13 +112,14 @@ export const PROVIDERS: Provider[] = [
   },
 ]
 
+// Setup is only what the app cannot work without: a model to talk to. Persona
+// and Live2D are configuration, not setup, and asking for them here made the
+// first run longer than the payoff.
 export const WIZARD_STEPS = [
   { id: 1, title: 'Language', description: 'Choose your language' },
   { id: 2, title: 'Welcome', description: 'Welcome to 0kay' },
   { id: 3, title: 'Provider', description: 'Select AI provider' },
   { id: 4, title: 'API Key', description: 'Configure API key & URL' },
   { id: 5, title: 'Models', description: 'Select models' },
-  { id: 6, title: 'Persona', description: 'Create your persona' },
-  { id: 7, title: 'Live2D', description: 'Optional Live2D setup' },
-  { id: 8, title: 'Complete', description: 'Finish setup' },
+  { id: 6, title: 'Complete', description: 'Finish setup' },
 ]

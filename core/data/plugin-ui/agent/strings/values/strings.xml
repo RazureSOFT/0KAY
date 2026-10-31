@@ -280,6 +280,12 @@
   <string name="page.restore">Restore</string>
   <string name="page.restoreToChat">Restore the session to continue chatting</string>
   <string name="page.run">Run</string>
+  <string name="page.planReady">Plan ready</string>
+  <string name="page.planSteps">{n} steps</string>
+  <string name="page.planBuild">Build plan</string>
+  <string name="page.planHide">Hide plan</string>
+  <string name="page.planShow">Show plan</string>
+  <string name="page.planBuildMessage">Execute the plan above. Work through it step by step, keep exactly one step in progress, and report progress as you go. If a step turns out to be wrong, stop and say what changed before deviating.</string>
   <string name="page.running">Running</string>
   <string name="page.sampled">Sampled</string>
   <string name="page.sampling">Sampling…</string>
@@ -325,6 +331,17 @@
   <string name="page.typeCommand">Type a command…</string>
   <string name="page.ungrouped">Ungrouped</string>
   <string name="page.unsaved">Unsaved</string>
+  <string name="page.runRunning">Running</string>
+  <string name="page.runDone">Finished</string>
+  <string name="page.queuedTitle">Queued messages</string>
+  <string name="page.queuedRemove">Remove from queue</string>
+  <string name="page.evolve">Improve itself</string>
+  <string name="page.evolveHint">Draft a self-improvement request you can review before sending</string>
+  <string name="page.evolvePrompt">Use evolve_begin to change yourself in an isolated worktree. Work only inside it, keep main untouched, run the tests, and ask me before `evolve_finish(open_pr=true)`.</string>
+  <string name="page.planReview">Review steps</string>
+  <string name="page.planRejectedNote">The following steps were rejected — do not execute them. Raise them as open questions for me first:
+{steps}</string>
+  <string name="page.runFinished">A run finished: {title}</string>
   <string name="page.untitledSession">Untitled session</string>
   <string name="page.uploading">Uploading…</string>
   <string name="page.viewSource">View source</string>

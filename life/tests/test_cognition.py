@@ -222,11 +222,11 @@ class ThinkIntegration(unittest.TestCase):
         prompt = stage.build_prompt(user_message="hi", emotion_context="{}", energy_context="ok",
                                     memory_context="none", control_mode="FULL", strategy="plan")
         self.assertIn("FULL", prompt)
-        self.assertIn("规划", prompt)
+        self.assertIn("Planning:", prompt)
         quiet = stage.build_prompt(user_message="hi", emotion_context="{}", energy_context="ok",
                                    memory_context="none", control_mode="AUTO", strategy="reply_brief")
         self.assertIn("AUTO", quiet)
-        self.assertIn("不要规划", quiet)
+        self.assertIn("No planning", quiet)
 
 
 if __name__ == "__main__":

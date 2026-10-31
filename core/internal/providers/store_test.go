@@ -111,3 +111,112 @@ func TestUpsertSameIdReplacesWholesale(t *testing.T) {
 		t.Fatalf("same-id upsert should replace, got %+v", snap.Providers)
 	}
 }
+
+func TestLoadMigratesLegacyProvidersToLLMKindWithEntries(t *testing.T) {
+	path := writeStoreFile(t, `{
+	  "default_provider_id": "custom",
+	  "default_model": "m1",
+	  "providers": [
+	    {"id":"custom","provider":"custom","base_url":"http://h:1/v1","api_key":"k","models":["m1","m2"],"enabled":true,
+	     "model_types":{"m2":"embedding"}}
+	  ]
+	}`)
+	s := NewStore(path)
+	p := s.Snapshot().Providers[0]
+	if p.Kind != KindLLM {
+		t.Fatalf("legacy provider kind = %q, want %q", p.Kind, KindLLM)
+	}
+	if len(p.Entries) != 2 {
+		t.Fatalf("entries = %d, want 2", len(p.Entries))
+	}
+	if got := p.Entries[1].Kind; got != KindEmbedding {
+		t.Fatalf("m2 kind = %q, want %q", got, KindEmbedding)
+	}
+	// Migration is persisted once, so a second load sees the same shape.
+	reloaded := NewStore(path).Snapshot().Providers[0]
+	if len(reloaded.Entries) != 2 || reloaded.Kind != KindLLM {
+		t.Fatalf("migration was not persisted: %+v", reloaded)
+	}
+}
+
+func TestByKindFiltersAndDefaultForKindSkipsDisabled(t *testing.T) {
+	path := writeStoreFile(t, `{"providers":[]}`)
+	s := NewStore(path)
+	must := func(err error) {
+		t.Helper()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	must(s.Upsert(ProviderConfig{ID: "llm", Provider: "custom", Kind: KindLLM, BaseURL: "http://h/llm", Models: []string{"m1"}, Enabled: true}))
+	must(s.Upsert(ProviderConfig{ID: "tts-off", Provider: "custom", Kind: KindTTS, BaseURL: "http://h/tts-off", Enabled: false}))
+	must(s.Upsert(ProviderConfig{ID: "tts", Provider: "custom", Kind: KindTTS, BaseURL: "http://h/tts", APIKey: "secret", Enabled: true}))
+
+	if got := len(s.ByKind(KindTTS)); got != 2 {
+		t.Fatalf("ByKind(tts) = %d, want 2 (disabled included)", got)
+	}
+	if got := len(s.ByKind("speech")); got != 2 {
+		t.Fatalf("ByKind alias speech = %d, want 2", got)
+	}
+	p, ok := s.DefaultForKind(KindTTS)
+	if !ok || p.ID != "tts" {
+		t.Fatalf("DefaultForKind(tts) = %+v/%v, want enabled provider", p, ok)
+	}
+	if p.APIKey != "secret" {
+		t.Fatalf("DefaultForKind must keep the secret for internal callers")
+	}
+	if _, ok := s.DefaultForKind(KindASR); ok {
+		t.Fatalf("DefaultForKind(asr) should report missing")
+	}
+}
+
+func TestUpsertReconcilesEntriesAndKeepsContextWindow(t *testing.T) {
+	path := writeStoreFile(t, `{"providers":[]}`)
+	s := NewStore(path)
+	if err := s.Upsert(ProviderConfig{
+		ID: "p", Provider: "custom", BaseURL: "http://h/v1", Enabled: true,
+		Models:  []string{"m1"},
+		Entries: []ModelEntry{{ID: "m1", ContextWindow: 131072, MaxOutput: 8192}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	// A later save that only knows the model id must not wipe the metadata.
+	if err := s.Upsert(ProviderConfig{
+		ID: "p", Provider: "custom", BaseURL: "http://h/v1", Enabled: true,
+		Models: []string{"m1", "m2"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	p := s.Snapshot().Providers[0]
+	if len(p.Entries) != 2 {
+		t.Fatalf("entries = %d, want 2", len(p.Entries))
+	}
+	if p.Entries[0].ContextWindow != 131072 {
+		t.Fatalf("context window lost on re-upsert: %+v", p.Entries[0])
+	}
+	if p.Entries[1].Kind != KindLLM {
+		t.Fatalf("new entry kind = %q, want llm", p.Entries[1].Kind)
+	}
+	if got := s.ContextWindow("m1"); got != 131072 {
+		t.Fatalf("ContextWindow(m1) = %d, want 131072", got)
+	}
+	if got := s.ContextWindow("nope"); got != 0 {
+		t.Fatalf("ContextWindow(unknown) = %d, want 0", got)
+	}
+}
+
+func TestCatalogCarriesKindAndContextWindow(t *testing.T) {
+	path := writeStoreFile(t, `{"providers":[]}`)
+	s := NewStore(path)
+	if err := s.Upsert(ProviderConfig{
+		ID: "p", Provider: "custom", Kind: KindLLM, BaseURL: "http://h/v1", Enabled: true,
+		Models:  []string{"m1"},
+		Entries: []ModelEntry{{ID: "m1", ContextWindow: 65536}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	entry := s.Catalog()[0]
+	if entry.Kind != KindLLM || entry.ContextWindow != 65536 {
+		t.Fatalf("catalog entry = %+v", entry)
+	}
+}

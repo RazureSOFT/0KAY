@@ -77,7 +77,9 @@ class MentalState:
 
 class ResidentThinker:
 
-    DEFAULT_INTERVAL = 180.0
+    # Inner life does not need to tick every three minutes: at five minutes it
+    # still reacts to the day, and it costs 40% less in background calls.
+    DEFAULT_INTERVAL = 300.0
     USER_COOLDOWN = 90.0
     MAX_TOKENS = 240
     BODY_SAVE_INTERVAL = 300.0

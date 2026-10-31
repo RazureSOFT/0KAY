@@ -36,6 +36,7 @@
   <string name="agents.tasks">Tasks</string>
   <string name="agents.title">Agents</string>
   <string name="agents.version">Version</string>
+  <string name="app.openPet">Desktop pet</string>
   <string name="app.settings">Settings</string>
   <string name="app.status">Status</string>
   <string name="app.switchLang">Switch language</string>
@@ -328,6 +329,11 @@
   <string name="patch.renderFailed">This page failed to render</string>
   <string name="patch.retry">Retry</string>
   <string name="pluginPane.loading">Loading plugin module…</string>
+  <string name="plugins.reconnect">Reconnect</string>
+  <string name="plugins.reconnectHint">Drop the cached connection and let the plugin announce itself again. No stack restart needed.</string>
+  <string name="plugins.reconnected">Reconnected · closed {n} connection(s)</string>
+  <string name="plugins.healthDegraded">Degraded</string>
+  <string name="plugins.healthStale">Not responding</string>
   <string name="plugins.actionFailed">Action failed</string>
   <string name="plugins.builtinFullPerms">Built-in plugin · all permissions and egress allowed</string>
   <string name="plugins.callsCore">Calls Core API</string>
@@ -394,6 +400,8 @@
   <string name="security.pinUnset">No PIN set</string>
   <string name="security.removePin">Delete PIN</string>
   <string name="security.removePinConfirm">This removes the stored access PIN from this machine. Continue?</string>
+  <string name="settings.groupCore">Core</string>
+  <string name="settings.groupPlugins">Plugins</string>
   <string name="settings.about.available">Update available</string>
   <string name="settings.about.beta">Beta (sync repo)</string>
   <string name="settings.about.betaHint">Sync the latest main branch instead of a release tag (may be unstable).</string>
@@ -506,6 +514,7 @@
   <string name="settings.removeModel">Remove {name}</string>
   <string name="settings.modelExists">“{name}” is already in the list</string>
   <string name="settings.noProviders">No providers configured yet. Click add above.</string>
+  <string name="settings.noProvidersForKind">No providers of this type yet.</string>
   <string name="settings.pageDesc">Manage providers, models, persona, and Live2D avatar</string>
   <string name="settings.pathPickTitle">Choose a folder</string>
   <string name="settings.pathUp">Up one level</string>
@@ -531,6 +540,12 @@
   <string name="settings.pluginSourcePlaceholder">https://gh-proxy.com</string>
   <string name="settings.pluginSourceTitle">Plugin source</string>
   <string name="settings.provider">Provider</string>
+  <string name="settings.providerKindLLM">LLM</string>
+  <string name="settings.providerKindTTS">Speech synthesis</string>
+  <string name="settings.providerKindASR">Speech recognition</string>
+  <string name="settings.providerKindImage">Image</string>
+  <string name="settings.providerKindLabel">Provider type</string>
+  <string name="settings.providerKindHint">What this provider serves. Chat models are LLM; speech synthesis and recognition are separate services with their own endpoints.</string>
   <string name="settings.providerDesc">Choose an AI provider and configure API credentials</string>
   <string name="settings.providerDescMulti">Add multiple providers and models; chat uses the default model, intelligent selection is Agent-only</string>
   <string name="settings.providerModelType">Model type</string>
@@ -624,6 +639,8 @@
   <string name="thinking.max">Maximum effort</string>
   <string name="thinking.providerNote">Actual reasoning controls depend on the selected provider. Max may map to High.</string>
   <string name="thinking.slider">Thinking effort slider</string>
+  <string name="usage.colModel">Model</string>
+  <string name="usage.colShare">Share</string>
   <string name="usage.byDay">By day</string>
   <string name="usage.byModel">By model</string>
   <string name="usage.clear">Clear usage</string>
@@ -720,4 +737,15 @@
   <string name="wizard.useModels">Use These Models</string>
   <string name="wizard.welcome">Welcome to 0kay!</string>
   <string name="wizard.welcomeDesc">Let's get you set up in just a few steps.</string>
+  <string name="pet.holdToTalk">Hold to talk</string>
+  <string name="pet.releaseToSend">Release to send</string>
+  <string name="pet.transcribing">Transcribing…</string>
+  <string name="pet.tooShort">Too short</string>
+  <string name="pet.heardNothing">Did not catch that</string>
+  <string name="pet.noSpeech">No speech detected, try again closer to the mic</string>
+  <string name="pet.asrNotConfigured">ASR is not configured yet</string>
+  <string name="pet.asrBadKey">ASR key is invalid</string>
+  <string name="pet.asrTooLong">That recording is too long</string>
+  <string name="pet.asrFailed">Speech service error</string>
+  <string name="pet.replyFailed">Reply failed</string>
 </resources>

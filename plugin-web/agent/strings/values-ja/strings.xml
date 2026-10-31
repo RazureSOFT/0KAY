@@ -280,6 +280,12 @@
   <string name="page.restore">復元</string>
   <string name="page.restoreToChat">セッションを復元すると会話を続けられます</string>
   <string name="page.run">実行</string>
+  <string name="page.planReady">計画の準備ができました</string>
+  <string name="page.planSteps">{n} ステップ</string>
+  <string name="page.planBuild">実行する</string>
+  <string name="page.planHide">計画を閉じる</string>
+  <string name="page.planShow">計画を開く</string>
+  <string name="page.planBuildMessage">上記の計画を実行してください。ステップごとに進め、進行中は常に 1 つだけにし、都度進捗を報告してください。ステップが誤りだと分かったら、逸脱する前に何が変わったかを説明して止まってください。</string>
   <string name="page.running">実行中</string>
   <string name="page.sampled">サンプル</string>
   <string name="page.sampling">サンプル取得待ち…</string>
@@ -325,6 +331,17 @@
   <string name="page.typeCommand">コマンドを入力…</string>
   <string name="page.ungrouped">未グループ</string>
   <string name="page.unsaved">未保存</string>
+  <string name="page.runRunning">実行中</string>
+  <string name="page.runDone">完了</string>
+  <string name="page.queuedTitle">待機中のメッセージ</string>
+  <string name="page.queuedRemove">キューから削除</string>
+  <string name="page.evolve">自己改善</string>
+  <string name="page.evolveHint">送信前に確認できる自己改善リクエストを下書きします</string>
+  <string name="page.evolvePrompt">evolve_begin で独立した worktree 内で自分を変更してください。main は変更せず、テストを実行し、`evolve_finish(open_pr=true)` の前に私に確認してください。</string>
+  <string name="page.planReview">手順ごとの確認</string>
+  <string name="page.planRejectedNote">次の手順は却下されました。実行せず、まず open_questions として確認してください:
+{steps}</string>
+  <string name="page.runFinished">「{title}」が完了しました</string>
   <string name="page.untitledSession">無題のセッション</string>
   <string name="page.uploading">アップロード中…</string>
   <string name="page.viewSource">ソースを表示</string>

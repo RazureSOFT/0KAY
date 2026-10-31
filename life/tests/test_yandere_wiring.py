@@ -46,7 +46,7 @@ class YandereWiring(unittest.TestCase):
     def test_the_tone_reaches_the_prompt(self):
         self.engine._enable_yandere_from_persona("病娇")
         text = self.engine._render_wave_context()
-        self.assertIn("情感急变基调", text)
+        self.assertIn("Volatile attachment", text)
 
     def test_real_feedback_reaches_the_circuit(self):
         self.engine._enable_yandere_from_persona("病娇")

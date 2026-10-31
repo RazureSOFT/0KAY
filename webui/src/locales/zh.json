@@ -40,6 +40,7 @@
     "version": "版本"
   },
   "app": {
+    "openPet": "桌面宠物",
     "settings": "设置",
     "status": "状态",
     "switchLang": "切换语言",
@@ -380,6 +381,11 @@
     "loading": "正在加载插件模块…"
   },
   "plugins": {
+    "reconnect": "重新连接",
+    "reconnectHint": "丢掉缓存的连接，让插件重新报到；不用重启整栈。",
+    "reconnected": "已重连 · 关闭 {n} 条连接",
+    "healthDegraded": "响应变慢",
+    "healthStale": "已失联",
     "actionFailed": "操作失败",
     "builtinFullPerms": "内置插件 · 权限与出网已全部放行",
     "callsCore": "调用 Core API",
@@ -464,6 +470,8 @@
     "removePinConfirm": "删除后本机不再保存访问 PIN，确定继续？"
   },
   "settings": {
+    "groupCore": "常用",
+    "groupPlugins": "插件",
     "about": {
       "available": "有新版本可更新",
       "beta": "测试版（同步仓库）",
@@ -602,6 +610,7 @@
     "removeModel": "移除 {name}",
     "modelExists": "“{name}” 已在列表中",
     "noProviders": "尚未配置供应商，点击上方添加。",
+    "noProvidersForKind": "还没有这类供应商。",
     "pageDesc": "管理供应商、模型、人设与 Live2D 形象",
     "pathPickTitle": "选择目录",
     "pathUp": "上一级",
@@ -627,6 +636,12 @@
     "pluginSourcePlaceholder": "https://gh-proxy.com",
     "pluginSourceTitle": "插件源",
     "provider": "供应商",
+    "providerKindLLM": "LLM",
+    "providerKindTTS": "语音合成",
+    "providerKindASR": "语音识别",
+    "providerKindImage": "图像",
+    "providerKindLabel": "供应商类型",
+    "providerKindHint": "这个供应商提供什么。对话模型选 LLM；语音合成与语音识别是独立服务，各自有自己的接口地址。",
     "providerDesc": "选择 AI 供应商并配置 API 凭证",
     "providerDescMulti": "可添加多个供应商与多个模型；聊天使用默认模型，智能选型仅 Agent 使用",
     "providerModelType": "模型类型",
@@ -732,6 +747,8 @@
     "slider": "思考强度滑块"
   },
   "usage": {
+    "colModel": "模型",
+    "colShare": "占比",
     "byDay": "按日",
     "byModel": "按模型",
     "clear": "清除用量",
@@ -830,5 +847,18 @@
     "useModels": "使用这些模型",
     "welcome": "欢迎使用 0kay！",
     "welcomeDesc": "只需几步即可完成设置。"
+  },
+  "pet": {
+    "holdToTalk": "按住说话",
+    "releaseToSend": "松开结束",
+    "transcribing": "识别中…",
+    "tooShort": "说话太短",
+    "heardNothing": "没听清，再说一次？",
+    "noSpeech": "没听到声音，靠近麦克风再试",
+    "asrNotConfigured": "ASR 还没配置（设置 → 供应商 → 语音）",
+    "asrBadKey": "ASR 密钥无效",
+    "asrTooLong": "这段录音太长了",
+    "asrFailed": "语音服务出错",
+    "replyFailed": "回复失败"
   }
 }

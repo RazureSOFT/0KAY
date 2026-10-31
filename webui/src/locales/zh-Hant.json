@@ -40,6 +40,7 @@
     "version": "版本"
   },
   "app": {
+    "openPet": "桌面寵物",
     "settings": "設定",
     "status": "狀態",
     "switchLang": "切換語言",
@@ -380,6 +381,11 @@
     "loading": "正在載入外掛模組…"
   },
   "plugins": {
+    "reconnect": "重新連線",
+    "reconnectHint": "丟掉快取的連線，讓外掛重新報到；不用重啟整棧。",
+    "reconnected": "已重連 · 關閉 {n} 條連線",
+    "healthDegraded": "回應變慢",
+    "healthStale": "已失聯",
     "actionFailed": "操作失敗",
     "builtinFullPerms": "內建外掛 · 權限與對外連線已全部放行",
     "callsCore": "呼叫 Core API",
@@ -464,6 +470,8 @@
     "removePinConfirm": "刪除後本機不再保存存取 PIN，確定繼續？"
   },
   "settings": {
+    "groupCore": "常用",
+    "groupPlugins": "外掛",
     "about": {
       "available": "有新版本可更新",
       "beta": "測試版（同步倉庫）",
@@ -602,6 +610,7 @@
     "removeModel": "移除 {name}",
     "modelExists": "“{name}” 已在清單中",
     "noProviders": "尚未設定供應商，點擊上方新增。",
+    "noProvidersForKind": "還沒有這類供應商。",
     "pageDesc": "管理供應商、模型、人設與 Live2D 形象",
     "pathPickTitle": "選擇目錄",
     "pathUp": "上一層",
@@ -627,6 +636,12 @@
     "pluginSourcePlaceholder": "https://gh-proxy.com",
     "pluginSourceTitle": "外掛來源",
     "provider": "供應商",
+    "providerKindLLM": "LLM",
+    "providerKindTTS": "語音合成",
+    "providerKindASR": "語音辨識",
+    "providerKindImage": "圖像",
+    "providerKindLabel": "供應商類型",
+    "providerKindHint": "這個供應商提供什麼。對話模型選 LLM；語音合成與語音辨識是獨立服務，各自有自己的介面位址。",
     "providerDesc": "選擇 AI 供應商並設定 API 憑證",
     "providerDescMulti": "可新增多個供應商與多個模型；聊天使用預設模型，智慧選型僅 Agent 使用",
     "providerModelType": "模型類型",
@@ -732,6 +747,8 @@
     "slider": "思考強度滑桿"
   },
   "usage": {
+    "colModel": "模型",
+    "colShare": "佔比",
     "byDay": "依日期",
     "byModel": "依模型",
     "clear": "清除用量",
@@ -830,5 +847,18 @@
     "useModels": "使用這些模型",
     "welcome": "歡迎使用 0kay！",
     "welcomeDesc": "只需幾步即可完成設定。"
+  },
+  "pet": {
+    "holdToTalk": "按住說話",
+    "releaseToSend": "鬆開結束",
+    "transcribing": "辨識中…",
+    "tooShort": "說話太短",
+    "heardNothing": "沒聽清，再說一次？",
+    "noSpeech": "沒聽到聲音，靠近麥克風再試",
+    "asrNotConfigured": "ASR 還沒設定",
+    "asrBadKey": "ASR 金鑰無效",
+    "asrTooLong": "這段錄音太長了",
+    "asrFailed": "語音服務出錯",
+    "replyFailed": "回覆失敗"
   }
 }

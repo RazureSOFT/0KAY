@@ -366,7 +366,7 @@ class CompanionSystem:
                         "enable_environment_fetch": "0", "weather_cache_minutes": "60",
                         "enable_content_fetch": "0", "news_feeds": "", "content_items_per_feed": "3",
                         "tts_endpoint": "", "proactive_tts": "0",
-                        "world_density": "off",
+                        "world_density": "off", "world_scene": "1",
                         "world_fictional": "fictional", "world_country": "", "world_city": "",
                         "world_district": "", "world_premise": "", "world_actors": "",
                         "world_places": "", "world_map": "{}",
@@ -419,7 +419,7 @@ class CompanionSystem:
         "env_latitude": ("float", (-90.0, 90.0)), "env_longitude": ("float", (-180.0, 180.0)),
         "enable_content_fetch": ("bool", None), "content_items_per_feed": ("int", (1, 20)),
         "news_feeds": ("text", None), "tts_endpoint": ("text", None), "proactive_tts": ("bool", None),
-        "world_density": ("choice", None), "world_fictional": ("choice", None),
+        "world_density": ("choice", None), "world_scene": ("bool", None), "world_fictional": ("choice", None),
         "world_country": ("text", None), "world_city": ("text", None), "world_district": ("text", None),
         "world_premise": ("longtext", None), "world_actors": ("longtext", None),
         "world_places": ("longtext", None), "world_map": ("longtext", None),
@@ -505,6 +505,11 @@ class CompanionSystem:
         if key not in cls.SETTING_DEFAULTS:
             return None
         kind, spec = cls.CONFIG_SCHEMA.get(key, ("text", None))
+        # An empty string is how "not set" is stored for optional numbers
+        # (env_latitude / env_longitude). Rejecting it meant the panel could
+        # never save a location it had not filled in.
+        if kind in ("int", "float") and str(value).strip() == "":
+            return ""
         try:
             if kind == "int":
                 number = int(float(value))

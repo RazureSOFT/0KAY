@@ -138,3 +138,16 @@ life/life-review-report.md
 
 # Self-iteration worktrees created by the agent.
 /.evolve/
+
+# One-off execution plans written for the user (kept local on purpose).
+/plans/
+
+# Local working agreement for whoever (or whatever) edits this checkout.
+/LOCAL-RULES.md
+.0kay-agent/
+
+# Runtime session logs written by Core.
+/core/data/sessions/
+
+# Reference checkout kept for reading, not part of this repository.
+/tui/Claude-Code-rev/

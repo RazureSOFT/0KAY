@@ -116,6 +116,7 @@ except Exception:  # pragma: no cover - cognition core is optional
     _COGNITION_AVAILABLE = False
 
 from .resident import ResidentThinker
+from .. import context_budget
 
 logger = get_logger("engine")
 
@@ -289,6 +290,10 @@ class LifeEngine:
         self._background_tasks = set()
         self._plugin_refresh_task: asyncio.Task | None = None
         self._reflection_limit = asyncio.Semaphore(2)
+        # Reflection is a background LLM call. Running it on every turn spends a
+        # full request on conversations that taught nothing new, so it is batched:
+        # every N turns, plus immediately when a turn actually moved her.
+        self._turns_since_reflect = 0
         self._last_plan = datetime.min
         self._last_dream_date = ""
         self._last_dream_key = ""
@@ -315,6 +320,15 @@ class LifeEngine:
             self.attachment = None
             self.tsundere = None
             self.personadyn = None
+        # The possessive circuit is a persona trait, not a cognition wave, so it
+        # does not depend on the cognition package importing cleanly. Off unless
+        # the persona text asks for it.
+        try:
+            from ..cognition.yandere import YandereSystem
+            self.yandere = YandereSystem()
+        except Exception:
+            self.yandere = None
+        self._yandere_enabled = False
         self._persona_traits = None
         self._persona_digest = None
         self._persona_traits_override: dict = {}
@@ -590,7 +604,8 @@ class LifeEngine:
 
     def cognition_status(self) -> dict:
         if self.cognition is None:
-            return {"available": False, "enabled": False}
+            return {"available": False, "enabled": False,
+                    "yandere": self.yandere.context() if self.yandere is not None else {"enabled": False}}
         return {
             "available": True,
             "enabled": self._cognition_enabled,
@@ -605,6 +620,7 @@ class LifeEngine:
             "attachment": self.attachment.context() if self.attachment is not None else {"enabled": False},
             "tsundere": self.tsundere.context() if self.tsundere is not None else {"enabled": False},
             "personadyn": self.personadyn.context() if self.personadyn is not None else {"enabled": False},
+            "yandere": self.yandere.context() if self.yandere is not None else {"enabled": False},
             "persona": persona_summary(getattr(self, "_persona_traits", None)),
             "life": self.life_status(),
         }
@@ -626,6 +642,13 @@ class LifeEngine:
             path.write_text(json.dumps(self._life_state, ensure_ascii=False), encoding="utf-8")
         except OSError as error:  # pragma: no cover - best effort
             logger.debug("life state save failed: %s", error)
+
+    def _asleep_message(self) -> str:
+        try:
+            custom = str(self.companion.get_settings().get("asleep_reply", "") or "").strip()
+        except Exception:
+            custom = ""
+        return custom or "（她睡着了。先开启「生命」，她才会回应。）"
 
     def life_is_alive(self) -> bool:
         return bool(self._life_state.get("alive"))
@@ -756,6 +779,32 @@ class LifeEngine:
 
     def _persona_tsundere_type(self, text: str) -> str:
         return tsundere_type_for_persona(text)
+
+    def _enable_yandere_from_persona(self, text: str) -> None:
+        """Turn the possessive circuit on when the persona asks for it.
+
+        It is a trait of this specific character, not a global switch: a
+        warm, steady persona leaves it off, and turning it on also seeds the
+        initial affection/jealousy from the same text.
+        """
+        if self.yandere is None:
+            self._yandere_enabled = False
+            return
+        try:
+            from ..cognition.yandere import type_for_persona
+            type_key = type_for_persona(str(text or ""))
+        except Exception as error:
+            logger.debug("yandere persona match failed: %s", error)
+            type_key = ""
+        if not type_key:
+            self.yandere.configure(enabled=False)
+            self._yandere_enabled = False
+            return
+        was_enabled = bool(getattr(self.yandere, "enabled", False))
+        self.yandere.configure(enabled=True, type_key=type_key)
+        if not was_enabled:
+            self.yandere.seed_from_persona(str(text or ""))
+        self._yandere_enabled = True
 
     def _enable_tsundere_from_persona(self, text: str) -> None:
         if self.tsundere is None:
@@ -942,6 +991,13 @@ class LifeEngine:
         tsun_type = self._persona_tsundere_type(text)
         pdy_type = self._personadyn_type(text)
         pdy_gender = self._personadyn_gender(text)
+        try:
+            from ..cognition.yandere import initial_state_for_persona as yandere_initial
+            from ..cognition.yandere import type_for_persona as yandere_type
+            yan_type = yandere_type(text)
+            yan_initial = yandere_initial(text) if yan_type else {}
+        except Exception:
+            yan_type, yan_initial = "", {}
         return {
             "source": source,
             "gender": traits.gender or "",
@@ -963,6 +1019,8 @@ class LifeEngine:
             "personadyn": {"type": pdy_type,
                            "gender": pdy_gender,
                            "initial": persona_dynamics_initial_state_for_persona(text) if pdy_type else {}},
+            "yandere": {"type": yan_type,
+                        "initial": yan_initial},
             "options": {"character": character_options(),
                         "relationship": relationship_options()},
             "applied": traits.present,
@@ -1011,9 +1069,23 @@ class LifeEngine:
         return self.online_agent_count
 
     def _load_state(self):
+        # A companion that cannot start because its own state file got truncated
+        # is worse than one that starts with a fresh mood: the character losing a
+        # day of emotion beats the character not existing.
         try:
-            data = json.loads(self._state_path.read_text(encoding="utf-8"))
+            raw = self._state_path.read_text(encoding="utf-8")
         except FileNotFoundError:
+            return
+        except (OSError, UnicodeDecodeError) as error:
+            logger.warning("state file unreadable, starting fresh: %s", error)
+            return
+        try:
+            data = json.loads(raw)
+        except ValueError as error:
+            logger.warning("state file is not valid JSON, starting fresh: %s", error)
+            return
+        if not isinstance(data, dict):
+            logger.warning("state file is not an object, starting fresh")
             return
         if "emotion" in data:
             self.emotion.state = EmotionState.from_dict(data["emotion"])
@@ -1059,6 +1131,13 @@ class LifeEngine:
                 self._tsundere_restored_enabled = bool(self.tsundere.enabled)
             if self.personadyn is not None:
                 self._personadyn_restored_enabled = bool(self.personadyn.enabled)
+            if self.yandere is not None and isinstance(data.get("yandere"), dict):
+                try:
+                    from ..cognition.yandere import YandereSystem
+                    self.yandere = YandereSystem.from_dict(data["yandere"])
+                    self._yandere_enabled = bool(self.yandere.enabled)
+                except Exception as error:
+                    logger.warning("could not restore the possessive circuit: %s", error)
 
     def _save_state(self):
         window = getattr(self, "_state_debounce", 0.0)
@@ -1126,7 +1205,7 @@ class LifeEngine:
         for key, system in (("affect", self.affect), ("language", self.language),
                             ("social", self.social), ("selfhood", self.selfhood),
                             ("relating", self.relating), ("attachment", self.attachment),
-                            ("tsundere", self.tsundere),
+                            ("tsundere", self.tsundere), ("yandere", self.yandere),
                             ("personadyn", self.personadyn)):
             if system is not None:
                 try:
@@ -1479,6 +1558,11 @@ class LifeEngine:
             if ctx.get("prompt"):
                 rendered += ("依恋基调（你此刻的真实状态，自然地表现出来，不要复述这些词）：\n- "
                              + str(ctx["prompt"]) + "\n\n")
+        if self._yandere_enabled and self.yandere is not None:
+            ctx = self.yandere.context()
+            if ctx.get("prompt"):
+                rendered += ("Volatile attachment (how you actually feel right now; let it show, do not restate these words):\n- "
+                             + str(ctx["prompt"]) + "\n\n")
         if self._tsundere_enabled and self.tsundere is not None:
             ctx = self.tsundere.context()
             if ctx.get("prompt"):
@@ -1828,6 +1912,16 @@ class LifeEngine:
                     partner_trust=self._partner_trust_reading())
             except Exception as error:
                 logger.debug("persona dynamics observe failed: %s", error)
+        if self._yandere_enabled and self.yandere is not None:
+            try:
+                self.yandere.observe_interaction(
+                    valence=float(getattr(self.emotion.state, "valence", 0.0) or 0.0),
+                    sentiment=float(feedback.get("sentiment", 0) or 0),
+                    latency_seconds=float(latency or 0.0),
+                    recalled=bool(feedback.get("recalled")),
+                    mentions_other=self._mentions_other(message))
+            except Exception as error:
+                logger.debug("possessive circuit observe failed: %s", error)
         if abs(int(feedback["sentiment"])) >= 1 or feedback["recalled"]:
             self._record_self_narrative(
                 "有人对我说的话很不高兴" if feedback["sentiment"] < 0 else "有人很认真地谢过我",
@@ -1982,7 +2076,26 @@ class LifeEngine:
         stats["last_feedback"] = now.isoformat()
         stats["last_decay"] = now.isoformat()
 
-    async def _process_turn(self, turn, message):
+    @dataclass
+    class RecallStage:
+        """Everything the think loop needs from the recall stage."""
+
+        custom_prompt: str
+        scope: str
+        memory_context: str
+        control: dict
+        self_statement: str
+        inner_thread: str
+        over_budget: bool
+        budget: dict
+
+    async def _stage_recall(self, turn, message) -> "LifeEngine.RecallStage":
+        """Gather everything the reply depends on, before any model call.
+
+        Emotion decay, user observation, memory recall, cognition arbitration and
+        the prompt budget all happen here. Keeping it out of _process_turn means
+        the loop below reads as one thing: plan, act, answer.
+        """
         custom_prompt = turn.custom_prompt
         now = datetime.now()
         elapsed = max(0.0, (now - self._last_emotion_at).total_seconds())
@@ -2069,9 +2182,13 @@ class LifeEngine:
             relationship_belief = ""
         if relationship_belief:
             turn.persona_context += "\n" + relationship_belief
-        turn.persona_context = self._budget_context(turn.persona_context)
         scope = f"session:{turn.session_id}"
-        memory_context = await asyncio.to_thread(self.memory.get_memory_context, message, scope, self.soul.recall_limit())
+        # Every part of the prompt now draws from one budget instead of the
+        # persona block paying for everything and memory growing unchecked.
+        budget = context_budget.split_totals(self.CONTEXT_BUDGET_CHARS)
+        recall_k = min(self.soul.recall_limit(), context_budget.recall_top_k(budget["memory"]))
+        turn.persona_context = context_budget.fit(turn.persona_context, budget["persona"])
+        memory_context = await asyncio.to_thread(self.memory.get_memory_context, message, scope, recall_k)
         await asyncio.to_thread(self.sync_agents)
         control = self._cognition_arbitrate(message, turn, memory_context, emotion_delta)
         self_statement = ""
@@ -2098,11 +2215,76 @@ class LifeEngine:
                 inner_thread = ""
         self._last_inner_thread = inner_thread
         self._last_persona_context = turn.persona_context
-        summaries = []
-        guidance = "Respond naturally."
-        tool_success = tool_failure = 0.0
-        plan = None
-        think_usage_info: dict = {}
+
+        return LifeEngine.RecallStage(
+            custom_prompt=custom_prompt, scope=scope, memory_context=memory_context,
+            control=control, self_statement=self_statement, inner_thread=inner_thread,
+            over_budget=over_budget, budget=budget)
+
+    async def _process_turn(self, turn, message):
+        # The life switch is the on/off for talking to her at all: when it is off she
+        # is asleep, and a turn must not run (it used to run regardless, so "paused"
+        # still answered — the switch only stopped the autonomous loop).
+        # Only an explicit "off" blocks a turn: an engine that never had the switch
+        # touched (tests, fresh install) keeps working.
+        if self._life_state.get("alive") is False:
+            yield {"type": "chunk", "chunk": self._asleep_message(), "done": False}
+            yield {"type": "done", "done": True, "asleep": True}
+            return
+        stage = await self._stage_recall(turn, message)
+        custom_prompt = stage.custom_prompt
+        scope = stage.scope
+        memory_context = stage.memory_context
+        control = stage.control
+        self_statement = stage.self_statement
+        inner_thread = stage.inner_thread
+        over_budget = stage.over_budget
+        budget = stage.budget
+        think = LifeEngine.ThinkStage()
+        async for event in self._stage_think(turn, message, stage, think):
+            yield event
+        plan = think.plan
+        guidance = think.guidance
+        summaries = think.summaries
+        tool_success = think.tool_success
+        tool_failure = think.tool_failure
+        think_usage_info = think.usage
+    @dataclass
+    class ThinkStage:
+        """What the plan/act loop produces.
+
+        The loop is an async generator — it yields progress events while it runs —
+        so it cannot return a value. The caller passes this in and reads it once
+        the iteration has finished.
+        """
+
+        plan: object = None
+        guidance: str = "Respond naturally."
+        summaries: list = field(default_factory=list)
+        tool_success: float = 0.0
+        tool_failure: float = 0.0
+        usage: dict = field(default_factory=dict)
+
+    async def _stage_think(self, turn, message, recall, out):
+        """Plan, call tools, and revise — yielding progress as it happens.
+
+        Kept as an async generator: the caller streams these events straight to
+        the client, so folding the loop back into _process_turn would break the
+        task_started signal that the UI relies on.
+        """
+        custom_prompt = recall.custom_prompt
+        scope = recall.scope
+        memory_context = recall.memory_context
+        control = recall.control
+        self_statement = recall.self_statement
+        over_budget = recall.over_budget
+        budget = recall.budget
+        plan = out.plan
+        guidance = out.guidance
+        summaries = out.summaries
+        tool_success = out.tool_success
+        tool_failure = out.tool_failure
+        think_usage_info = out.usage
         for step in range(1 if over_budget else 4):
             if self._lite_mode and step == 0 and not over_budget:
                 plan = None
@@ -2118,15 +2300,18 @@ class LifeEngine:
                     self._clamp_emotion_spiral()
                     guidance = plan.output_guidance or guidance
                     if plan.character_intent:
-                        guidance = f"以角色立场（必须符合人设）：{plan.character_intent}\n" + guidance
+                        guidance = f"Stay in character (must fit the persona): {plan.character_intent}\n" + guidance
                 break
             system = self.think.build_prompt(user_message=message, emotion_context=json.dumps(self.emotion.state.to_dict()),
-                energy_context=f"{self._body_phrase()}；{self.circadian.get_prompt_context()}", memory_context=memory_context,
+                energy_context=f"{self._body_phrase()}；{self.circadian.get_prompt_context()}",
+                memory_context=context_budget.fit(memory_context, budget["memory"]),
                 active_tasks=[tid for tid, task in self.active_tasks.items() if task.get("session_id") == turn.session_id],
-                online_agents=self.online_agent_count, skills_context=self.skills.context_block(message),
+                online_agents=self.online_agent_count,
+                skills_context=context_budget.fit(self.skills.context_block(message), budget["skills"]),
                 tools_context=json.dumps(self.get_tools_schema(), ensure_ascii=False), time_context=datetime.now().strftime("%Y-%m-%d %H:%M"),
                 control_mode=str(control.get("mode") or ""), strategy=str(control.get("action") or ""),
-                cognition_context=self._last_wave_context, self_statement=self_statement)
+                cognition_context=self._last_wave_context, self_statement=self_statement,
+                scene_context=context_budget.fit(self._scene_context(), budget["world"]))
             system += "\nPersona:\n" + turn.persona_context + "\nCompleted tool results (do not repeat these actions):\n" + "\n".join(summaries)
             if custom_prompt:
                 system = custom_prompt + "\n\n" + system
@@ -2140,7 +2325,7 @@ class LifeEngine:
             self._clamp_emotion_spiral()
             guidance = plan.output_guidance
             if plan.character_intent:
-                guidance = f"以角色立场（必须符合人设）：{plan.character_intent}\n" + guidance
+                guidance = f"Stay in character (must fit the persona): {plan.character_intent}\n" + guidance
             if plan.memory_query:
                 memory_context += "\n" + await asyncio.to_thread(self.memory.get_memory_context, plan.memory_query, scope)
             if plan.skill_call:
@@ -2195,6 +2380,13 @@ class LifeEngine:
                     break
             if stop_planning:
                 break
+        out.plan = plan
+        out.guidance = guidance
+        out.summaries = summaries
+        out.tool_success = tool_success
+        out.tool_failure = tool_failure
+        out.usage = think_usage_info
+
         guidance += "\nRelevant memory:\n" + memory_context + "\nTool results:\n" + "\n".join(summaries)
         intent = getattr(turn, "intent", "")
         if intent in ("情绪", "抱怨"):
@@ -2234,7 +2426,7 @@ class LifeEngine:
         posture = self._response_posture(turn)
         output_budget = max(64, int(output_budget * posture["budget_factor"]))
         if posture["mode"] == "brief":
-            guidance = "你现在有些疲惫或不想多展开：用一到两句简短回应，不要长篇大论。\n" + guidance
+            guidance = "You are tired or not in the mood to elaborate: answer in one or two short sentences, do not lecture.\n" + guidance
         typing_delay = min(1.2, 0.35 * (delay_multiplier - 1.0))
         if typing_delay > 0:
             await asyncio.sleep(typing_delay)
@@ -2246,8 +2438,8 @@ class LifeEngine:
                 "Write ONLY what the character says out loud. No (…) parentheticals, "
                 "no *…* actions, no narration of gestures or expressions. You may "
                 "refuse, push back, or say no. Never describe yourself as an AI. "
-                "Any [内部约束 …] directive is private: obey it silently, never quote "
-                "or paraphrase it, and never say things like 「我会用更健康的方式表达」.\n"
+                "Any [internal constraint …] directive is private: obey it silently, never quote "
+                "or paraphrase it, and never say things like \"I will express myself in a healthier way\".\n"
                 f"User: {message}\nReply:"
             )
         else:
@@ -2261,23 +2453,31 @@ class LifeEngine:
             system = custom_prompt + "\n\n" + system
         response = ""
         output_usage_info: dict = {}
-        try:
-            async for chunk in self.mocr.generate(self._model_for("output"), self._history_text_only(turn.history), system,
-                    max_tokens=output_budget, temperature=self.soul.temperature(), usage=output_usage_info):
-                response += chunk
-                yield {"type": "chunk", "chunk": chunk, "done": False}
-        except Exception as error:
-            logger.exception("output generation failed for session %s: %s", turn.session_id, error)
-            text = f"\n回复生成服务暂时不可用（{error}）。"
-            if summaries:
-                text += "已执行的工具结果：" + "\n".join(summaries)
-            else:
-                text += "当前请求尚未完成，请稍后重试。"
-            response += text
-            yield {"type": "chunk", "chunk": text, "done": False}
-        if not response:
-            response = "模型没有返回内容，当前请求未完成。"
-            yield {"type": "chunk", "chunk": response, "done": False}
+        # speak short-circuit: THINK already wrote the exact words, so send them
+        # as-is. One model call instead of two, and the voice that decided what
+        # to say is the voice the user hears.
+        spoken = str(getattr(plan, "speak", "") or "").strip() if plan else ""
+        if spoken:
+            response = spoken
+            yield {"type": "chunk", "chunk": spoken, "done": False}
+        else:
+            try:
+                async for chunk in self.mocr.generate(self._model_for("output"), self._history_text_only(turn.history), system,
+                        max_tokens=output_budget, temperature=self.soul.temperature(), usage=output_usage_info):
+                    response += chunk
+                    yield {"type": "chunk", "chunk": chunk, "done": False}
+            except Exception as error:
+                logger.exception("output generation failed for session %s: %s", turn.session_id, error)
+                text = f"\n回复生成服务暂时不可用（{error}）。"
+                if summaries:
+                    text += "已执行的工具结果：" + "\n".join(summaries)
+                else:
+                    text += "当前请求尚未完成，请稍后重试。"
+                response += text
+                yield {"type": "chunk", "chunk": text, "done": False}
+            if not response:
+                response = "模型没有返回内容，当前请求未完成。"
+                yield {"type": "chunk", "chunk": response, "done": False}
         turn.history.append({"role": "assistant", "content": response})
         self._histories.pop(turn.session_id, None)
         self._histories[turn.session_id] = turn.history[-20:]
@@ -2305,7 +2505,9 @@ class LifeEngine:
                 logger.debug("suppressed error: %s", _exc)
         await asyncio.to_thread(self.memory.enqueue_reflection, turn.session_id, message, response)
         self._save_state()
-        if len(self._background_tasks) < 8:
+        self._turns_since_reflect += 1
+        if self._should_reflect(turn, int(tool_success + tool_failure)) and len(self._background_tasks) < 8:
+            self._turns_since_reflect = 0
             task = asyncio.create_task(self._reflect(turn, message, response))
             self._background_tasks.add(task)
             task.add_done_callback(self._background_tasks.discard)
@@ -2437,6 +2639,22 @@ class LifeEngine:
             parts.append("对方是较熟悉的次要陪伴对象；")
         parts.append(str(expression.get("tone") or ""))
         return "".join(part for part in parts if part)
+
+    REFLECT_EVERY_TURNS = 5
+    REFLECT_INTENTS = frozenset({"情绪", "抱怨"})
+
+    def _should_reflect(self, turn, tool_calls: int = 0) -> bool:
+        """Whether this turn is worth a background reflection call.
+
+        Batched by default. A turn that actually did something, or that carried
+        emotional weight, is reflected on immediately — those are the ones there
+        is anything to learn from.
+        """
+        if self._turns_since_reflect >= self.REFLECT_EVERY_TURNS:
+            return True
+        if tool_calls > 0:
+            return True
+        return str(getattr(turn, "intent", "") or "") in self.REFLECT_INTENTS
 
     async def _reflect(self, turn, message, response):
         async with self._reflection_limit:
@@ -2912,14 +3130,16 @@ class LifeEngine:
         self._save_state()
         return {"date": target, "summary": summary, "findings": findings, "report": report}
 
-    def _ensure_worldsim(self, settings: dict | None = None):
+    def _ensure_worldsim(self, settings: dict | None = None, *, for_scene: bool = False):
         if settings is None:
             try:
                 settings = self.companion.get_settings()
             except Exception:
                 settings = {}
         density = str(settings.get("world_density", "off") or "off")
-        if density not in ("texture", "full"):
+        # Building the runtime is free — it is ticking that costs tokens. The
+        # scene only needs the runtime, so it may build one while density is off.
+        if density not in ("texture", "full") and not for_scene:
             return None
         world_key = json.dumps({k: settings.get(k) for k in
                                 ("world_premise", "world_actors", "world_places", "world_map",
@@ -2931,6 +3151,57 @@ class LifeEngine:
                                           f"{self.data_dir}/worldsim", 0, settings)
             self._worldsim_key = world_key
         return self._worldsim
+
+    def _cast(self):
+        """Per-person memory for the world's cast.
+
+        Shared with the world runtime when one is alive so both sides read the
+        same record; otherwise a standalone store is used, so the isolation
+        still holds before the simulation is ever ticked.
+        """
+        runtime = getattr(self, "_worldsim", None)
+        shared = getattr(runtime, "cast_context", None) if runtime is not None else None
+        if shared is not None:
+            return shared
+        if getattr(self, "_cast_store", None) is None:
+            from ..cast import CastContexts
+            self._cast_store = CastContexts(f"{self.data_dir}/worldsim/cast.json")
+        return self._cast_store
+
+    def _scene_context(self) -> str:
+        """Where the character physically is, as prompt text.
+
+        Derived from world state, never from the model: place, time of day,
+        weather and who else is in the room. Returns "" when the world has
+        nothing to say, so setups without a world see an unchanged prompt.
+        """
+        try:
+            settings = self.companion.get_settings()
+            if str(settings.get("world_scene", "1")).strip().lower() in ("0", "false", "off", "no"):
+                return ""
+            runtime = self._ensure_worldsim(settings, for_scene=True)
+            sim = getattr(runtime, "sim", None)
+            world = getattr(sim, "state", None)
+            world_map = getattr(runtime, "world_map", None)
+            if not isinstance(world, dict) or not isinstance(world_map, dict):
+                return ""
+            # The companion is not part of the cast, so "where she is" comes from
+            # the person she is closest to right now.
+            focus = ""
+            actors = world.get("actors")
+            if isinstance(actors, dict) and actors:
+                try:
+                    focus = max(actors.items(), key=lambda kv: float((kv[1] or {}).get("affinity", 0) or 0))[0]
+                except (TypeError, ValueError):
+                    focus = ""
+            from ..worldsim.scene import build_scene, render_block
+            scene = build_scene(world, world_map, focus_actor_id=str(focus),
+                                previous=getattr(self, "_scene", None))
+            self._scene = scene
+            return render_block(scene)
+        except Exception as error:
+            logger.debug("scene context unavailable: %s", error)
+            return ""
 
     async def worldsim_tick(self) -> dict:
         try:
@@ -2991,6 +3262,11 @@ class LifeEngine:
             logger.debug("suppressed error: %s", _exc)
 
     def _world_contacts_context(self, runtime=None) -> str:
+        """Who in your own world is waiting on you, and what they last said.
+
+        Each line is read from that actor's own record, so isolation is a
+        property of the store rather than a filter applied here.
+        """
         runtime = runtime if runtime is not None else self._ensure_worldsim()
         if runtime is None:
             return ""
@@ -3000,8 +3276,17 @@ class LifeEngine:
             return ""
         if not pending:
             return ""
-        lines = [f"- {p['name']}（{'在生你的气' if p['mood'] == 'upset' else '有阵子没联系了'}）"
-                 for p in pending[:5]]
+        cast = getattr(runtime, "cast_context", None) or self._cast()
+        lines = []
+        for person in pending[:5]:
+            mood = ("upset with you" if person.get("mood") == "upset"
+                    else "has not heard from you in a while")
+            try:
+                last = cast.last_line(str(person.get("id") or ""))
+            except Exception:
+                last = ""
+            quoted = f' | last time they said: "{last}"' if last else ""
+            lines.append(f"- {person['name']} ({mood}){quoted}")
         return "\n".join(lines)
 
     def _world_action(self, action: str = "", actor_id: str = "", **kwargs) -> dict:
@@ -3066,7 +3351,9 @@ class LifeEngine:
         removed = 0
         try:
             base = os.path.join(self.data_dir, "worldsim")
-            for path in glob.glob(os.path.join(base, "world.json*")) + glob.glob(os.path.join(base, "shadow_log.jsonl")):
+            for path in (glob.glob(os.path.join(base, "world.json*"))
+                         + glob.glob(os.path.join(base, "shadow_log.jsonl"))
+                         + glob.glob(os.path.join(base, "cast.json*"))):
                 try:
                     os.remove(path)
                     removed += 1
@@ -3076,6 +3363,7 @@ class LifeEngine:
             logger.debug("suppressed error: %s", _exc)
         self._worldsim = None
         self._worldsim_key = None
+        self._cast_store = None
         await asyncio.to_thread(self.companion.audit, "world_clear",
                                 json.dumps(result, ensure_ascii=False), "", "ok")
         return {"timeline": result, "traces": traces, "episodes": episodes, "files": removed}
@@ -3880,7 +4168,12 @@ class LifeEngine:
             logger.debug("suppressed error: %s", _exc)
         return "\n\n".join(parts), signals
 
-    AUTONOMY_TOOLS = ("computeruse", "search", "web_browse", "minecraft", "agenda_add", "journal",
+    # Characters available to the assembled prompt. 9000 is roughly 4.5k CJK
+    # tokens, which leaves room for the conversation and the reply on a 32k
+    # window while keeping the per-turn cost predictable.
+    CONTEXT_BUDGET_CHARS = context_budget.DEFAULT_TOTAL
+
+    AUTONOMY_TOOLS = ("send_computer", "look_watch", "search", "web_browse", "minecraft", "agenda_add", "journal",
                       "goal_add", "goal_log", "goal_list",
                       "world")
     # Read-only observation only. The autonomy loop feeds untrusted content
@@ -3908,8 +4201,9 @@ class LifeEngine:
             system = self.think.build_prompt(
                 user_message=("[内部自主任务] 这是你的自主时间，没有用户直接指令。"
                               "看 External Observations 里你刚收集到的信息，以你的人设自主决定此刻做什么最有意义："
-                              "可以先用 computeruse 的 listwindows/screenshot 看一眼用户电脑在做什么，必要时也能用 move/click/type/key 帮用户操作，"
+                              "可以先用 send_computer 的 screenshot/listwindows 看一眼用户电脑在做什么，"
                               "也可以写日记、安排日程、自己玩 Minecraft、搜索资料，或什么都不做。"
+                              "想确认现在几点、接下来有什么安排，就用 look_watch。"
                               "如果你发现自己在意某件一直没做的事，可以用 goal_add 给自己定一个目标，"
                               "做完一步就用 goal_log 记下来——只记你真的做了的。"
                               "如果此刻你想主动跟用户说点什么，就把话写进 proactive_message。"),
@@ -3935,7 +4229,7 @@ class LifeEngine:
                 system += "\n\n你此刻的内心（延续你自己一直在想的事）：\n" + resident_context
             system += ("\n\nAutonomous rules:\n"
                        "- 你可以调用工具来观察或行动，一次最多一个，等结果回来再决定下一步。\n"
-                       "- 允许自动执行：computeruse（screenshot/listwindows/move/click/type/key）、search、web_browse、minecraft、agenda_add、journal、goal_add、goal_log、world。\n"
+                       "- 允许自动执行：send_computer（只读：screenshot/listwindows）、look_watch、search、web_browse、minecraft、agenda_add、journal、goal_add、goal_log、world。\n"
                        "- 你自己的世界里有人可能在想你、或者生你的气（External Observations 会提示）。"
                        "想维持这段关系就调用 world（先 pending 看谁在等，再 reply/visit 联系 ta）；这不打扰用户。\n"
                        "- 想主动联系用户时，把要说的话放进 proactive_message（第一人称、≤80 字、自然、不要引号）；不想打扰就留空。\n"
@@ -3957,7 +4251,7 @@ class LifeEngine:
             if not calls:
                 break
             call = calls[0]
-            name = str(call.get("name") or "")
+            name = self.tools.resolve(str(call.get("name") or ""))
             args = call.get("arguments", {k: value for k, value in call.items() if k != "name"})
             if isinstance(args, str):
                 try:
@@ -3969,8 +4263,8 @@ class LifeEngine:
             if name not in self.AUTONOMY_TOOLS:
                 messages += "\n\nAction result:\nblocked " + name + ": not allowed autonomously"
                 continue
-            if name == "computeruse" and str(args.get("action") or "") not in self.AUTONOMY_COMPUTERUSE_ACTIONS:
-                messages += "\n\nAction result:\nblocked computeruse: only screenshot/listwindows"
+            if name == "send_computer" and str(args.get("action") or "") not in self.AUTONOMY_COMPUTERUSE_ACTIONS:
+                messages += "\n\nAction result:\nblocked send_computer: only screenshot/listwindows"
                 continue
             result = await self._call_minecraft(args) if name == "minecraft" else await self._call_tool_direct(name, **args)
             summary = json.dumps({"tool": name, "success": bool(result and result.success),
@@ -4282,7 +4576,7 @@ class LifeEngine:
         route = (self.model_routes or {}).get(task)
         if route:
             return str(route)
-        if task in ("think", "plan", "agenda", "reflect", "journal", "dream", "compact"):
+        if task in ("think", "plan", "agenda", "reflect", "journal", "dream", "compact", "minor_actor"):
             return self.think_model or self.default_model
         return self.output_model or self.default_model
 

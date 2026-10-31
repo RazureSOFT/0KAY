@@ -159,7 +159,7 @@ onUnmounted(() => {
         <section class="overview">
       <article class="card donut-card">
         <div class="donut">
-          <svg viewBox="0 0 42 42" aria-hidden="true">
+          <svg viewBox="0 0 42 42" aria-hidden="true" fill="none" stroke-width="5">
             <circle class="donut-track" cx="21" cy="21" r="15.9" pathLength="100" />
             <circle class="donut-prompt" cx="21" cy="21" r="15.9" pathLength="100"
               :stroke-dasharray="`${promptShare} 100`" />
@@ -235,21 +235,39 @@ onUnmounted(() => {
         <span class="panel-note">{{ t('usage.modelsCount', { n: modelRows.length }) }}</span>
       </div>
       <div v-if="modelRows.length === 0" class="empty">{{ t('usage.empty') }}</div>
-      <div v-else class="model-grid">
-        <article v-for="row in modelRows" :key="row.model" class="model-card" :style="{ '--c': row.color }">
-          <div class="mc-top">
-            <span class="mc-avatar">{{ row.model.slice(0, 1).toUpperCase() }}</span>
-            <code class="mc-name">{{ row.model }}</code>
-            <span class="mc-share">{{ share(row.total).replace('%', '') }}%</span>
-          </div>
-          <b class="mc-total">{{ n(row.total) }} <small>{{ t('usage.tokens') }}</small></b>
-          <div class="mc-track"><div class="mc-fill" :style="{ transform: `scaleX(${share(row.total)})` }"></div></div>
-          <div class="mc-meta">
-            <span><b>{{ n(row.prompt) }}</b>{{ t('usage.promptTokens') }}</span>
-            <span><b>{{ n(row.completion) }}</b>{{ t('usage.completionTokens') }}</span>
-            <span><b>{{ n(row.count) }}</b> {{ t('usage.requestsSuffix') }}</span>
-          </div>
-        </article>
+      <!-- A table, not a card grid: these are the same six numbers per row, and
+           comparing two models should not require scrolling past both cards. -->
+      <div v-else class="model-table-wrap">
+        <table class="model-table">
+          <thead>
+            <tr>
+              <th scope="col">{{ t('usage.colModel') }}</th>
+              <th scope="col" class="num">{{ t('usage.colShare') }}</th>
+              <th scope="col" class="num">{{ t('usage.tokens') }}</th>
+              <th scope="col" class="num">{{ t('usage.promptTokens') }}</th>
+              <th scope="col" class="num">{{ t('usage.completionTokens') }}</th>
+              <th scope="col" class="num">{{ t('usage.requestsSuffix') }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in modelRows" :key="row.model">
+              <td class="cell-model">
+                <span class="row-dot" :style="{ background: row.color }" aria-hidden="true" />
+                <code>{{ row.model }}</code>
+              </td>
+              <td class="num">
+                <span class="share-cell">
+                  <span class="share-track"><span class="share-fill" :style="{ width: share(row.total), background: row.color }" /></span>
+                  <b>{{ share(row.total) }}</b>
+                </span>
+              </td>
+              <td class="num"><b>{{ n(row.total) }}</b></td>
+              <td class="num">{{ n(row.prompt) }}</td>
+              <td class="num">{{ n(row.completion) }}</td>
+              <td class="num">{{ n(row.count) }}</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
     </template>
@@ -281,7 +299,8 @@ onUnmounted(() => {
 
 .overview { display: grid; grid-template-columns: minmax(min(220px, 100%), 0.9fr) minmax(min(280px, 100%), 1.5fr) minmax(min(200px, 100%), 1fr); gap: var(--space-lg); margin-bottom: var(--space-xl); }
 .card {
-  background: var(--md-surface-container-low); border: 1px solid color-mix(in srgb, var(--md-outline-variant) 55%, transparent);
+  background: var(--md-surface-container-lowest, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--md-outline-variant) 70%, transparent);
   border-radius: 32px; padding: 24px; box-shadow: var(--shadow-1);
   animation: up var(--duration-long) var(--ease-spring) both;
 }
@@ -328,7 +347,8 @@ onUnmounted(() => {
 .mini span { font-size: 12px; color: var(--md-on-surface-variant); font-weight: 600; }
 
 .panel {
-  background: var(--md-surface-container-low); border: 1px solid color-mix(in srgb, var(--md-outline-variant) 55%, transparent);
+  background: var(--md-surface-container-lowest, #ffffff);
+  border: 1px solid color-mix(in srgb, var(--md-outline-variant) 70%, transparent);
   border-radius: 32px; padding: clamp(20px, 2.2vw, 28px); margin-bottom: var(--space-lg); box-shadow: var(--shadow-1);
   animation: up var(--duration-long) var(--ease-spring) both;
 }
@@ -351,30 +371,29 @@ onUnmounted(() => {
 .axis { display: flex; gap: 6px; height: 22px; padding-top: 6px; }
 .axis span { flex: 1; min-width: 0; text-align: center; font-size: 11px; color: var(--md-on-surface-variant); white-space: nowrap; }
 
-.model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(264px, 100%), 1fr)); gap: 16px; }
-.model-card {
-  position: relative; overflow: hidden; padding: 22px; border-radius: 26px;
-  background: var(--md-surface-container); border: 1px solid color-mix(in srgb, var(--md-outline-variant) 45%, transparent);
-  display: flex; flex-direction: column; gap: 12px;
-  animation: up var(--duration-long) var(--ease-spring) both;
-  transition: transform var(--duration-medium) var(--ease-out), box-shadow var(--duration-medium) var(--ease-out), border-color var(--duration-medium) var(--ease-out);
+.model-table-wrap { overflow-x: auto; border-radius: 18px; border: 1px solid color-mix(in srgb, var(--md-outline-variant) 45%, transparent); }
+.model-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.model-table th, .model-table td { padding: 10px 14px; text-align: left; white-space: nowrap; }
+.model-table thead th {
+  position: sticky; top: 0; z-index: 1;
+  font: 700 11px/1 var(--font-family); letter-spacing: .05em; text-transform: uppercase;
+  color: var(--md-on-surface-variant);
+  background: var(--md-surface-container);
+  border-bottom: 1px solid var(--md-outline-variant);
 }
-.model-card::before { content: ''; position: absolute; inset: 0 0 auto 0; height: 5px; background: linear-gradient(90deg, var(--c), color-mix(in srgb, var(--c) 25%, transparent)); }
+.model-table tbody tr { border-bottom: 1px solid color-mix(in srgb, var(--md-outline-variant) 40%, transparent); }
+.model-table tbody tr:last-child { border-bottom: none; }
 @media (hover: hover) and (pointer: fine) {
-  .model-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-2); border-color: color-mix(in srgb, var(--c) 40%, var(--md-outline-variant)); }
+  .model-table tbody tr:hover { background: color-mix(in srgb, var(--md-primary) 6%, transparent); }
 }
-.mc-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.mc-avatar { width: 38px; height: 38px; flex-shrink: 0; border-radius: 15px 15px 15px 5px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 18%, transparent); color: var(--c); font-weight: 800; font-size: 16px; }
-.mc-name { flex: 1; min-width: 0; font: 700 13px/1.35 ui-monospace, monospace; overflow-wrap: anywhere; }
-.mc-share { flex-shrink: 0; height: 26px; padding: 0 10px; border-radius: 999px; display: inline-flex; align-items: center; background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); font-size: 12px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.mc-total { font-size: 26px; font-weight: 800; letter-spacing: -.02em; line-height: 1.05; }
-.mc-total small { font-size: 12px; font-weight: 600; color: var(--md-on-surface-variant); }
-.mc-track { height: 10px; border-radius: 999px; background: var(--md-surface-container-high); overflow: hidden; }
-.mc-fill { height: 100%; width: 100%; transform-origin: left; border-radius: 999px; background: linear-gradient(90deg, var(--c), color-mix(in srgb, var(--c) 50%, var(--md-surface))); transition: transform var(--duration-long) var(--ease-spring); }
-.mc-meta { display: flex; gap: 18px; flex-wrap: wrap; }
-.mc-meta span { display: flex; flex-direction: column; gap: 1px; font-size: 12px; color: var(--md-on-surface-variant); font-weight: 600; }
-.mc-meta b { color: var(--md-on-surface); font-weight: 750; font-size: 14px; font-variant-numeric: tabular-nums; }
-
+.model-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.cell-model { display: flex; align-items: center; gap: 9px; min-width: 180px; }
+.cell-model code { font: 700 12.5px/1.35 ui-monospace, monospace; overflow-wrap: anywhere; white-space: normal; }
+.row-dot { width: 9px; height: 9px; border-radius: 3px; flex-shrink: 0; }
+.share-cell { display: inline-flex; align-items: center; gap: 8px; justify-content: flex-end; width: 100%; }
+.share-cell b { font-variant-numeric: tabular-nums; min-width: 38px; text-align: right; }
+.share-track { width: 72px; height: 6px; border-radius: 999px; background: var(--md-surface-container-high); overflow: hidden; }
+.share-fill { display: block; height: 100%; border-radius: 999px; transition: width var(--duration-long) var(--ease-spring); }
 .empty { padding: var(--space-xl); text-align: center; color: var(--md-on-surface-variant); background: var(--md-surface-container); border-radius: 20px; }
 
 .usage-loading { display: grid; grid-template-columns: minmax(220px, 0.9fr) 1.5fr 1fr; gap: var(--space-lg); margin-bottom: var(--space-xl); }

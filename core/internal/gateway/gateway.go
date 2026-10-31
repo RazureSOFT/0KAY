@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"log"
+	"math"
 	"mime"
 	"net/http"
 	"os"
@@ -300,6 +301,8 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/update/apply", g.handleUpdateApply)
 	mux.HandleFunc("/api/update/status", g.handleUpdateStatus)
 	mux.HandleFunc("/api/plugins/{name}", g.handlePluginPatch)
+	mux.HandleFunc("POST /api/plugins/{name}/reconnect", g.handlePluginReconnect)
+	mux.HandleFunc("GET /api/plugins/{name}/descriptor", g.handlePluginDescriptor)
 	mux.HandleFunc("POST /api/plugins/enable", g.handlePluginEnable)
 	mux.HandleFunc("POST /api/plugins/disable", g.handlePluginDisable)
 	mux.HandleFunc("POST /api/plugins/install", g.handlePluginInstall)
@@ -426,10 +429,51 @@ func (g *Gateway) handleHealth(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+const (
+	// Plugins heartbeat every few seconds. Ten seconds late is normal under
+	// load; a minute late means it is gone.
+	pluginDegradedAfter = 10 * time.Second
+	pluginStaleAfter    = 60 * time.Second
+)
+
+// pluginHeartbeatAge is how long since the last heartbeat, with "never" kept
+// distinct from "long ago": a zero time is not an old time, and subtracting it
+// would make a plugin that just registered look like it died hours ago.
+func pluginHeartbeatAge(lastHeartbeat time.Time) time.Duration {
+	if lastHeartbeat.IsZero() {
+		return 0
+	}
+	return time.Since(lastHeartbeat)
+}
+
+// pluginHealth turns a status enum plus a heartbeat age into something a
+// person can act on.
+func pluginHealth(status string, age time.Duration) string {
+	switch status {
+	case "PLUGIN_STATUS_UNHEALTHY":
+		return "unhealthy"
+	case "PLUGIN_STATUS_DISABLED":
+		return "disabled"
+	}
+	if age <= 0 {
+		return "unknown"
+	}
+	if age > pluginStaleAfter {
+		return "stale"
+	}
+	if age > pluginDegradedAfter {
+		return "degraded"
+	}
+	return "healthy"
+}
+
 func (g *Gateway) handlePlugins(w http.ResponseWriter, r *http.Request) {
 	if !allowMethod(w, r, http.MethodGet) {
 		return
 	}
+	// Reap before listing: a plugin that stopped heartbeating should read as
+	// unhealthy in the same response that reports its age, not one poll later.
+	_ = g.registry.CheckStalePlugins(pluginStaleAfter)
 	plugins := g.registry.GetAllPlugins()
 
 	type PluginInfo struct {
@@ -443,6 +487,17 @@ func (g *Gateway) handlePlugins(w http.ResponseWriter, r *http.Request) {
 		Disabled     bool     `json:"disabled"`
 		Builtin      bool     `json:"builtin"`
 		Permissions  any      `json:"permissions,omitempty"`
+		// Health answers "is this plugin alive right now". Status only flips to
+		// UNHEALTHY when someone reaps it; the age is what separates a plugin
+		// that died from one that is merely slow.
+		Health string `json:"health"`
+		// Lifecycle is the one-word phase: installed/starting/healthy/degraded/
+		// stopped/failed. Health still carries the finer detail.
+		Lifecycle           string  `json:"lifecycle"`
+		NeedsAttention      bool    `json:"needs_attention,omitempty"`
+		HeartbeatAgeSeconds float64 `json:"heartbeat_age_seconds,omitempty"`
+		LastHeartbeat       string  `json:"last_heartbeat,omitempty"`
+		UptimeSeconds       float64 `json:"uptime_seconds,omitempty"`
 	}
 
 	disabledNames := g.registry.DisabledNames()
@@ -460,18 +515,33 @@ func (g *Gateway) handlePlugins(w http.ResponseWriter, r *http.Request) {
 				"egress":       p.Info.Permissions.Egress,
 			}
 		}
-		result = append(result, PluginInfo{
-			PluginID:     p.PluginID,
-			Name:         p.Info.Name,
-			Version:      p.Info.Version,
-			Type:         p.Info.PluginType.String(),
-			Capabilities: p.Capabilities,
-			Status:       p.Status.String(),
-			ActiveTasks:  p.ActiveTasks,
-			Disabled:     false,
-			Builtin:      p.Builtin,
-			Permissions:  perms,
-		})
+		age := pluginHeartbeatAge(p.LastHeartbeat)
+		health := pluginHealth(p.Status.String(), age)
+		registered := !p.RegisteredAt.IsZero()
+		phase := pluginPhase(pluginPhaseInputs{Registered: registered, Status: p.Status.String(), Health: health})
+		info := PluginInfo{
+			PluginID:       p.PluginID,
+			Name:           p.Info.Name,
+			Version:        p.Info.Version,
+			Type:           p.Info.PluginType.String(),
+			Capabilities:   p.Capabilities,
+			Status:         p.Status.String(),
+			ActiveTasks:    p.ActiveTasks,
+			Disabled:       false,
+			Builtin:        p.Builtin,
+			Permissions:    perms,
+			Health:         health,
+			Lifecycle:      phase,
+			NeedsAttention: phaseNeedsAttention(phase),
+		}
+		if !p.LastHeartbeat.IsZero() {
+			info.HeartbeatAgeSeconds = math.Round(age.Seconds()*10) / 10
+			info.LastHeartbeat = p.LastHeartbeat.UTC().Format(time.RFC3339)
+		}
+		if !p.RegisteredAt.IsZero() {
+			info.UptimeSeconds = math.Round(time.Since(p.RegisteredAt).Seconds())
+		}
+		result = append(result, info)
 		seen[p.Info.Name] = true
 	}
 	for _, name := range disabledNames {
@@ -479,10 +549,12 @@ func (g *Gateway) handlePlugins(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		result = append(result, PluginInfo{
-			PluginID: "disabled:" + name,
-			Name:     name,
-			Disabled: true,
-			Status:   "PLUGIN_STATUS_DISABLED",
+			PluginID:  "disabled:" + name,
+			Name:      name,
+			Disabled:  true,
+			Status:    "PLUGIN_STATUS_DISABLED",
+			Health:    "disabled",
+			Lifecycle: PhaseStopped,
 		})
 	}
 
@@ -521,6 +593,84 @@ func (g *Gateway) handlePluginToggle(w http.ResponseWriter, r *http.Request, ena
 		return
 	}
 	g.setPluginEnabled(name, enable, w)
+}
+
+// handlePluginReconnect is the recovery path that does not require restarting
+// the whole stack: drop the cached gRPC connection so the next call dials a
+// fresh socket, and clear a stale UNHEALTHY mark so the plugin can prove
+// itself again with its next heartbeat.
+func (g *Gateway) handlePluginReconnect(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodPost) {
+		return
+	}
+	name := r.PathValue("name")
+	if name == "" {
+		badRequest(w, "plugin name required")
+		return
+	}
+	if !g.knownPlugin(name) {
+		notFound(w, "plugin not found")
+		return
+	}
+	closed := 0
+	for _, plugin := range g.registry.GetAllPlugins() {
+		if plugin.Info == nil {
+			continue
+		}
+		if plugin.Info.Name != name && plugin.PluginID != name {
+			continue
+		}
+		if plugin.Address != "" {
+			g.CloseConnections(plugin.Address)
+			closed++
+		}
+	}
+	g.registry.ResetHealth(name)
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"plugin":             name,
+		"reconnected":        true,
+		"connections_closed": closed,
+		"note":               "the next call dials a fresh connection; health clears on the next heartbeat",
+	})
+}
+func (g *Gateway) handlePluginDescriptor(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
+	name := r.PathValue("name")
+	if name == "" {
+		badRequest(w, "plugin name required")
+		return
+	}
+	for _, plugin := range g.registry.GetAllPlugins() {
+		if plugin.Info == nil {
+			continue
+		}
+		if plugin.Info.Name != name && plugin.PluginID != name {
+			continue
+		}
+		writeJSON(w, http.StatusOK, descriptorFor(plugin, false))
+		return
+	}
+	if g.knownPlugin(name) {
+		// Known to the install but not registered in this run: still describe it,
+		// because "installed but not running" is exactly what someone is asking.
+		// Switched off reads as stopped; never started reads as installed.
+		phase := PhaseInstalled
+		if g.registry.IsDisabled(name) {
+			phase = PhaseStopped
+		}
+		writeJSON(w, http.StatusOK, PluginDescriptor{
+			ID: name, Name: name, Kind: "unknown", Lifecycle: phase,
+			Health: PluginHealthSpec{
+				DegradedAfterSeconds: pluginDegradedAfter.Seconds(),
+				StaleAfterSeconds:    pluginStaleAfter.Seconds(),
+			},
+			Surfaces: pluginSurfaces(name),
+		})
+		return
+	}
+	notFound(w, "plugin not found")
 }
 
 func (g *Gateway) handlePluginPatch(w http.ResponseWriter, r *http.Request) {

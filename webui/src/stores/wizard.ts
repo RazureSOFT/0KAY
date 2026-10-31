@@ -16,6 +16,9 @@ export const useWizardStore = defineStore('wizard', () => {
   const fetchedModels = ref<string[]>([])
   const isLoadingModels = ref(false)
 
+  // Not a wizard step: the persona and the Live2D model are the app's config.
+  // ChatPanel reads the persona and Live2DStage reads the model, and both are
+  // persisted through saveToStorage() below.
   const persona = ref<PersonaConfig>({
     name: '',
     avatar: '',
@@ -39,9 +42,7 @@ export const useWizardStore = defineStore('wizard', () => {
       case 3: return provider.value !== ''
       case 4: return apiKey.value !== '' && baseUrl.value !== ''
       case 5: return defaultModel.value !== ''
-      case 6: return persona.value.name !== ''
-      case 7: return true
-      case 8: return true
+      case 6: return true
       default: return false
     }
   })
@@ -54,7 +55,6 @@ export const useWizardStore = defineStore('wizard', () => {
         if (apiKey.value === '') return 'wizard.needApiKey'
         return 'wizard.needBaseUrl'
       case 5: return 'wizard.needModel'
-      case 6: return 'wizard.needName'
       default: return ''
     }
   })
@@ -120,6 +120,34 @@ export const useWizardStore = defineStore('wizard', () => {
     localStorage.setItem('0kay_wizard_complete', 'true')
   }
 
+  /**
+   * Treat setup as done when Core already has a usable provider.
+   *
+   * The wizard writes to Core, so Core is the authority; localStorage is only a
+   * cache of that fact. Without this, a fresh browser profile re-ran setup.
+   */
+  async function reconcileWithCore() {
+    try {
+      const res = await fetch('/api/providers')
+      if (!res.ok) return
+      const body = await res.json()
+      const providers = Array.isArray(body?.providers) ? body.providers : []
+      const usable = providers.filter((p: any) => p && (p.enabled !== false) && String(p.api_key || '').trim())
+      if (!usable.length) return
+      const first = usable[0]
+      provider.value = provider.value || first.provider || first.id || ''
+      baseUrl.value = baseUrl.value || first.base_url || ''
+      if (!defaultModel.value) defaultModel.value = first.default_model || (first.models?.[0] ?? '')
+      if (!selectedModels.value.length && Array.isArray(first.models)) selectedModels.value = first.models
+      if (!isCompleted.value) {
+        isCompleted.value = true
+        localStorage.setItem('0kay_wizard_complete', 'true')
+      }
+    } catch {
+      // Offline or a locked-down Core: fall back to whatever localStorage said.
+    }
+  }
+
   async function pushProvidersToCore() {
     if (!provider.value || !apiKey.value || !baseUrl.value) return
     try {
@@ -174,6 +202,10 @@ export const useWizardStore = defineStore('wizard', () => {
     if (complete === 'true') {
       isCompleted.value = true
     }
+    // Completion used to live only in localStorage, so a different browser (or a
+    // cleared profile) walked the user through setup again even though the server
+    // already had a working provider. Ask Core as well.
+    void reconcileWithCore()
     try {
       const config = JSON.parse(localStorage.getItem('0kay_config') || '{}')
       provider.value = config.provider || provider.value
@@ -225,6 +257,7 @@ export const useWizardStore = defineStore('wizard', () => {
     live2d,
     canProceed,
     blockedHint,
+    reconcileWithCore,
     setProvider,
     setApiKey,
     setBaseUrl,

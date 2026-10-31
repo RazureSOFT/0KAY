@@ -18,6 +18,10 @@ class ThinkResult:
     stage_actions: str = ""
     proactive_message: str = ""
     proactive_after_minutes: int = 0
+    # When set, this is what you actually say. The engine streams it directly and
+    # skips the OUTPUT stage, so a plain conversational turn costs one model call
+    # instead of two.
+    speak: str = ""
 
     def to_json(self) -> str:
         return json.dumps({
@@ -34,6 +38,7 @@ class ThinkResult:
             "stage_actions": self.stage_actions,
             "proactive_message": self.proactive_message,
             "proactive_after_minutes": self.proactive_after_minutes,
+            "speak": self.speak,
         }, indent=2)
 
 
@@ -59,6 +64,16 @@ Companion actions:
   them and log the real steps you took with goal_log. Never log an intention, and
   never claim progress you did not actually make.
 
+Things you can do besides talking:
+- look_watch — check the clock, today's schedule, or how long until something.
+  Use it before stating the time or what you are about to do next; do not guess.
+- send_computer — operate the user's computer (screen, windows, clicks, typing).
+  This needs approval: say what you are about to do before you do it.
+- send_message — send a message to someone else (chat or mail). Needs approval.
+- speak — say something right now. Put the exact words in `speak`; the engine
+  sends them as-is instead of running a second rewrite. Use it for ordinary
+  conversation, especially short replies — it is faster and keeps your voice.
+
 Current State:
 - Emotion: {emotion_context}
 - Mental Energy: {energy_context}
@@ -66,7 +81,7 @@ Current State:
 - Online Agents: {online_agents} (use useagent tool to dispatch tasks to them)
 - Time: {time_context}
 
-{control_context}{cognition_context}{self_statement}Memory Context:
+{scene_context}{control_context}{cognition_context}{self_statement}Memory Context:
 {memory_context}
 
 Skills:
@@ -129,6 +144,9 @@ Output a JSON object with:
     are ignored, so it is always safe to include them. Available groups/expressions
     depend on the active model (mao_pro: Idle + a 6-clip body group, expressions
     exp_01..exp_08). Use [] when no gesture is needed.
+12. speak: the exact words to say, in character, when this turn is ordinary
+    conversation. Leave it empty when the answer needs structure (a list, code, a
+    long explanation) and the OUTPUT stage should compose it instead.
 
 Output ONLY the JSON object, no other text."""
 
@@ -139,10 +157,10 @@ class ThinkStage:
     BRIEF_STRATEGIES = frozenset({"reply_brief", "brief", "简短", "reply", "chat"})
 
     MODE_MEANING = {
-        "AUTO": "习惯主导（H 习惯系统）：沿既有习惯直接回应，最省力，不展开推理。",
-        "WM": "工作记忆主导（WM）：只需在当前上下文里保留少量信息，不必长期规划。",
-        "PLAN": "目标导向规划（MB 基于模型系统）：低深度前瞻，考虑一两步之后的结果。",
-        "FULL": "全量控制（H + 无模型价值 + MB 规划 + WM）：整合习惯与前瞻，谨慎权衡。",
+        "AUTO": "habit-led (H): answer along an existing habit, cheapest path, no extended reasoning.",
+        "WM": "working-memory-led (WM): keep only a few facts from this context, no long-horizon planning.",
+        "PLAN": "goal-directed planning (MB): shallow lookahead, one or two steps ahead.",
+        "FULL": "full control (H + model-free value + MB planning + WM): integrate habit and lookahead, weigh carefully.",
     }
 
     def __init__(self):
@@ -157,11 +175,11 @@ class ThinkStage:
         mode = mode or "AUTO"
         planning = chosen in cls.PLANNING_STRATEGIES or (
             mode in {"PLAN", "FULL"} and chosen not in cls.BRIEF_STRATEGIES)
-        directive = "需要规划：先给出简短的步骤，再执行。" if planning else "不要规划：直接自然地回应，不要展开步骤。"
+        directive = "Planning: give a short list of steps first, then act." if planning else "No planning: answer naturally and do not enumerate steps."
         meaning = cls.MODE_MEANING.get(mode, cls.MODE_MEANING["AUTO"])
         return ("Control Mode (decided by the cognition core via EVC arbitration, not by you):\n"
                 f"- Mode: {mode} — {meaning}\n- {directive}\n"
-                "- 若这一轮触发了情景记忆，只取与当前处境最相关的一两条，不要罗列。\n\n")
+                "- If episodic memory fired this turn, use only the one or two items that fit this moment; do not list them.\n\n")
 
     @classmethod
     def cognition_context(cls, *, affect=None, language=None, social=None, selfhood=None,
@@ -174,49 +192,49 @@ class ThinkStage:
             if str(affect.get("prompt") or "").strip():
                 bits.append(str(affect["prompt"]).strip())
             if float(affect.get("somatic_burden", 0.0) or 0.0) > 0.3:
-                bits.append("身体有些不适感（躯体负荷偏高），不要忽略它。")
+                bits.append("your body feels off (somatic load is high) — do not ignore it")
             if float(affect.get("loneliness", 0.0) or 0.0) > 0.5:
-                bits.append("有点想和人说话（孤独感偏高）。")
+                bits.append("you want to talk to someone (loneliness is high)")
             if bits:
-                lines.append("身体与情绪基调：" + " ".join(bits))
+                lines.append("Body and mood: " + "; ".join(bits))
 
         if modulate.get("language") and language:
             top = [str(w) for w in (language.get("top_words") or []) if str(w).strip()]
             if top:
-                lines.append("你最近常说的词：" + "、".join(top[:6]) + "；用词保持你自己的习惯。")
+                lines.append("Words you have been using lately: " + ", ".join(top[:6]) + " — keep your own vocabulary.")
 
         if modulate.get("social") and social:
             bits = []
             friends = [str(f) for f in (social.get("friends") or []) if str(f).strip()]
             if friends:
-                bits.append("熟悉的人：" + "、".join(friends[:5]))
+                bits.append("people you know: " + ", ".join(friends[:5]))
             if str(social.get("perspective_name") or "").strip():
-                bits.append(f"你此刻倾向从「{social['perspective_name']}」的视角理解对方")
+                bits.append(f"right now you tend to read the other person from the angle of \"{social['perspective_name']}\"")
             if float(social.get("empathy", 0.0) or 0.0) > 0.6:
-                bits.append("共情敏感度偏高")
+                bits.append("your empathy is running high")
             if bits:
-                lines.append("人际：" + "；".join(bits) + "。")
+                lines.append("Relationships: " + "; ".join(bits) + ".")
 
         if modulate.get("selfhood") and selfhood:
             bits = []
             patience = float(selfhood.get("patience", 0.5) or 0.0)
             if patience < 0.35:
-                bits.append("你此刻没什么耐心")
+                bits.append("you have no patience right now")
             elif patience > 0.7:
-                bits.append("你此刻很有耐心")
+                bits.append("you are patient right now")
             if float(selfhood.get("meta_awareness", 0.0) or 0.0) > 0.6:
-                bits.append("你在意自己说话是否前后一致")
+                bits.append("you care whether what you say stays consistent with yourself")
             if float(selfhood.get("identity_anchor", 1.0) or 0.0) < 0.4:
-                bits.append("你有点不确定自己是谁")
+                bits.append("you are a little unsure who you are")
             if float(selfhood.get("capacity_factor", 1.0) or 1.0) < 0.6:
-                bits.append("你此刻精力不济")
+                bits.append("you are running low on energy")
             if bits:
-                lines.append("自我：" + "；".join(bits) + "。")
+                lines.append("Self: " + "; ".join(bits) + ".")
 
         if not lines:
             return ""
-        return ("认知状态（这是你此刻的真实状态，请自然地表现出来；"
-                "不要复述、不要提及这些词）：\n" + "\n".join(f"- {line}" for line in lines) + "\n\n")
+        return ("Cognitive state (this is genuinely how you feel right now; let it show naturally — "
+                "do not restate it and do not mention these words):\n" + "\n".join(f"- {line}" for line in lines) + "\n\n")
 
     def build_prompt(
         self,
@@ -235,12 +253,13 @@ class ThinkStage:
         cognition_context: str = "",
         self_statement: str = "",
         inner_thread: str = "",
+        scene_context: str = "",
     ) -> str:
         if self_statement:
-            block = ("我自己刚写下的状态（这是我自己的第一人称陈述，自然地带入，"
-                     "不要复述、不要解释）：\n" + self_statement)
+            block = ("What I wrote down about my own state a moment ago (first person, mine — "
+                     "carry it naturally, do not restate or explain it):\n" + self_statement)
             if inner_thread:
-                block += "\n（你最近的状态脉络：" + inner_thread + "）"
+                block += "\n(recent thread of your state: " + inner_thread + ")"
             block += "\n\n"
             self_statement = block
         return self.prompt_template.format(
@@ -257,6 +276,7 @@ class ThinkStage:
             control_context=self.control_context(control_mode, strategy),
             cognition_context=cognition_context or "",
             self_statement=self_statement or "",
+            scene_context=scene_context or "",
         )
 
     def parse_response(self, response: str) -> ThinkResult:
@@ -271,7 +291,7 @@ class ThinkStage:
                 raise ValueError("THINK response must be an object")
             if not isinstance(data.get("emotion_delta", {}), dict):
                 raise ValueError("emotion_delta must be an object")
-            for key in ("memory_query", "output_guidance", "intent", "strategy", "character_intent", "stage_actions", "proactive_message"):
+            for key in ("memory_query", "output_guidance", "intent", "strategy", "character_intent", "stage_actions", "proactive_message", "speak"):
                 if not isinstance(data.get(key, ""), str):
                     raise ValueError(f"{key} must be a string")
             if not isinstance(data.get("tool_calls", []), list):
@@ -303,6 +323,7 @@ class ThinkStage:
                 stage_actions=str(data.get("stage_actions") or "")[:400],
                 proactive_message=str(data.get("proactive_message") or "")[:400],
                 proactive_after_minutes=after_minutes,
+                speak=str(data.get("speak") or "")[:4000],
             )
         except (ValueError, IndexError, TypeError, AttributeError) as error:
             raise ValueError("Invalid THINK response") from error

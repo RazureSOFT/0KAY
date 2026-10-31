@@ -37,6 +37,12 @@ export interface TaskRow {
   session_id?: string
   kind?: string
   parent_id?: string
+  /** The agent's own completeness estimate (0-100) and current action. */
+  progress?: number
+  phase?: string
+  note?: string
+  /** JSON: {title, markdown, steps, demo_html} submitted by the plan tool. */
+  plan?: string
   attachments?: Array<{ name: string; url: string; mime?: string; size?: number }>
 }
 

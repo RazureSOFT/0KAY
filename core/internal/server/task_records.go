@@ -23,6 +23,12 @@ type TaskEvent struct {
 	Error       string `json:"error"`
 	Reasoning   string `json:"reasoning,omitempty"`
 	Attachments string `json:"attachments,omitempty"`
+	// Progress is a pointer so "not mentioned" is distinguishable from 0: a
+	// progress-only update must not reset a task that already reported 60.
+	Progress *int   `json:"progress,omitempty"`
+	Phase    string `json:"phase,omitempty"`
+	Note     string `json:"note,omitempty"`
+	Plan     string `json:"plan,omitempty"`
 }
 
 func (s *CoreServiceServer) RecordTask(event TaskEvent) error {
@@ -86,6 +92,25 @@ func (s *CoreServiceServer) recordTaskLocked(event TaskEvent) error {
 	}
 	if event.Reasoning != "" {
 		task.Reasoning = event.Reasoning
+	}
+	if event.Progress != nil {
+		value := *event.Progress
+		if value < 0 {
+			value = 0
+		}
+		if value > 100 {
+			value = 100
+		}
+		task.Progress = value
+	}
+	if event.Phase != "" {
+		task.Phase = event.Phase
+	}
+	if event.Note != "" {
+		task.Note = event.Note
+	}
+	if event.Plan != "" {
+		task.Plan = event.Plan
 	}
 	if isTerminalTaskState(event.State) {
 		task.EndedAt = time.Now()

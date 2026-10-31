@@ -36,6 +36,7 @@
   <string name="agents.tasks">任務數</string>
   <string name="agents.title">Agent 清單</string>
   <string name="agents.version">版本</string>
+  <string name="app.openPet">桌面寵物</string>
   <string name="app.settings">設定</string>
   <string name="app.status">狀態</string>
   <string name="app.switchLang">切換語言</string>
@@ -328,6 +329,11 @@
   <string name="patch.renderFailed">頁面渲染失敗</string>
   <string name="patch.retry">重試</string>
   <string name="pluginPane.loading">正在載入外掛模組…</string>
+  <string name="plugins.reconnect">重新連線</string>
+  <string name="plugins.reconnectHint">丟掉快取的連線，讓外掛重新報到；不用重啟整棧。</string>
+  <string name="plugins.reconnected">已重連 · 關閉 {n} 條連線</string>
+  <string name="plugins.healthDegraded">回應變慢</string>
+  <string name="plugins.healthStale">已失聯</string>
   <string name="plugins.actionFailed">操作失敗</string>
   <string name="plugins.builtinFullPerms">內建外掛 · 權限與對外連線已全部放行</string>
   <string name="plugins.callsCore">呼叫 Core API</string>
@@ -394,6 +400,8 @@
   <string name="security.pinUnset">尚未設定 PIN</string>
   <string name="security.removePin">清除 PIN</string>
   <string name="security.removePinConfirm">刪除後本機不再保存存取 PIN，確定繼續？</string>
+  <string name="settings.groupCore">常用</string>
+  <string name="settings.groupPlugins">外掛</string>
   <string name="settings.about.available">有新版本可更新</string>
   <string name="settings.about.beta">測試版（同步倉庫）</string>
   <string name="settings.about.betaHint">直接從程式庫 main 分支同步，而非發行版標籤（可能不穩定）。</string>
@@ -506,6 +514,7 @@
   <string name="settings.removeModel">移除 {name}</string>
   <string name="settings.modelExists">“{name}” 已在清單中</string>
   <string name="settings.noProviders">尚未設定供應商，點擊上方新增。</string>
+  <string name="settings.noProvidersForKind">還沒有這類供應商。</string>
   <string name="settings.pageDesc">管理供應商、模型、人設與 Live2D 形象</string>
   <string name="settings.pathPickTitle">選擇目錄</string>
   <string name="settings.pathUp">上一層</string>
@@ -531,6 +540,12 @@
   <string name="settings.pluginSourcePlaceholder">https://gh-proxy.com</string>
   <string name="settings.pluginSourceTitle">外掛來源</string>
   <string name="settings.provider">供應商</string>
+  <string name="settings.providerKindLLM">LLM</string>
+  <string name="settings.providerKindTTS">語音合成</string>
+  <string name="settings.providerKindASR">語音辨識</string>
+  <string name="settings.providerKindImage">圖像</string>
+  <string name="settings.providerKindLabel">供應商類型</string>
+  <string name="settings.providerKindHint">這個供應商提供什麼。對話模型選 LLM；語音合成與語音辨識是獨立服務，各自有自己的介面位址。</string>
   <string name="settings.providerDesc">選擇 AI 供應商並設定 API 憑證</string>
   <string name="settings.providerDescMulti">可新增多個供應商與多個模型；聊天使用預設模型，智慧選型僅 Agent 使用</string>
   <string name="settings.providerModelType">模型類型</string>
@@ -624,6 +639,8 @@
   <string name="thinking.max">全力思考 · 已達最高檔</string>
   <string name="thinking.providerNote">實際推理參數取決於供應商；最高檔可能映射為高檔。</string>
   <string name="thinking.slider">思考強度滑桿</string>
+  <string name="usage.colModel">模型</string>
+  <string name="usage.colShare">佔比</string>
   <string name="usage.byDay">依日期</string>
   <string name="usage.byModel">依模型</string>
   <string name="usage.clear">清除用量</string>
@@ -720,4 +737,15 @@
   <string name="wizard.useModels">使用這些模型</string>
   <string name="wizard.welcome">歡迎使用 0kay！</string>
   <string name="wizard.welcomeDesc">只需幾步即可完成設定。</string>
+  <string name="pet.holdToTalk">按住說話</string>
+  <string name="pet.releaseToSend">鬆開結束</string>
+  <string name="pet.transcribing">辨識中…</string>
+  <string name="pet.tooShort">說話太短</string>
+  <string name="pet.heardNothing">沒聽清，再說一次？</string>
+  <string name="pet.noSpeech">沒聽到聲音，靠近麥克風再試</string>
+  <string name="pet.asrNotConfigured">ASR 還沒設定</string>
+  <string name="pet.asrBadKey">ASR 金鑰無效</string>
+  <string name="pet.asrTooLong">這段錄音太長了</string>
+  <string name="pet.asrFailed">語音服務出錯</string>
+  <string name="pet.replyFailed">回覆失敗</string>
 </resources>

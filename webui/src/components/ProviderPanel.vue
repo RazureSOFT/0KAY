@@ -25,6 +25,30 @@ const showKey = ref(false)
 const editHasStoredKey = ref(false)
 const saving = ref(false)
 
+/**
+ * A provider is not necessarily a chat API. The list is split by what the
+ * provider serves so a TTS endpoint does not sit in the middle of the model
+ * catalogue.
+ */
+type ProviderKind = 'llm' | 'tts' | 'asr' | 'image'
+const activeKind = ref<ProviderKind>('llm')
+const kindTabs = computed<Array<{ value: ProviderKind; label: string }>>(() => [
+  { value: 'llm', label: t('settings.providerKindLLM') },
+  { value: 'tts', label: t('settings.providerKindTTS') },
+  { value: 'asr', label: t('settings.providerKindASR') },
+  { value: 'image', label: t('settings.providerKindImage') },
+])
+function kindOf(p: ProviderConfig): string {
+  return (p.kind || 'llm').toLowerCase()
+}
+const kindProviders = computed(() => store.providers.filter(p => kindOf(p) === activeKind.value))
+function kindCount(kind: ProviderKind): number {
+  return store.providers.filter(p => kindOf(p) === kind).length
+}
+function probeAllOfKind() {
+  for (const provider of kindProviders.value) void probe(provider)
+}
+
 onMounted(async () => {
   await store.fetchAll()
   for (const provider of store.providers) void probe(provider)
@@ -108,14 +132,11 @@ async function probe(target: ProviderConfig, key = '') {
   probes.value = { ...probes.value, [target.id]: result }
 }
 
-function probeAll() {
-  for (const provider of store.providers) void probe(provider)
-}
-
 function startAdd() {
   edit.value = {
     id: '',
     provider: 'custom',
+    kind: activeKind.value,
     name: '',
     api_key: '',
     base_url: '',
@@ -331,6 +352,16 @@ const providerTypeOptions = computed(() =>
         <h3 class="pp-section-title">{{ t('settings.providerSectionBasic') }}</h3>
         <div class="pp-grid">
           <div class="field">
+            <label>{{ t('settings.providerKindLabel') }}</label>
+            <AppSelect
+              v-model="edit.kind"
+              class="input"
+              :aria-label="t('settings.providerKindLabel')"
+              :options="kindTabs"
+            />
+            <p class="helper-text">{{ t('settings.providerKindHint') }}</p>
+          </div>
+          <div class="field">
             <label>{{ t('wizard.provider') }}</label>
             <AppSelect
               v-model="edit.provider"
@@ -469,13 +500,29 @@ const providerTypeOptions = computed(() =>
           <p class="card-desc">{{ t('settings.providerDesc') }}</p>
         </div>
         <div class="pp-list-actions">
-          <button class="btn btn-ghost sm" type="button" @click="probeAll">{{ t('settings.refreshStatus') }}</button>
+          <button class="btn btn-ghost sm" type="button" @click="probeAllOfKind">{{ t('settings.refreshStatus') }}</button>
           <button class="btn btn-primary" type="button" @click="startAdd">+ {{ t('settings.addProvider') }}</button>
         </div>
       </div>
 
-      <div v-if="store.providers.length" class="pp-cards">
-        <article v-for="p in store.providers" :key="p.id" class="pp-card" :class="{ off: !p.enabled, default: isDefault(p) }">
+      <nav class="pp-kinds" role="tablist">
+        <button
+          v-for="tab in kindTabs"
+          :key="tab.value"
+          type="button"
+          role="tab"
+          class="pp-kind"
+          :class="{ active: activeKind === tab.value }"
+          :aria-selected="activeKind === tab.value"
+          @click="activeKind = tab.value"
+        >
+          {{ tab.label }}
+          <span class="pp-kind-count">{{ kindCount(tab.value) }}</span>
+        </button>
+      </nav>
+
+      <div v-if="kindProviders.length" class="pp-cards">
+        <article v-for="p in kindProviders" :key="p.id" class="pp-card" :class="{ off: !p.enabled, default: isDefault(p) }">
           <header class="pp-card-head">
             <span class="pp-logo">
               <img v-if="logo(p)" :src="logo(p)" :alt="displayName(p)" />
@@ -520,7 +567,7 @@ const providerTypeOptions = computed(() =>
       </div>
 
       <div v-else class="pp-empty">
-        <p>{{ t('settings.noProviders') }}</p>
+        <p>{{ t('settings.noProvidersForKind') }}</p>
         <button class="btn btn-primary" type="button" @click="startAdd">+ {{ t('settings.addFirstProvider') }}</button>
       </div>
     </template>
@@ -605,6 +652,25 @@ const providerTypeOptions = computed(() =>
 /* min(340px, 100%) so the track can never be wider than the column it sits in;
    a bare 340px track made every card overflow a phone screen and get clipped. */
 .pp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr)); gap: 14px; }
+
+/* Kind switcher: four chips, one active. A provider list for TTS is short, so
+   this stays a single row and never wraps into a menu. */
+.pp-kinds { display: flex; gap: 6px; flex-wrap: wrap; margin: 14px 0 12px; }
+.pp-kind {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--md-outline-variant);
+  background: var(--md-surface-container-lowest);
+  color: var(--md-on-surface-variant);
+  font-size: 13px; font-weight: 600; line-height: 1;
+}
+.pp-kind:hover { border-color: color-mix(in srgb, var(--md-primary) 40%, var(--md-outline-variant)); color: var(--md-on-surface); }
+.pp-kind.active { background: var(--md-secondary-container); border-color: transparent; color: var(--md-on-secondary-container); }
+.pp-kind-count {
+  min-width: 18px; padding: 1px 5px; border-radius: 999px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  font-size: 11px; font-weight: 700; text-align: center;
+}
 .pp-card {
   display: flex; flex-direction: column; gap: 12px; padding: 16px;
   /* Without this the card's min-content width (a long base URL, a row of model

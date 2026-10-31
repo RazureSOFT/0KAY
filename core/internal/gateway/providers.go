@@ -31,7 +31,20 @@ func (g *Gateway) handleProviders(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodGet:
-		writeJSON(w, http.StatusOK, g.providerStore.Snapshot())
+		snap := g.providerStore.Snapshot()
+		// ?kind=tts narrows the list to one traffic class. Without it the whole
+		// registry comes back, which is what the settings page used to assume.
+		if kind := strings.TrimSpace(r.URL.Query().Get("kind")); kind != "" {
+			want := providers.NormalizeKind(kind)
+			filtered := make([]providers.ProviderConfig, 0, len(snap.Providers))
+			for _, p := range snap.Providers {
+				if p.EffectiveKind() == want {
+					filtered = append(filtered, p)
+				}
+			}
+			snap.Providers = filtered
+		}
+		writeJSON(w, http.StatusOK, snap)
 
 	case http.MethodPost, http.MethodPut:
 		var body struct {

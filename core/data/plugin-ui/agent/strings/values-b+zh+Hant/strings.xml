@@ -280,6 +280,12 @@
   <string name="page.restore">還原</string>
   <string name="page.restoreToChat">還原工作階段後即可繼續對話</string>
   <string name="page.run">執行</string>
+  <string name="page.planReady">計畫已就緒</string>
+  <string name="page.planSteps">{n} 步</string>
+  <string name="page.planBuild">開始執行</string>
+  <string name="page.planHide">收合計畫</string>
+  <string name="page.planShow">展開計畫</string>
+  <string name="page.planBuildMessage">執行上面的計畫。按步驟推進，始終只保留一個進行中的步驟，並隨時回報進度。如果某一步發現是錯的，先停下來說明變化，再偏離計畫。</string>
   <string name="page.running">正在執行</string>
   <string name="page.sampled">取樣</string>
   <string name="page.sampling">等待取樣…</string>
@@ -325,6 +331,17 @@
   <string name="page.typeCommand">輸入命令…</string>
   <string name="page.ungrouped">未分組</string>
   <string name="page.unsaved">未儲存</string>
+  <string name="page.runRunning">進行中</string>
+  <string name="page.runDone">已完成</string>
+  <string name="page.queuedTitle">排隊中的訊息</string>
+  <string name="page.queuedRemove">從佇列移除</string>
+  <string name="page.evolve">自我改進</string>
+  <string name="page.evolveHint">起草一條自我改進請求，送出前你可以先看和改</string>
+  <string name="page.evolvePrompt">用 evolve_begin 在獨立 worktree 裡改自己。只在該 worktree 內動手，主分支保持不變，改完跑測試，並在 `evolve_finish(open_pr=true)` 之前先問我。</string>
+  <string name="page.planReview">逐步評審</string>
+  <string name="page.planRejectedNote">以下步驟已被否決，不要執行；請先把它們作為 open_questions 向我確認：
+{steps}</string>
+  <string name="page.runFinished">「{title}」已完成</string>
   <string name="page.untitledSession">未命名工作階段</string>
   <string name="page.uploading">上傳中…</string>
   <string name="page.viewSource">檢視原始碼</string>

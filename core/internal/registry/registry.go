@@ -199,6 +199,29 @@ func (r *Registry) IsBuiltin(name string) bool {
 	return false
 }
 
+// ResetHealth clears a stale UNHEALTHY mark so a plugin can prove itself again
+// with its next heartbeat. It deliberately does not touch LastHeartbeat: faking
+// a heartbeat here would hide a plugin that is still dead.
+func (r *Registry) ResetHealth(name string) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if name == "" {
+		return false
+	}
+	for _, p := range r.plugins {
+		if p.Info == nil {
+			continue
+		}
+		if p.Info.Name != name && p.PluginID != name {
+			continue
+		}
+		if p.Status == corev1.PluginStatus_PLUGIN_STATUS_UNHEALTHY {
+			p.Status = corev1.PluginStatus_PLUGIN_STATUS_UNSPECIFIED
+		}
+		return true
+	}
+	return false
+}
 func (r *Registry) SetEnabled(name string, enabled bool) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
