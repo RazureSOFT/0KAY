@@ -151,3 +151,7 @@ life/life-review-report.md
 
 # Reference checkout kept for reading, not part of this repository.
 /tui/Claude-Code-rev/
+
+# Electron build output.
+/desktop/release/
+/desktop/dist-electron/
