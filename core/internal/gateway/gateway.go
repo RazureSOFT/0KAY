@@ -25,6 +25,7 @@ import (
 	"0kay/core/internal/server"
 	"0kay/core/internal/settings"
 	"0kay/core/internal/stdioprovider"
+	"0kay/core/internal/version"
 	corev1 "0kay/gen/core/v1"
 	lifev1 "0kay/gen/life/v1"
 
@@ -406,6 +407,9 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("POST /api/settings/{id}/test", g.handleSettingsTest)
 	mux.HandleFunc("/ws", g.handleWebSocket)
 	g.obsRoutes(mux)
+	// Catch-all for the packaged WebUI (CORE_WEBUI_DIR); API routes above win
+	// because ServeMux prefers the more specific pattern.
+	mux.HandleFunc("/", g.handleWebUI)
 
 	return logMiddleware(g.pluginGuard(mux))
 }
@@ -426,6 +430,11 @@ func (g *Gateway) handleHealth(w http.ResponseWriter, r *http.Request) {
 		"status":  "ok",
 		"plugins": len(plugins),
 		"healthy": healthy,
+		// The version rides the health probe so a client that is already
+		// polling this endpoint can show what it is talking to, and notice a
+		// restart onto a new build without a second request.
+		"version": version.Version,
+		"name":    "0KAY",
 	})
 }
 

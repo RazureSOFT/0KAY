@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -21,6 +22,7 @@ import (
 	"0kay/core/internal/server"
 	"0kay/core/internal/settings"
 	"0kay/core/internal/stdioprovider"
+	"0kay/core/internal/tray"
 	"0kay/core/internal/update"
 	"0kay/core/internal/version"
 	corev1 "0kay/gen/core/v1"
@@ -154,25 +156,50 @@ func main() {
 		go func() { <-ctx.Done(); lanHTTP.Close(); lanGRPC.Stop() }()
 	}
 
+	// One shutdown path for signals and for the tray menu: two copies would drift.
+	var shutdownOnce sync.Once
+	shutdown := func(reason string) {
+		shutdownOnce.Do(func() {
+			fmt.Println("Shutting down (" + reason + ")...")
+			tray.Stop()
+
+			shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+			if err := httpServer.Shutdown(shutdownCtx); err != nil {
+				log.Printf("HTTP shutdown: %v", err)
+				_ = httpServer.Close()
+			}
+			shutdownCancel()
+
+			grpcServer.GracefulStop()
+
+			stdioRunner.Stop()
+
+			cancel()
+		})
+	}
+
 	go func() {
 		sigCh := make(chan os.Signal, 1)
 		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 		<-sigCh
-		fmt.Println("\nShutting down...")
-
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-		if err := httpServer.Shutdown(shutdownCtx); err != nil {
-			log.Printf("HTTP shutdown: %v", err)
-			_ = httpServer.Close()
-		}
-		shutdownCancel()
-
-		grpcServer.GracefulStop()
-
-		stdioRunner.Stop()
-
-		cancel()
+		shutdown("signal")
 	}()
+
+	// Core is meant to run with no window; the icon is how you open the UI or stop
+	// it without Task Manager. Never fatal: a machine that refuses a tray icon
+	// still gets a working Core.
+	if os.Getenv("CORE_NO_TRAY") != "1" {
+		go func() {
+			addr := cfg.HTTPAddr()
+			if err := tray.Run(tray.Actions{
+				OpenUI: func() error { return tray.OpenBrowser("http://" + addr) },
+				Quit:   func() { shutdown("tray") },
+				Status: func() string { return addr },
+			}); err != nil {
+				log.Printf("tray unavailable: %v", err)
+			}
+		}()
+	}
 
 	go func() {
 		fmt.Printf("Core gRPC server starting on %s\n", cfg.GRPCAddr())
