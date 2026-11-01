@@ -155,3 +155,12 @@ life/life-review-report.md
 # Electron build output.
 /desktop/release/
 /desktop/dist-electron/
+# Stack copied into the desktop app by packaging/build.py before electron-builder.
+/desktop/resources-stack/
+# Packaging intermediates and output.
+/build/
+/dist/
+/dist-local/
+
+# The IDE fork keeps its own git history (like agent/).
+/0kay-ide/
