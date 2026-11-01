@@ -79,7 +79,10 @@ function submitFolder() {
       <p v-if="error" class="error">{{ error }}</p>
       <p v-if="busy">{{ t('agent.page.readingDirectory') }}</p>
       <div v-else class="directory-list">
-        <button v-if="showParent" type="button" @click="emit('browse', parent)">
+        <button v-if="showParent" type="button" class="parent" @click="emit('browse', parent)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M9 6l-6 6 6 6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
           {{ t('agent.page.parentDirectory') }}
         </button>
         <button v-for="dir in dirs" :key="dir.path" type="button" @click="emit('browse', dir.path)">
@@ -102,27 +105,63 @@ function submitFolder() {
 </template>
 
 <style scoped>
-.directory-backdrop{position:fixed;inset:0;z-index:var(--z-modal,6000);display:flex;align-items:center;justify-content:center;padding:24px;background:#0b122066}
-.directory-dialog{display:flex;flex-direction:column;gap:10px;width:min(760px,100%);max-height:min(760px,92vh);padding:20px;border-radius:14px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);box-shadow:0 24px 60px #0b12204d}
+/* Material 3 Expressive: one elevated sheet, large corner radius, and three
+   clearly ranked actions — text (close), tonal (secondary), filled (the way out).
+   Every rule here exists because the plugin's global `button,input` rule paints
+   everything like a text field; without them the dialog reads as a column of
+   boxes. */
+.directory-backdrop{position:fixed;inset:0;z-index:var(--z-modal,6000);display:flex;align-items:center;justify-content:center;padding:24px;background:color-mix(in srgb,#0b1220 42%,transparent)}
+.directory-dialog{
+  display:flex;flex-direction:column;gap:16px;width:min(720px,100%);max-height:min(760px,92vh);
+  padding:24px;border-radius:28px;
+  background:var(--md-surface-container-high,var(--md-surface-container-lowest));
+  color:var(--md-on-surface);
+  box-shadow:0 24px 60px color-mix(in srgb,#0b1220 32%,transparent);
+}
 .directory-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.directory-dialog h2{margin:0;font-size:15px;font-weight:650}
-.directory-roots{display:flex;flex-wrap:wrap;gap:6px}
-.directory-dialog code{display:block;padding:7px 9px;border-radius:9px;background:var(--md-surface-container-low);font-family:var(--code-font);font-size:12px;overflow-wrap:anywhere}
-.new-folder{display:flex;gap:6px}
-.new-folder input{flex:1;min-width:0}
-.directory-dialog header button{flex:none;padding:5px 11px;border:1px solid var(--md-outline-variant);border-radius:9px;background:transparent;color:var(--md-on-surface-variant);font:inherit;font-size:12px;cursor:pointer}
-.directory-dialog header button:hover{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}
-.directory-roots button{padding:3px 10px;border:1px solid var(--md-outline-variant);border-radius:8px;background:transparent;color:var(--md-on-surface);font:inherit;font-size:12px;cursor:pointer}
-.directory-roots button:hover{border-color:var(--md-primary);color:var(--md-primary)}
-.new-folder button{flex:none;padding:6px 12px;border:1px solid var(--md-outline-variant);border-radius:9px;background:transparent;color:var(--md-on-surface);font:inherit;font-size:12px;cursor:pointer}
-.new-folder button:disabled{opacity:.45;cursor:not-allowed}
-/* The one affirmative action: filled, so it reads as "this is the way out". */
-.directory-dialog footer button{padding:8px 16px;border:0;border-radius:10px;background:var(--md-primary);color:var(--md-on-primary);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
-.directory-dialog footer button:disabled{opacity:.45;cursor:not-allowed}
-.directory-dialog .error{margin:0;color:var(--md-error,#ba1a1a);font-size:12px}
-.directory-list{display:flex;flex-direction:column;gap:2px;min-height:220px;max-height:420px;overflow:auto}
-.directory-list button{display:flex;align-items:center;gap:7px;justify-content:flex-start;border:0;background:transparent;padding:7px 9px;border-radius:8px;text-align:left}
-.directory-list button:hover{background:var(--md-secondary-container)}
-.directory-dialog footer{display:flex;justify-content:flex-end}
-.muted{opacity:.7;font-size:12px}
+.directory-dialog h2{margin:0;font-size:20px;font-weight:600;line-height:1.3;letter-spacing:-.01em}
+
+/* Text button: the least important action, so it carries no container. */
+.directory-dialog header button{flex:none;height:40px;padding:0 14px;border:0;border-radius:999px;
+  background:transparent;box-shadow:none;color:var(--md-primary);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.directory-dialog header button:hover{background:color-mix(in srgb,var(--md-primary) 10%,transparent)}
+
+/* Root chips: outlined, 32px tall, the shape a filter chip has. */
+.directory-roots{display:flex;flex-wrap:wrap;gap:8px}
+.directory-roots button{height:32px;padding:0 14px;border:1px solid var(--md-outline-variant);border-radius:999px;
+  background:transparent;box-shadow:none;color:var(--md-on-surface-variant);font:inherit;font-size:12.5px;font-weight:500;cursor:pointer}
+.directory-roots button:hover:not(:disabled){border-color:var(--md-primary);color:var(--md-primary);background:color-mix(in srgb,var(--md-primary) 8%,transparent)}
+
+.directory-dialog code{display:block;padding:12px 14px;border:0;border-radius:12px;
+  background:var(--md-surface-container-highest,var(--md-surface-container-low));
+  font-family:var(--code-font);font-size:12.5px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}
+
+/* Filled field: a container with no outline, which is how M3 marks input. */
+.new-folder{display:flex;gap:8px}
+.new-folder input{flex:1;min-width:0;height:44px;padding:0 14px;border:0;border-radius:12px;
+  background:var(--md-surface-container-highest,var(--md-surface-container-low));color:var(--md-on-surface);font:inherit;font-size:13px}
+.new-folder input::placeholder{color:var(--md-on-surface-variant)}
+.new-folder button{flex:none;height:44px;padding:0 18px;border:0;border-radius:999px;
+  background:var(--md-secondary-container);color:var(--md-on-secondary-container);
+  font:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:none}
+.new-folder button:hover:not(:disabled){filter:brightness(1.04)}
+.new-folder button:disabled{opacity:.4;cursor:not-allowed}
+
+.directory-dialog .error{margin:0;color:var(--md-error,#ba1a1a);font-size:12.5px}
+/* Rows: list items. 12px radius, hover only. */
+.directory-list{display:flex;flex-direction:column;gap:2px;min-height:120px;max-height:340px;overflow:auto;padding:2px}
+.directory-list button{display:flex;align-items:center;gap:10px;justify-content:flex-start;width:100%;
+  border:0;border-radius:12px;background:transparent;box-shadow:none;
+  padding:0 12px;height:44px;font:inherit;font-size:13.5px;text-align:left;color:var(--md-on-surface);cursor:pointer}
+.directory-list button:hover:not(:disabled){background:var(--md-surface-container-highest,var(--md-surface-container-low))}
+.directory-list button svg{flex:none;color:var(--md-on-surface-variant)}
+.directory-list button.parent{color:var(--md-on-surface-variant)}
+
+.directory-dialog footer{display:flex;justify-content:flex-end;gap:8px}
+.directory-dialog footer button{height:44px;padding:0 24px;border:0;border-radius:999px;
+  background:var(--md-primary);color:var(--md-on-primary);
+  font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;box-shadow:0 1px 2px color-mix(in srgb,#0b1220 24%,transparent)}
+.directory-dialog footer button:hover:not(:disabled){filter:brightness(1.06)}
+.directory-dialog footer button:disabled{opacity:.4;cursor:not-allowed}
+.muted{opacity:.7;font-size:12.5px;margin:8px 12px}
 </style>
