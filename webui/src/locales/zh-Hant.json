@@ -707,7 +707,18 @@
     "uploadFail": "模型上傳失敗",
     "uploadFolder": "上傳模型資料夾",
     "uploadFolderHint": "選擇包含 .model.json 或 .model3.json 的完整模型目錄",
-    "uploadOk": "模型已上傳"
+    "uploadOk": "模型已上傳",
+    "evolveConfirmTitle": "讓它改自己的程式碼？",
+    "evolveConfirmBody": "它先讀倉庫、自己判斷哪裡值得改，然後給你一份提案。不會部署，沒你點頭也不會提 PR。",
+    "evolveBoundaryWorktree": "在獨立的 git worktree、self/* 分支裡動手。",
+    "evolveBoundaryMain": "主分支和工作區一個位元組都不會動。",
+    "evolveBoundaryTests": "提 PR 之前必須先跑測試。",
+    "evolveConfirmAction": "開始",
+    "evolveStarting": "啟動中…",
+    "evolveStarted": "已啟動 —— 到 Agent 頁面跟進。",
+    "evolveSessionTitle": "自我改進提案",
+    "evolveNoSession": "agent 沒有回傳工作階段 id。",
+    "evolvePrompt": "先讀這個倉庫，自己判斷哪裡最值得改：挑一個投入產出比最高的改動，並說明為什麼。先給方案再動手——用 evolve_begin 在獨立 worktree 裡做，主分支保持不變，跑完測試，並在 evolve_finish(open_pr=true) 之前問我。"
   },
   "status": {
     "activeTasks": "活躍任務",

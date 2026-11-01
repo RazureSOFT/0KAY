@@ -13,6 +13,17 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from test_kit import make_app, settle, wait_for
+
+
+def pump_until(app, predicate, timeout=3.0):
+    """Drain the queue until `predicate` holds -- events need a drain pass."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        app._drain()
+        if predicate():
+            return True
+        time.sleep(0.01)
+    return predicate()
 from kit.app import EFFORT_GLYPHS, EFFORT_OVERDRIVE, EFFORT_SPIN, EFFORT_STEPS
 
 
@@ -493,6 +504,104 @@ class Resume(unittest.TestCase):
             finally:
                 os.environ.pop("OKAY_TUI_STATE", None)
 
+    def test_r_renames_the_selected_session(self):
+        app = self._with_history()
+        app._run_command("/resume")
+        settle(app)
+        app._handle_key("r")
+        self.assertEqual(app.manual.get("kind"), "rename")
+        for ch in "new name":
+            app._handle_key(ch)
+        app._handle_key("enter")
+        settle(app)
+        self.assertEqual(app.client.renamed, [("agent-session:new", "new name")])
+        self.assertTrue([e for e in app.entries if "renamed" in e.text])
+
+    def test_x_needs_two_presses_to_delete(self):
+        app = self._with_history()
+        app._run_command("/resume")
+        settle(app)
+        app._handle_key("x")
+        settle(app)
+        self.assertEqual(app.client.deleted, [], "one press must not delete")
+        self.assertIn("again", app._panel_hint)
+        app._handle_key("x")
+        settle(app)
+        self.assertEqual(app.client.deleted, ["agent-session:new"])
+
+    def test_deleting_the_current_session_clears_it(self):
+        app = self._with_history()
+        app.session_id = "agent-session:new"
+        app._run_command("/resume")
+        settle(app)
+        app._handle_key("x")
+        app._handle_key("x")
+        settle(app)
+        self.assertEqual(app.session_id, "")
+
+    def test_escape_after_one_x_keeps_the_session(self):
+        app = self._with_history()
+        app._run_command("/resume")
+        settle(app)
+        app._handle_key("x")
+        app._handle_key("esc")
+        settle(app)
+        self.assertEqual(app.client.deleted, [])
+
+    def test_fork_switches_to_the_copy(self):
+        app = self._with_history()
+        app.session_id = "agent-session:new"
+        app._run_command("/fork")
+        self.assertTrue(pump_until(app, lambda: app.session_id == "agent-session:fork"))
+        self.assertEqual(app.client.forked, ["agent-session:new"])
+        self.assertTrue([e for e in app.entries if "forked" in e.text])
+
+    def test_forking_nothing_says_so(self):
+        app, _ = make_app()
+        app.session_id = ""
+        app._run_command("/fork")
+        self.assertTrue([e for e in app.entries if "nothing to fork" in e.text])
+        self.assertEqual(app.client.forked, [])
+
+    def test_a_archives_and_u_restores(self):
+        app = self._with_history()
+        app._run_command("/resume")
+        settle(app)
+        app._handle_key("a")
+        settle(app)
+        self.assertEqual(app.client.archived, [("agent-session:new", False)])
+        app._run_command("/resume")
+        settle(app)
+        app._handle_key("u")
+        settle(app)
+        self.assertEqual(app.client.archived[-1], ("agent-session:new", True))
+
+    def test_search_filters_the_list(self):
+        app = self._with_history()
+        app._run_command("/resume")
+        settle(app)
+        app._handle_key("/")
+        self.assertEqual(app.manual.get("kind"), "search")
+        for ch in "old":
+            app._handle_key(ch)
+        app._handle_key("enter")
+        settle(app)
+        self.assertEqual(app.sessions_query, "old")
+        self.assertEqual(app.panel.choices, ["agent-session:old"])
+
+    def test_archived_sessions_are_hidden_until_asked(self):
+        app = self._with_history()
+        app.client.session_rows.append({
+            "session_id": "agent-session:gone", "prompt": "archived one",
+            "started_at": "2026-10-30T10:00:00+08:00", "state": "archived"})
+        app._run_command("/resume")
+        settle(app)
+        self.assertNotIn("agent-session:gone", app.panel.choices)
+        self.assertTrue(any("archived" in line for line in app.panel.lines))
+        app._run_command("/resume archived")
+        settle(app)
+        self.assertIn("agent-session:gone", app.panel.choices)
+
     def test_a_session_can_be_named_directly(self):
         app = self._with_history()
         app._run_command("/resume agent-session:new")
@@ -565,3 +674,143 @@ class WhereItRuns(unittest.TestCase):
         app._draw()
         status = [line for line in capture.frame.lines() if "ready" in line][0]
         self.assertIn("no agent", status)
+
+
+
+class Export(unittest.TestCase):
+    """The conversation, written out as markdown."""
+
+    def test_it_writes_the_transcript(self):
+        import tempfile
+        from kit import state
+        with tempfile.TemporaryDirectory() as folder:
+            os.environ["OKAY_TUI_STATE"] = os.path.join(folder, "state.json")
+            try:
+                app, _ = make_app()
+                app.session_id = "agent-session:x"
+                app.task_rows = {
+                    "t": {"task_id": "t", "kind": "agent", "state": "done",
+                          "prompt": "fix the bug", "result": "**fixed**",
+                          "session_id": "agent-session:x", "started_at": "1"},
+                    "w": {"task_id": "w", "kind": "tool", "state": "done",
+                          "parent_id": "t", "prompt": "bash", "result": "ok",
+                          "started_at": "2"},
+                }
+                app._view_dirty = True
+                app._sync_view()
+                app._run_command("/export demo.md")
+                path = os.path.join(folder, "exports", "demo.md")
+                self.assertTrue(os.path.exists(path))
+                with open(path, encoding="utf-8") as handle:
+                    body = handle.read()
+                self.assertIn("fix the bug", body)
+                self.assertIn("fixed", body)
+                self.assertIn("`bash`", body)
+                self.assertIn("agent-session:x", body)
+            finally:
+                os.environ.pop("OKAY_TUI_STATE", None)
+
+    def test_an_empty_conversation_is_refused(self):
+        app, _ = make_app()
+        app._run_command("/export")
+        self.assertTrue([e for e in app.entries if "nothing to export" in e.text])
+
+
+class HistorySearch(unittest.TestCase):
+    """ctrl+r walks back through what was typed before."""
+
+    def _app(self):
+        app, _ = make_app()
+        app.history = ["git status", "npm test", "git commit -m x"]
+        return app
+
+    def test_it_finds_the_newest_match(self):
+        app = self._app()
+        for ch in "git":
+            app._handle_key(ch)
+        app._handle_key("ctrl+r")
+        self.assertEqual("".join(app.buffer), "git commit -m x")
+
+    def test_repeating_walks_further_back(self):
+        app = self._app()
+        for ch in "git":
+            app._handle_key(ch)
+        app._handle_key("ctrl+r")
+        app._handle_key("ctrl+r")
+        self.assertEqual("".join(app.buffer), "git status")
+
+    def test_typing_ends_the_walk(self):
+        app = self._app()
+        for ch in "git":
+            app._handle_key(ch)
+        app._handle_key("ctrl+r")
+        app._handle_key("x")
+        self.assertIsNone(app.search_index)
+
+    def test_no_match_says_so(self):
+        app = self._app()
+        for ch in "zzz":
+            app._handle_key(ch)
+        app._handle_key("ctrl+r")
+        self.assertTrue([e for e in app.entries if "no earlier match" in e.text])
+
+
+class Todos(unittest.TestCase):
+    """todowrite returns a list; the transcript only ever showed its JSON."""
+
+    def _with_todos(self, todos):
+        import json
+        app, capture = make_app()
+        app.session_id = "s"
+        app.task_rows = {
+            "t": {"task_id": "t", "kind": "agent", "state": "done",
+                  "prompt": "go", "result": "done", "session_id": "s",
+                  "started_at": "0"},
+            "w": {"task_id": "w", "kind": "tool", "state": "done",
+                  "parent_id": "t", "prompt": "todowrite", "started_at": "1",
+                  "result": json.dumps({"success": True, "data": {"todos": todos}})},
+        }
+        app._view_dirty = True
+        app._sync_view()
+        return app, capture
+
+    def test_the_panel_marks_each_state(self):
+        app, capture = self._with_todos([
+            {"content": "read code", "status": "completed"},
+            {"content": "change it", "status": "in_progress"},
+            {"content": "test it", "status": "pending"},
+            {"content": "dropped", "status": "cancelled"}])
+        app._run_command("/todo")
+        self.assertEqual(app.panel.title, "todos · 1/3")
+        body = chr(10).join(app.panel.lines)
+        self.assertIn("✓ read code", body)
+        self.assertIn("▸ change it", body)
+        self.assertIn("· test it", body)
+        self.assertIn("(dropped)", body)
+
+    def test_the_status_line_shows_progress(self):
+        app, capture = self._with_todos([
+            {"content": "a", "status": "completed"},
+            {"content": "b", "status": "pending"}])
+        app._draw()
+        status = [line for line in capture.frame.lines() if "ready" in line][0]
+        self.assertIn("☑ 1/2", status)
+
+    def test_only_the_newest_list_counts(self):
+        import json
+        app, _ = self._with_todos([{"content": "old", "status": "pending"}])
+        app.task_rows["w2"] = {
+            "task_id": "w2", "kind": "tool", "state": "done", "parent_id": "t",
+            "prompt": "todowrite", "started_at": "9",
+            "result": json.dumps({"success": True, "data": {"todos": [
+                {"content": "new", "status": "completed"}]}})}
+        app._run_command("/todo")
+        body = chr(10).join(app.panel.lines)
+        self.assertIn("new", body)
+        self.assertNotIn("old", body)
+
+    def test_no_list_says_so(self):
+        app, _ = make_app()
+        app._run_command("/todo")
+        self.assertIsNone(app.panel)
+        self.assertTrue([e for e in app.entries if "no todo list" in e.text])

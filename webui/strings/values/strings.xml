@@ -748,4 +748,15 @@
   <string name="pet.asrTooLong">That recording is too long</string>
   <string name="pet.asrFailed">Speech service error</string>
   <string name="pet.replyFailed">Reply failed</string>
+  <string name="settings.evolveConfirmTitle">Let it rewrite itself?</string>
+  <string name="settings.evolveConfirmBody">The agent will read the repository, decide on its own what is worth improving, and write a proposal first. Nothing is deployed and no pull request is opened without your say-so.</string>
+  <string name="settings.evolveBoundaryWorktree">It works in a separate git worktree on a self/* branch.</string>
+  <string name="settings.evolveBoundaryMain">Your main branch and working tree stay untouched.</string>
+  <string name="settings.evolveBoundaryTests">Tests run before anything is offered as a pull request.</string>
+  <string name="settings.evolveConfirmAction">Start</string>
+  <string name="settings.evolveStarting">Starting…</string>
+  <string name="settings.evolveStarted">Started — follow it in the Agent page.</string>
+  <string name="settings.evolveSessionTitle">Self-improvement proposal</string>
+  <string name="settings.evolveNoSession">The agent did not return a session id.</string>
+  <string name="settings.evolvePrompt">Look at this repository and decide for yourself what is worth improving: pick the change with the most value for the effort, and tell me why. Then plan it before touching code — use evolve_begin to work in an isolated worktree, keep main untouched, run the tests, and ask me before evolve_finish(open_pr=true).</string>
 </resources>

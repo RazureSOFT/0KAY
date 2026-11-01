@@ -78,6 +78,53 @@ class Client:
             _set_read_timeout(response, self.stream_timeout)
         return response
 
+    def request(self, method: str, path: str, payload: dict | None = None):
+        """Any method the gateway offers, with the same error handling."""
+        url = self.base_url + path
+        body = json.dumps(payload).encode("utf-8") if payload is not None else None
+        request = urllib.request.Request(
+            url, data=body,
+            headers=self._headers(json_body=payload is not None),
+            method=method,
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                raw = response.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as error:
+            detail = error.read().decode("utf-8", "replace")[:300]
+            raise CoreError(f"HTTP {error.code} from {path}: {detail}") from None
+        except urllib.error.URLError as error:
+            raise CoreError(f"cannot reach {self.base_url}: {error.reason}") from None
+        if not raw.strip():
+            return {}
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return {}
+
+    def fork_session(self, session: str) -> str:
+        """Copy a session, so the original stays where it is."""
+        payload = self.request("POST", "/api/agent/sessions/fork",
+                               {"session_id": session})
+        return str(payload.get("session_id") or "") if isinstance(payload, dict) else ""
+
+    def archive_session(self, session: str, restore: bool = False) -> dict:
+        """Hide a session from the list, or bring it back."""
+        return self.request("PATCH", f"/api/agent/sessions/{urllib.parse.quote(session)}",
+                            {"action": "restore" if restore else "archive"})
+
+    def search_sessions(self, query: str) -> list[dict]:
+        payload = self.get("/api/agent/sessions/search?q=" + urllib.parse.quote(query))
+        rows = payload.get("matches") if isinstance(payload, dict) else None
+        return [row for row in rows or [] if row.get("session_id")]
+
+    def rename_session(self, session: str, title: str) -> dict:
+        return self.request("PATCH", f"/api/agent/sessions/{urllib.parse.quote(session)}",
+                            {"action": "rename", "title": title})
+
+    def delete_session(self, session: str) -> dict:
+        return self.request("DELETE", f"/api/agent/sessions/{urllib.parse.quote(session)}")
+
     def get(self, path: str):
         with self._open(path) as response:
             raw = response.read().decode("utf-8", "replace")
@@ -314,6 +361,12 @@ class Client:
 
     def usage(self) -> dict:
         payload = self.get("/api/usage")
+        return payload if isinstance(payload, dict) else {}
+
+    def git(self, path: str = "") -> dict:
+        """Branch and working-tree status for the agent's directory."""
+        query = f"?path={urllib.parse.quote(path)}" if path else ""
+        payload = self.get("/api/agent/git" + query)
         return payload if isinstance(payload, dict) else {}
 
     def context(self, session: str = "tui", model: str = "") -> dict:

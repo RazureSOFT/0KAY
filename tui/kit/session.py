@@ -17,6 +17,7 @@ Row shapes, as the gateway actually sends them:
 
 from __future__ import annotations
 
+import difflib
 import json
 
 RUNNING = ("running", "pending")
@@ -83,11 +84,81 @@ def _first_line(result: str) -> str:
 def _tool_line(row: dict) -> dict:
     name = str(row.get("prompt") or "tool")
     state = str(row.get("state") or "")
-    return {
+    line = {
         "kind": "tool",
         "text": _first_line(str(row.get("result") or "")),
         "meta": {"name": name, "state": "ok" if state in ("done", "") else state},
     }
+    diff = tool_diff(row)
+    if diff:
+        # A file change is the one tool result worth reading: say what it
+        # touched and how much, instead of "edit ok".
+        short = diff["path"].replace("\\", "/").rsplit("/", 1)[-1] or "file"
+        line["text"] = f"{short}  +{diff['adds']} -{diff['dels']}"
+        line["meta"]["diff"] = diff
+    return line
+
+
+# Two lines of context on each side is what makes a hunk readable without
+# turning a one-line edit into a screenful.
+DIFF_CONTEXT = 2
+MAX_DIFF_LINES = 240
+
+
+def _diff_lines(old: str, new: str) -> list[tuple[str, str]]:
+    """Unified diff rows, tagged so the renderer can colour them."""
+    out: list[tuple[str, str]] = []
+    for line in difflib.unified_diff(old.splitlines(), new.splitlines(),
+                                     lineterm="", n=DIFF_CONTEXT):
+        if line.startswith("---") or line.startswith("+++"):
+            continue
+        if line.startswith("@@"):
+            out.append(("hunk", line))
+        elif line.startswith("+"):
+            out.append(("add", line))
+        elif line.startswith("-"):
+            out.append(("del", line))
+        else:
+            out.append(("ctx", line))
+    return out
+
+
+def tool_diff(row: dict) -> dict | None:
+    """A file change as diff rows, taken from the tool call's own arguments.
+
+    `edit` carries both sides, so this is a real diff. `write` carries only the
+    new text, which is shown as additions: claiming what it replaced would be a
+    guess, and a wrong diff is worse than none.
+    """
+    name = str(row.get("prompt") or "")
+    if name not in ("edit", "write"):
+        return None
+    raw = row.get("args")
+    if isinstance(raw, str):
+        try:
+            args = json.loads(raw)
+        except (json.JSONDecodeError, ValueError):
+            return None
+    elif isinstance(raw, dict):
+        args = raw
+    else:
+        return None
+    if not isinstance(args, dict):
+        return None
+    if name == "edit":
+        lines = _diff_lines(str(args.get("oldString") or ""),
+                            str(args.get("newString") or ""))
+    else:
+        content = str(args.get("content") or "")
+        lines = [("add", "+" + piece) for piece in content.splitlines()]
+    if not lines:
+        return None
+    adds = sum(1 for kind, _ in lines if kind == "add")
+    dels = sum(1 for kind, _ in lines if kind == "del")
+    return {"path": str(args.get("filePath") or ""),
+            "lines": lines[:MAX_DIFF_LINES],
+            "adds": adds, "dels": dels,
+            "more": max(0, len(lines) - MAX_DIFF_LINES)}
 
 
 def is_running(row: dict) -> bool:
@@ -102,6 +173,11 @@ def transcript(rows) -> list[dict]:
     ends. Once it ends, the `agent` row carries the final answer and the
     intermediate text is dropped, which is what keeps a multi-step turn from
     printing the same paragraph three times.
+
+    A `subagent` row is one of those turns nested inside another: it gets a
+    header, its own tool calls, and its own answer, indented under the parent.
+    Dropping them (which is what used to happen) makes a fan-out look like a
+    single silent tool call.
     """
     rows = _rows(rows)
     out: list[dict] = []
@@ -109,34 +185,107 @@ def transcript(rows) -> list[dict]:
         prompt = str(turn.get("prompt") or "")
         if prompt:
             out.append({"kind": "user", "text": prompt, "meta": {}})
-
-        final = str(turn.get("result") or "")
-        running = is_running(turn) or not final
-        streaming = ""
-        reasoning = ""
-        for child in children(rows, str(turn.get("task_id") or "")):
-            kind = child.get("kind")
-            if kind == "think":
-                text = str(child.get("result") or "")
-                thought = str(child.get("reasoning") or "")
-                if running and text:
-                    streaming = text
-                if running and thought:
-                    reasoning = thought
-            elif kind == "tool":
-                out.append(_tool_line(child))
-
-        if running and reasoning:
-            out.append({"kind": "reason", "text": reasoning, "meta": {}})
-        answer = final or streaming
-        if answer:
-            out.append({"kind": "assistant", "text": answer, "meta": {}})
-        elif running:
-            out.append({"kind": "assistant", "text": "…", "meta": {"pending": True}})
-        if str(turn.get("state") or "") in ("failed",):
-            error = str(turn.get("note") or turn.get("result") or "the turn failed")
-            out.append({"kind": "error", "text": error, "meta": {}})
+        _turn_body(rows, turn, 0, out)
     return out
+
+
+def _turn_body(rows, turn: dict, depth: int, out: list[dict]) -> None:
+    """Append one turn's inside: reasoning, tools, sub-agents, answer."""
+    parent = str(turn.get("task_id") or "")
+    final = str(turn.get("result") or "")
+    running = is_running(turn) or not final
+    streaming = ""
+    reasoning = ""
+
+    for child in children(rows, parent):
+        kind = child.get("kind")
+        if kind == "think":
+            text = str(child.get("result") or "")
+            thought = str(child.get("reasoning") or "")
+            if running and text:
+                streaming = text
+            if running and thought:
+                reasoning = thought
+        elif kind == "tool":
+            line = _tool_line(child)
+            line["meta"]["depth"] = depth
+            out.append(line)
+        elif kind == "subagent":
+            _subagent_lines(rows, child, depth, out)
+
+    if running and reasoning:
+        out.append({"kind": "reason", "text": reasoning, "meta": {"depth": depth}})
+    answer = final or streaming
+    if answer:
+        out.append({"kind": "assistant", "text": answer,
+                    "meta": {"depth": depth} if depth else {}})
+    elif running and depth == 0:
+        out.append({"kind": "assistant", "text": "…", "meta": {"pending": True}})
+    if depth == 0 and str(turn.get("state") or "") in ("failed",):
+        error = str(turn.get("note") or turn.get("result") or "the turn failed")
+        out.append({"kind": "error", "text": error, "meta": {}})
+
+
+MAX_DEPTH = 3
+
+
+def _subagent_lines(rows, child: dict, depth: int, out: list[dict]) -> None:
+    """One nested sub-agent: a header, its work, and what it reported."""
+    if depth >= MAX_DEPTH:
+        return
+    label = " ".join(str(child.get("prompt") or "").split())
+    state = str(child.get("state") or "")
+    out.append({
+        "kind": "subagent",
+        "text": label[:80] or "sub-agent",
+        "meta": {"depth": depth, "state": "ok" if state in ("done", "") else state},
+    })
+    _turn_body(rows, child, depth + 1, out)
+
+
+def latest_todos(rows) -> list[dict]:
+    """The todo list as of the most recent `todowrite` call.
+
+    The tool replaces the whole list every time, so only the newest one counts;
+    reading an older row would show work that has since been dropped.
+    """
+    newest = None
+    for row in _rows(rows):
+        if row.get("kind") != "tool":
+            continue
+        if str(row.get("prompt") or "") != "todowrite":
+            continue
+        if newest is None or _started(row) >= _started(newest):
+            newest = row
+    if newest is None:
+        return []
+    raw = str(newest.get("result") or "")
+    try:
+        payload = json.loads(raw)
+    except (json.JSONDecodeError, ValueError):
+        return []
+    data = payload.get("data") if isinstance(payload, dict) else None
+    todos = (data or {}).get("todos") if isinstance(data, dict) else None
+    if not isinstance(todos, list):
+        return []
+    out = []
+    for item in todos:
+        if not isinstance(item, dict):
+            continue
+        content = " ".join(str(item.get("content") or "").split())
+        if not content:
+            continue
+        out.append({"content": content,
+                    "status": str(item.get("status") or "pending"),
+                    "priority": str(item.get("priority") or "")})
+    return out
+
+
+def todo_progress(todos: list[dict]) -> tuple[int, int]:
+    """(finished, total) -- cancelled items are not counted as work."""
+    counted = [item for item in todos if item.get("status") != "cancelled"]
+    done = sum(1 for item in counted if item.get("status") == "completed")
+    return done, len(counted)
 
 
 def merge(current: dict, delta: dict, session: str = "") -> dict:

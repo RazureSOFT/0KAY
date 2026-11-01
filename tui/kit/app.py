@@ -9,6 +9,7 @@ the terminal.
 from __future__ import annotations
 
 import os
+import pathlib
 import queue
 import socket
 import threading
@@ -33,6 +34,28 @@ MORE_GLYPH = "↓"
 NEWLINE = chr(10)
 MAX_INPUT_ROWS = 6
 REASON_ROWS = 6
+# A long answer is folded so the shape of the conversation stays visible;
+# ctrl+o opens the last one.
+MAX_ANSWER_ROWS = 18
+# A diff longer than this folds; the sign of a file change is what matters,
+# not every line of it.
+DIFF_ROWS = 12
+# A turn shorter than this was being watched; no bell.
+BELL_AFTER = 8.0
+# Side panel: how wide it is, the narrowest terminal that can afford a split,
+# and how often the working tree is re-read.
+SIDE_WIDTH = 34
+SIDE_MIN = 96
+GIT_EVERY = 12.0
+# Notifications: when to speak up, and the two ways to do it.
+NOTIFY_MODES = ("unfocused", "always", "off")
+NOTIFICATION_TITLE = "0KAY · task complete"
+OSC_NOTIFY = "\x1b]9;"
+BELL = "\x07"
+# Terminals known to turn OSC 9 into a desktop notification. Anywhere else the
+# bell is the only thing that travels.
+NOTIFY_TERMINALS = ("wezterm", "iterm.app", "ghostty", "vscode", "kitty",
+                    "rio", "tabby", "warpterminal")
 # Thinking effort as a circle that fills up, the way Claude Code shows it:
 # the level is legible at a glance without reading a word.
 EFFORT_GLYPHS = {"off": "○", "low": "○", "medium": "◐",
@@ -54,7 +77,12 @@ OVERDRIVE_LINES = ("this is not a drill", "brains to eleven", "no thoughts only 
                    "reasoning at unreasonable speed")
 
 KEYMAP_HINT = ("? help · ↑↓ history · tab complete · shift+enter newline · "
-               "ctrl+c interrupt · ctrl+d quit")
+               "ctrl+b panel · ctrl+o unfold · ctrl+c interrupt · ctrl+d quit")
+# While a turn runs the two Enters mean something else, so the footer says so.
+BUSY_HINT = ("enter steers (interrupts and sends) · tab queues · "
+             "ctrl+c interrupt · esc scrolls")
+EDITOR_HINT = ("draft editor · enter adds a line · f2 or esc returns to the chat · "
+               "alt+←/→ by word")
 
 
 @dataclass
@@ -122,6 +150,22 @@ class App:
         self.task_rows: dict[str, dict] = {}
         self.notices: list[Entry] = []
         self.pending: list[str] = []
+        # Prompts typed while a turn was running, sent when it ends.
+        self.queued: list[str] = []
+        # Side panel: what the agent is holding in context, what is left to do,
+        # and what the working tree looks like.
+        self.side_panel = False
+        self.context_breakdown: dict = {}
+        self.context_threshold = 0
+        self.compact_tier = ""
+        self.git_branch = ""
+        self.git_files: list[dict] = []
+        self.git_at = 0.0
+        # Whether the terminal window has focus; notifications depend on it.
+        self.focused = True
+        self.notify_mode = "unfocused"
+        # The fullscreen draft editor: the prompt takes the body while it is on.
+        self.editor = False
         self._view_dirty = False
         self._watching = False
         self.task_cursor = ""
@@ -142,6 +186,15 @@ class App:
         self.settings_fields: dict[str, dict] = {}
         self.setting_key = ""
         self.manual: dict = {}
+        self.sessions_cache: list[dict] = []
+        self.pending_delete = ""
+        # Session list filter, and whether archived ones are listed.
+        self.sessions_query = ""
+        self.show_archived = False
+        self.resume_note = ""
+        self.expand_last = False
+        self.search_index: int | None = None
+        self.search_query = ""
         # ids already announced, so a blocked turn says so once, not per poll
         self.notified: set[str] = set()
         self._polling = False
@@ -193,7 +246,11 @@ class App:
     # -- lifecycle ---------------------------------------------------------
     def restore(self) -> None:
         """Re-apply what the last session was running with."""
-        remembered = str(state_file.load().get("permission") or "")
+        data = state_file.load()
+        mode = str(data.get("notify") or "")
+        if mode in NOTIFY_MODES:
+            self.notify_mode = mode
+        remembered = str(data.get("permission") or "")
         if remembered == "full_access":
             self.permission = "full_access"
             self.notice("starting with full access · tools will not ask", "warn")
@@ -208,10 +265,19 @@ class App:
         self._probe()
         self._start_pending_poll()
         while self.running:
-            for key in self.reader.read(0.08):
+            keys = self.reader.read(0.08)
+            if _looks_like_paste(keys):
+                # Terminals without bracketed paste hand us the text as a
+                # burst of keystrokes; treating it as one insert is what keeps
+                # the newlines in it from submitting the prompt.
+                self._insert("".join(keys))
+                self.dirty = True
+                keys = []
+            for key in keys:
                 self._handle_key(key)
                 self.dirty = True
             self._drain()
+            self._refresh_git()
             if self.busy or self.animating():
                 self.tick += 1
                 self.dirty = True
@@ -249,6 +315,11 @@ class App:
         used = breakdown.get("used") or payload.get("tokens")
         if used:
             self.context_used = int(used)
+        # The breakdown is what makes the bar explainable: who is eating the
+        # window (system prompt, tool schemas, skills, MCP, conversation).
+        self.context_breakdown = breakdown
+        self.context_threshold = int(payload.get("threshold") or 0)
+        self.compact_tier = str(breakdown.get("compact_tier") or "")
         window = payload.get("window") or 0
         if window:
             self.context_window = int(window)
@@ -293,6 +364,29 @@ class App:
                     self.notice(note)
                     if self.settings_section:
                         self._open_settings(self.settings_section)
+                elif kind == "git":
+                    self.git_branch, self.git_files = payload
+                    self.dirty = True
+                elif kind == "forked":
+                    # _resume clears the notices, so the reason travels with it.
+                    self.resume_note = "forked"
+                    self._resume(str(payload))
+                elif kind in ("archived", "restored"):
+                    self.notice(("restored " if kind == "restored" else "archived ")
+                                + str(payload)[:32])
+                    self._background("sessions", self._collect_sessions, "session")
+                elif kind in ("renamed", "deleted"):
+                    if kind == "renamed":
+                        ident, title = payload
+                        self.notice(f"renamed · {title}")
+                    else:
+                        ident = payload
+                        self.notice("deleted · " + ident[:32])
+                        if ident == self.session_id:
+                            self.session_id = ""
+                            self.task_rows = {}
+                            self._view_dirty = True
+                    self._background("sessions", self._collect_sessions, "session")
                 elif kind == "resumed":
                     self._apply_resumed(*payload)
                 elif kind == "resolved":
@@ -347,13 +441,89 @@ class App:
             self._end_turn()
         self._sync_view()
 
+    def _write(self, text: str) -> None:
+        write = getattr(self.terminal, "write", None)
+        if callable(write):
+            try:
+                write(text)
+            except Exception:  # noqa: BLE001 - never worth a crash
+                pass
+
+    def _title(self, name: str) -> None:
+        """Name the window, so a minimised terminal says what is going on."""
+        self._write("\x1b]0;" + name + "\x07")
+
+    def _turn_preview(self) -> str:
+        """The last thing the agent said, as one line of plain text."""
+        for entry in reversed(self.entries):
+            if entry.kind == "assistant" and entry.text.strip():
+                text = " ".join(entry.text.split())
+                return text[:120]
+        return ""
+
+    def _notify(self, title: str, body: str = "") -> None:
+        """Say the turn finished, by whichever channel this terminal has.
+
+        `unfocused` is the default because that is when a notification is
+        worth anything: while the window is in front, the answer is already
+        on screen.
+        """
+        if self.notify_mode == "off":
+            return
+        if self.notify_mode == "unfocused" and self.focused:
+            return
+        if _takes_osc_notifications():
+            text = title + (" · " + body if body else "")
+            self._write(OSC_NOTIFY + text[:180] + BELL)
+        else:
+            self._write(BELL)
+
+    def _pick_notify(self, argument: str) -> None:
+        argument = argument.strip().lower()
+        if argument in NOTIFY_MODES:
+            self._set_notify(argument)
+            return
+        if argument:
+            self.notice("notifications are " + ", ".join(NOTIFY_MODES))
+            self._sync_view()
+            return
+        lines = ["unfocused   only when the window is in the background",
+                 "always      every finished turn",
+                 "off         never"]
+        self.panel = Panel(f"notifications · now {self.notify_mode}", lines,
+                           choices=list(NOTIFY_MODES), first_choice_row=0,
+                           action="notify")
+        self.panel.cursor = list(NOTIFY_MODES).index(self.notify_mode)
+        self._panel_hint = "↑↓ choose · enter applies · esc closes"
+
+    def _set_notify(self, mode: str) -> None:
+        self.notify_mode = mode if mode in NOTIFY_MODES else "unfocused"
+        state_file.save(notify=self.notify_mode)
+        self.notice(f"notifications → {self.notify_mode}")
+        self.panel = None
+        self._sync_view()
+
     def _end_turn(self) -> None:
         if not self.busy:
             return
+        elapsed = time.monotonic() - self.started_at if self.started_at else 0
+        self._title("0KAY")
+        if elapsed >= BELL_AFTER:
+            # Only for turns long enough that nobody was watching them: a
+            # two-second answer already had the reader's eyes on it.
+            self._notify(NOTIFICATION_TITLE, self._turn_preview())
         self.busy = False
         self.activity = ""
         self.first_chunk_at = 0.0
         self.streamed = 0
+        # A queued prompt is already typed and waiting; starting it here is the
+        # difference between "follow-up" and "you have to press Enter again".
+        if self.queued:
+            following = self.queued.pop(0)
+            self.notice(f"running the queued prompt · {len(self.queued)} left")
+            self._send(following)
+        # The turn probably touched the working tree; let the panel catch up.
+        self.git_at = 0.0
         # The ceiling and the occupancy are per session, and the lookup is an
         # HTTP call: keep it off the drawing thread.
         threading.Thread(target=self._load_context, daemon=True).start()
@@ -454,10 +624,44 @@ class App:
     def _handle_key(self, key: str) -> None:
         if key == "resize":
             return
+        if key in ("focus_in", "focus_out"):
+            # Coming back to the window is a good moment to know the state.
+            self.focused = key == "focus_in"
+            self.dirty = True
+            return
+        if key in ("wheel_up", "wheel_down"):
+            # Three lines a notch: one is too slow to feel like scrolling.
+            step = 3 if key == "wheel_up" else -3
+            self.scroll = max(0, self.scroll + step)
+            self.dirty = True
+            return
+        if key == "mouse":
+            return
+        if key.startswith("paste:"):
+            self._insert(key[6:])
+            self.dirty = True
+            return
         if self.debug_keys:
             self.last_key = key
         if key == "ctrl+d":
             self.running = False
+            return
+        if key == "ctrl+r":
+            self._history_search()
+            return
+        if key == "ctrl+b":
+            self.side_panel = not self.side_panel
+            self.git_at = 0.0
+            if self.side_panel:
+                self._refresh_git()
+                self.notice("side panel on · ctrl+b hides it")
+            else:
+                self.notice("side panel off")
+            self.dirty = True
+            return
+        if key == "ctrl+o":
+            self.expand_last = not self.expand_last
+            self.dirty = True
             return
         if key == "ctrl+l":
             self.renderer.invalidate()
@@ -490,9 +694,17 @@ class App:
                 self.palette_index = (self.palette_index + step) % len(items)
             return
         if key == "tab":
-            self._complete()
+            # While a turn runs, Tab is "do this after", not "complete this".
+            if self.busy and "".join(self.buffer).strip():
+                self._queue_prompt()
+            else:
+                self._complete()
             return
         if key == "enter":
+            if self.editor:
+                self.buffer.insert(self.cursor, NEWLINE)
+                self.cursor += 1
+                return
             self._submit()
             return
         if key in ("shift+enter", "alt+enter", "ctrl+j"):
@@ -502,6 +714,10 @@ class App:
             self.palette_index = 0
             return
         if key == "esc":
+            if self.editor:
+                self.editor = False
+                self.dirty = True
+                return
             if self.manual:
                 self.manual = {}
                 self.notice("cancelled · nothing was saved")
@@ -527,6 +743,12 @@ class App:
         if key == "right":
             self.cursor = min(len(self.buffer), self.cursor + 1)
             return
+        if key == "alt+left":
+            self.cursor = self._word_start()
+            return
+        if key == "alt+right":
+            self.cursor = self._word_end()
+            return
         if key in ("home", "ctrl+a"):
             self.cursor = 0
             return
@@ -550,13 +772,21 @@ class App:
         if key == "ctrl+k":
             del self.buffer[self.cursor:]
             return
-        if key == "ctrl+w":
-            while self.cursor and self.buffer[self.cursor - 1] == " ":
-                del self.buffer[self.cursor - 1]
-                self.cursor -= 1
-            while self.cursor and self.buffer[self.cursor - 1] != " ":
-                del self.buffer[self.cursor - 1]
-                self.cursor -= 1
+        if key in ("ctrl+w", "alt+bs", "ctrl+bs"):
+            start = self._word_start()
+            del self.buffer[start:self.cursor]
+            self.cursor = start
+            return
+        if key == "alt+d":
+            end = self._word_end()
+            del self.buffer[self.cursor:end]
+            return
+        if key == "f2":
+            # A big text needs a big box; the prompt grows into the body.
+            self.editor = not self.editor
+            self.notice("draft editor · enter adds a line · f2 or esc returns"
+                        if self.editor else "back to the one-line prompt")
+            self.dirty = True
             return
         if key == "pgup":
             self.scroll += 5
@@ -568,6 +798,7 @@ class App:
             self.buffer.insert(self.cursor, key)
             self.cursor += 1
             self.palette_index = 0
+            self._reset_search()
 
     def _handle_panel_key(self, key: str) -> None:
         panel = self.panel
@@ -598,6 +829,30 @@ class App:
                 self.buffer.append(key)
                 self.cursor = len(self.buffer)
                 return
+        if panel.action == "session" and panel.choices:
+            index = max(0, min(panel.cursor, len(panel.choices) - 1))
+            ident = panel.choices[index]
+            if key == "r":
+                self._ask_rename(ident)
+                return
+            if key == "a":
+                self._archive_session(ident, False)
+                return
+            if key == "u":
+                self._archive_session(ident, True)
+                return
+            if key == "/":
+                self._ask_session_search()
+                return
+            if key == "x":
+                if self.pending_delete == ident:
+                    self.pending_delete = ""
+                    self._delete_session(ident)
+                    return
+                self.pending_delete = ident
+                self._panel_hint = "press x again to delete this conversation · esc cancels"
+                return
+            self.pending_delete = ""
         if key in ("d", "n", "y", "a", "A") and panel.action == "approval" and panel.choices:
             index = max(0, min(panel.cursor, len(panel.choices) - 1))
             ident = panel.choices[index]
@@ -778,16 +1033,11 @@ class App:
         if action == "model":
             self._switch_model(choice, exact=True)
         elif action == "section":
-            self._open_settings(choice)
-        elif action == "field":
-            self._edit_field(choice)
-        elif action == "setting":
-            key = self.setting_key
-            self._save_setting(self.settings_section, key, choice, f"{key} → {choice}")
-        elif action == "section":
             self._open_settings(str(choice))
         elif action == "field":
             self._edit_field(str(choice))
+        elif action == "notify":
+            self._set_notify(str(choice))
         elif action == "setting":
             key = self.setting_key
             self._save_setting(self.settings_section, key, choice, f"{key} → {choice}")
@@ -805,10 +1055,81 @@ class App:
             self._decide(choice, True)
 
     # -- input -------------------------------------------------------------
+    def _word_start(self) -> int:
+        """Index of the start of the word before the caret."""
+        text = "".join(self.buffer)
+        index = self.cursor
+        while index > 0 and text[index - 1].isspace():
+            index -= 1
+        while index > 0 and not text[index - 1].isspace():
+            index -= 1
+        return index
+
+    def _word_end(self) -> int:
+        """Index just past the word after the caret, and its trailing space.
+
+        Taking the space too is what keeps "delete word forward" from leaving
+        a double gap behind.
+        """
+        text = "".join(self.buffer)
+        index = self.cursor
+        while index < len(text) and text[index].isspace():
+            index += 1
+        while index < len(text) and not text[index].isspace():
+            index += 1
+        while index < len(text) and text[index] == " ":
+            index += 1
+        return index
+
+    def _reset_search(self) -> None:
+        self.search_index = None
+        self.search_query = ""
+
+    def _insert(self, text: str) -> None:
+        """Put pasted text in the buffer as text, never as keystrokes.
+
+        A pasted newline is a newline: routing it through the key handler would
+        submit the prompt, which is how a multi-line paste used to fire off
+        half a message.
+        """
+        cleaned = text.replace("\r\n", "\n").replace("\r", "\n")
+        cleaned = "".join(ch for ch in cleaned
+                          if ch in "\n\t" or ord(ch) >= 32)
+        if not cleaned:
+            return
+        self.buffer[self.cursor:self.cursor] = list(cleaned)
+        self.cursor += len(cleaned)
+        self.palette_index = 0
+
     def _clear_input(self) -> None:
         self.buffer = []
         self.cursor = 0
         self.palette_index = 0
+
+    def _history_search(self) -> None:
+        """ctrl+r: the newest history entry containing what is typed.
+
+        Repeating it walks further back, which is the only way to find an old
+        command without knowing its exact shape.
+        """
+        if self.search_index is None:
+            self.search_query = "".join(self.buffer)
+        query = self.search_query.lower()
+        start = len(self.history) - 1
+        if self.search_index is not None:
+            start = self.search_index - 1
+        for index in range(start, -1, -1):
+            if query in self.history[index].lower():
+                self.buffer = list(self.history[index])
+                self.cursor = len(self.buffer)
+                self.search_index = index
+                self.palette_index = 0
+                self.notice(f"history {index + 1}/{len(self.history)} · ctrl+r again")
+                self._sync_view()
+                return
+        self.search_index = None
+        self.notice("no earlier match · ctrl+r starts over")
+        self._sync_view()
 
     def _history(self, step: int) -> None:
         if not self.history:
@@ -950,6 +1271,13 @@ class App:
             setting = self.manual
             self._clear_input()
             self.manual = {}
+            if setting.get("kind") == "rename":
+                self._rename_session(setting.get("session", ""), text)
+                return
+            if setting.get("kind") == "search":
+                self.sessions_query = text
+                self._background("sessions", self._collect_sessions, "session")
+                return
             raw: object = text
             kind = str((self.settings_fields.get(setting["key"]) or {}).get("type") or "text")
             if kind == "number":
@@ -983,16 +1311,20 @@ class App:
             self._clear_input()
             self._run_command("/" + chosen.name if chosen and " " not in text else text)
             return
-        if self.busy:
-            # Swallowing the key would look like a dead prompt; say why once.
-            if not (self.notices and self.notices[-1].kind == "system"
-                    and "still working" in self.notices[-1].text):
-                self.notice("still working · ctrl+c interrupts")
-                self._sync_view()
-            return
         self.history.append(text)
         self.history_index = len(self.history)
         self._clear_input()
+        if self.busy:
+            # Typing while the agent works means "do this instead": the turn is
+            # interrupted and the prompt goes out on the same session, which
+            # keeps the history the model already read. Tab queues instead, for
+            # work that should happen after, not instead.
+            self._steer(text)
+            return
+        self._send(text)
+
+    def _send(self, text: str, steer: bool = False) -> None:
+        """Start a turn for `text`, whatever the input box is showing."""
         self.pending.append(text)
         self.scroll = 0
         self.busy = True
@@ -1001,11 +1333,38 @@ class App:
         self.streamed = 0
         self.first_chunk_at = 0.0
         self.activity = "thinking"
+        self._title("0KAY · working")
         self._view_dirty = True
         self._sync_view()
         self._start_watch()
         threading.Thread(target=self._dispatch,
-                         args=(text, self.stream_token), daemon=True).start()
+                         args=(text, self.stream_token, steer), daemon=True).start()
+
+    def _steer(self, text: str) -> None:
+        """Interrupt the running turn, then send this prompt instead.
+
+        The gateway refuses a second turn in one session (409 while a task is
+        running), so steering means stop-then-send. The conversation keeps its
+        history, which is what the model needs to understand the new direction.
+        """
+        self.notice("steering · interrupting this turn to send yours", "warn")
+        self._sync_view()
+        task = self.turn_task
+        if task:
+            threading.Thread(target=self._cancel_turn, args=(task,), daemon=True).start()
+        self._send(text, steer=True)
+
+    def _queue_prompt(self) -> None:
+        """Hold the draft for after this turn, instead of interrupting it."""
+        text = "".join(self.buffer).strip()
+        if not text:
+            return
+        self.queued.append(text)
+        self.history.append(text)
+        self.history_index = len(self.history)
+        self._clear_input()
+        self.notice(f"queued · {len(self.queued)} waiting · sent when this turn ends")
+        self._sync_view()
 
     def _session(self, prompt: str) -> str:
         """The session id, creating one on first use.
@@ -1021,19 +1380,32 @@ class App:
                 self.queue.put(("session", self.session_id, None))
             return self.session_id
 
-    def _dispatch(self, prompt: str, token: int) -> None:
+    def _dispatch(self, prompt: str, token: int, steer: bool = False) -> None:
         """Hand one prompt to the agent.
 
         The turn runs on the server; the answer arrives through the task feed,
-        not as a response body.
+        not as a response body. When steering, the cancellation and the submit
+        race each other, so a conflict is retried instead of reported: the
+        gateway is telling us the old turn has not stopped yet.
         """
         try:
             session = self._session(prompt)
-            result = self.client.send_message(
-                session, prompt, model=self.model, workdir=self.workdir,
-                intensity=self.intensity, permission=self.permission,
-                executor=self.executor,
-            )
+            attempts = 0
+            while True:
+                try:
+                    result = self.client.send_message(
+                        session, prompt, model=self.model, workdir=self.workdir,
+                        intensity=self.intensity, permission=self.permission,
+                        executor=self.executor,
+                    )
+                    break
+                except Exception as error:  # noqa: BLE001 - inspected below
+                    busy = "active task" in str(error)
+                    if steer and busy and attempts < 24:
+                        attempts += 1
+                        time.sleep(0.25)
+                        continue
+                    raise
             self.queue.put(("turn", str(result.get("task_id") or ""), token))
             if not result.get("accepted", True):
                 self.queue.put(("error",
@@ -1051,6 +1423,71 @@ class App:
             self.queue.put(("error", str(error), None))
 
     # -- settings ----------------------------------------------------------
+    def _export(self, argument: str = "") -> None:
+        """Write the conversation out as markdown.
+
+        The transcript on screen is already the projection that matters, so the
+        export walks the same rows instead of inventing a second format.
+        """
+        todos = session_view.transcript(self.task_rows)
+        if not todos:
+            self.notice("nothing to export yet")
+            self._sync_view()
+            return
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        name = argument.strip() or f"0kay-{stamp}.md"
+        folder = state_file.exports_dir()
+        path = pathlib.Path(name)
+        if not path.is_absolute():
+            path = folder / path
+        lines = [f"# 0KAY conversation", "",
+                 f"- session: `{self.session_id or 'none'}`",
+                 f"- exported: {time.strftime('%Y-%m-%d %H:%M:%S')}", ""]
+        for line in todos:
+            kind = line["kind"]
+            text = line["text"]
+            if kind == "user":
+                lines += ["", "## You", "", text]
+            elif kind == "assistant":
+                lines += ["", text]
+            elif kind in ("tool", "subagent"):
+                label = line["meta"].get("name") or kind
+                if lines and lines[-1].strip():
+                    lines.append("")
+                lines.append(f"- `{label}` {text}".rstrip())
+            elif kind == "reason":
+                lines += ["", "> " + text.replace(chr(10), chr(10) + "> "), ""]
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(chr(10).join(lines) + chr(10), encoding="utf-8")
+        except OSError as error:
+            self.notice(f"could not write {path}: {error}", "error")
+            self._sync_view()
+            return
+        self.notice(f"exported · {path}")
+        self._sync_view()
+
+    def _open_todos(self) -> None:
+        """The agent's own task list, which is otherwise one line of JSON."""
+        todos = session_view.latest_todos(self.task_rows)
+        if not todos:
+            self.notice("no todo list yet · the agent writes one for multi-step work")
+            self._sync_view()
+            return
+        marks = {"completed": "✓", "in_progress": "▸", "pending": "·",
+                 "cancelled": "×"}
+        lines = []
+        for item in todos:
+            status = item.get("status", "pending")
+            mark = marks.get(status, "·")
+            text = item["content"]
+            if status == "cancelled":
+                text += "  (dropped)"
+            lines.append(f"{mark} {text}")
+        done, total = session_view.todo_progress(todos)
+        self.panel = Panel(f"todos · {done}/{total}", lines)
+        self._panel_hint = "esc closes"
+
     def _open_settings(self, section: str = "") -> None:
         """Browse the same settings the WebUI shows, one section at a time."""
         if section:
@@ -1125,7 +1562,8 @@ class App:
             self._panel_hint = "↑↓ choose · enter saves · esc cancels"
             return
         # text and number are typed, in the prompt
-        self.manual = {"section": section, "key": key, "label": str(field.get("label") or key)}
+        self.manual = {"kind": "setting", "section": section, "key": key,
+                       "label": str(field.get("label") or key)}
         self.panel = None
         self.notice(f"type a new value for {key} · enter saves · esc cancels")
         self._sync_view()
@@ -1145,7 +1583,10 @@ class App:
     def _collect_sessions(self):
         """Sessions worth offering to continue, newest first."""
         rows = self.client.sessions()
+        self.sessions_cache = rows
         lines, choices = [], []
+        query = self.sessions_query.lower()
+        archived = 0
         for row in rows:
             ident = str(row.get("session_id") or "")
             if not ident:
@@ -1154,16 +1595,115 @@ class App:
             # conversations somebody had here.
             if ":life:" in ident:
                 continue
+            state = str(row.get("state") or "")
+            if state == "archived":
+                # Archived sessions stay out of the way until asked for.
+                archived += 1
+                if not self.show_archived:
+                    continue
             title = " ".join(str(row.get("prompt") or "").split())[:44] or "(untitled)"
+            if query and query not in title.lower():
+                continue
             when = str(row.get("started_at") or "")[:16].replace("T", " ")
             mark = "* " if ident == self.session_id else "  "
+            if state == "archived":
+                mark = "- "
             # Pad by display width: a CJK title is twice as wide as its length.
             pad = " " * max(0, 46 - display_width(title))
             lines.append(f"{mark}{title}{pad} {when}")
             choices.append(ident)
         if not choices:
-            lines.append("no earlier session")
-        return (f"sessions · {len(choices)}", lines, choices, 0)
+            lines.append("no matching session" if query else "no earlier session")
+        if archived and not self.show_archived:
+            lines.append(f"  {archived} archived · press a on one to hide, /resume archived to show")
+        title = f"sessions · {len(choices)}"
+        if query:
+            title += f" · “{self.sessions_query}”"
+        if self.show_archived:
+            title += " · archived shown"
+        return (title, lines, choices, 0)
+
+    @staticmethod
+    def _session_actions() -> str:
+        return "enter resumes · r renames · a archives · u restores · / search · x deletes"
+
+    def _fork(self) -> None:
+        """Copy this conversation, so the original can keep going."""
+        if not self.session_id:
+            self.notice("nothing to fork yet · send a prompt first")
+            self._sync_view()
+            return
+
+        def work():
+            try:
+                ident = self.client.fork_session(self.session_id)
+            except Exception as error:  # noqa: BLE001
+                self.queue.put(("error", str(error), None))
+                return
+            if not ident:
+                self.queue.put(("error", "the gateway did not return a session id", None))
+                return
+            self.queue.put(("forked", ident, None))
+
+        threading.Thread(target=work, daemon=True).start()
+        self.notice("forking…")
+        self._sync_view()
+
+    def _archive_session(self, ident: str, restore: bool) -> None:
+        def work():
+            try:
+                self.client.archive_session(ident, restore)
+                self.queue.put((("restored" if restore else "archived"), ident, None))
+            except Exception as error:  # noqa: BLE001
+                self.queue.put(("error", str(error), None))
+
+        threading.Thread(target=work, daemon=True).start()
+        self.notice("restoring…" if restore else "archiving…")
+        self._sync_view()
+
+    def _ask_session_search(self) -> None:
+        """Type-to-filter, using the prompt the way rename does."""
+        self.panel = None
+        self.manual = {"kind": "search", "label": "sessions"}
+        self.notice("type to filter · enter applies · esc cancels")
+        self._sync_view()
+
+    def _ask_rename(self, ident: str) -> None:
+        """Rename a conversation: the prompt becomes the title field."""
+        title = ""
+        for row in self.sessions_cache:
+            if str(row.get("session_id")) == ident:
+                title = str(row.get("prompt") or "")
+                break
+        self.panel = None
+        self.manual = {"kind": "rename", "session": ident,
+                       "label": f"new title for “{title or ident}”"}
+        self.notice("type a new title · enter saves · esc cancels")
+        self._sync_view()
+
+    def _rename_session(self, ident: str, title: str) -> None:
+        def work():
+            try:
+                self.client.rename_session(ident, title.strip())
+                self.queue.put(("renamed", (ident, title.strip()), None))
+            except Exception as error:  # noqa: BLE001
+                self.queue.put(("error", str(error), None))
+
+        threading.Thread(target=work, daemon=True).start()
+        self.notice("saving…")
+        self._sync_view()
+
+    def _delete_session(self, ident: str) -> None:
+        def work():
+            try:
+                self.client.delete_session(ident)
+                self.queue.put(("deleted", ident, None))
+            except Exception as error:  # noqa: BLE001
+                self.queue.put(("error", str(error), None))
+
+        threading.Thread(target=work, daemon=True).start()
+        self.notice("deleting…")
+        self._sync_view()
 
     def _resume(self, ident: str) -> None:
         """Load an earlier session and carry on in it."""
@@ -1199,7 +1739,9 @@ class App:
         self._view_dirty = True
         self._sync_view()
         turns = len(session_view.turns(self.task_rows))
-        self.notice(f"resumed {ident} · {turns} turn{'s' if turns != 1 else ''}"
+        verb = "forked" if self.resume_note == "forked" else "resumed"
+        self.resume_note = ""
+        self.notice(f"{verb} {ident} · {turns} turn{'s' if turns != 1 else ''}"
                     + (" · still running" if self.busy else ""))
         self._sync_view()
         self._start_watch()
@@ -1433,13 +1975,25 @@ class App:
             self._sync_view()
             self.notice("new session · the next message starts a fresh one")
             self._sync_view()
+        elif command.name == "export":
+            self._export(argument)
+        elif command.name in ("todo", "todos"):
+            self._open_todos()
         elif command.name == "settings":
             self._open_settings(argument.strip())
         elif command.name in ("resume", "sessions"):
-            if argument:
-                self._resume(argument)
+            word = argument.strip()
+            if word in ("archived", "all"):
+                self.show_archived = True
+                self._background("sessions", self._collect_sessions, "session")
+            elif word:
+                self._resume(word)
             else:
                 self._background("sessions", self._collect_sessions, "session")
+        elif command.name == "notify":
+            self._pick_notify(argument)
+        elif command.name == "fork":
+            self._fork()
         elif command.name == "agent":
             self._pick_agent(argument)
         elif command.name == "permission":
@@ -1506,7 +2060,8 @@ class App:
         panel = Panel(title, lines, choices=choices, first_choice_row=first,
                       action=action if choices else "")
         if panel.selecting:
-            self._panel_hint = "↑↓ choose · enter selects · esc closes"
+            self._panel_hint = ("↑↓ choose · enter selects · esc closes"
+                                if action != "session" else self._session_actions())
             for index, value in enumerate(choices):
                 if value == self.model:
                     panel.cursor = index
@@ -1856,11 +2411,16 @@ class App:
         self._panel_hint = ""
         lines = ["keys", ""]
         keymap = [
-            ("enter", "send · or run the highlighted command"),
+            ("enter", "send · while a turn runs: interrupt it and send this"),
             ("shift+enter", "newline in the draft (ctrl+j works everywhere)"),
-            ("tab", "complete a command or an @path"),
+            ("tab", "complete a command or an @path · while busy: queue this"),
             ("↑ ↓", "input history · or move in a list"),
             ("pgup pgdn", "scroll the transcript or a panel"),
+            ("ctrl+r", "search the history"),
+            ("ctrl+o", "unfold the last long answer or diff"),
+            ("ctrl+b", "side panel: context, todos, git"),
+            ("f2", "fullscreen draft editor"),
+            ("alt+← alt+→", "move by word · alt+bs deletes one"),
             ("ctrl+c", "interrupt the running turn, then clear the input"),
             ("ctrl+l", "repaint after the terminal garbled the screen"),
             ("ctrl+p / ?", "this help"),
@@ -1923,7 +2483,7 @@ class App:
         text = "".join(self.buffer)
         available = max(1, width - 8)
         rows, caret = _input_rows(text, available, self.cursor)
-        shown = min(len(rows), MAX_INPUT_ROWS)
+        shown = min(len(rows), self._input_limit())
 
         footer_height = 1 if height >= 16 else 0
         prompt_height = shown + 2
@@ -1934,19 +2494,30 @@ class App:
 
         # The banner needs the strip's rows too, so it replaces it: the online
         # state is repeated by the fold line underneath either way.
-        art, label_row, label_col = self._banner_tier(status_row, width)
+        # A split costs the transcript 35 columns, so the banner (which wants
+        # 82 on its own) only appears when there is no side panel.
+        side = self._side_width(width)
+        body_width = width - (side + 1) if side else width
+
+        art, label_row, label_col = self._banner_tier(status_row, body_width)
         if art:
-            self._draw_banner_landing(frame, width, status_row, art,
+            self._draw_banner_landing(frame, body_width, status_row, art,
                                       label_row, label_col)
         elif self.panel is not None:
             self._draw_banner(frame, width)
             self._draw_panel(frame, 0, body_top, width, body_height)
         elif self.entries:
-            self._draw_banner(frame, width)
-            self._draw_transcript(frame, 0, body_top, width, body_height)
+            self._draw_banner(frame, body_width)
+            self._draw_transcript(frame, 0, body_top, body_width, body_height)
         else:
-            self._draw_banner(frame, width)
-            self._draw_landing(frame, 0, body_top, width, body_height)
+            self._draw_banner(frame, body_width)
+            self._draw_landing(frame, 0, body_top, body_width, body_height)
+
+        if side:
+            # The divider takes a column and so does the gap beside it, so the
+            # panel's own width is what is left of the screen.
+            left = body_width + 2
+            self._draw_side(frame, left, body_top, width - left, body_height)
 
         if self._palette_open() and self.panel is None:
             self._draw_palette(frame, width, prompt_y)
@@ -1977,7 +2548,7 @@ class App:
         three the client draws text instead -- a cropped wordmark reads as a
         broken one, so the fallbacks get smaller rather than getting cut.
         """
-        if not self.show_logo or self.panel is not None:
+        if not self.show_logo or self.panel is not None or self.side_panel:
             return [], 0, 0
         # Only an actual conversation pushes the logo out of the way. Client
         # notices (a warning, "interrupted") are side lines, and treating them
@@ -2097,7 +2668,11 @@ class App:
         theme = self.theme
         out: list[list[tuple[str, object]]] = []
         gutter = 2
-        for entry in self.entries:
+        last_answer = -1
+        for index, entry in enumerate(self.entries):
+            if entry.kind == "assistant":
+                last_answer = index
+        for index, entry in enumerate(self.entries):
             if entry.kind == "user":
                 body = wrap(entry.text, width - gutter - 2)
                 out.append([(f"{PROMPT_GLYPH} ", theme.style("user", bold=True)),
@@ -2112,8 +2687,21 @@ class App:
                 else:
                     body_rows = markdown.render(entry.text, width - gutter, theme)
                     entry.cache = (key, body_rows)
-                for spans in body_rows:
-                    out.append([(" " * gutter, PLAIN)] + list(spans))
+                depth = int(entry.meta.get("depth") or 0)
+                pad = " " * gutter + "  " * depth
+                folded = (len(body_rows) > MAX_ANSWER_ROWS
+                          and not (index == last_answer and self.expand_last))
+                if folded:
+                    shown = body_rows[:MAX_ANSWER_ROWS - 1]
+                    for spans in shown:
+                        out.append([(pad, PLAIN)] + list(spans))
+                    hidden = len(body_rows) - len(shown)
+                    out.append([(pad, PLAIN),
+                                (f"… {hidden} more lines · ctrl+o",
+                                 theme.style("subtle"))])
+                else:
+                    for spans in body_rows:
+                        out.append([(pad, PLAIN)] + list(spans))
                 out.append([("", PLAIN)])
             elif entry.kind == "reason":
                 # Only the tail: a long reasoning block would push the answer
@@ -2137,14 +2725,33 @@ class App:
                     prefix = "! " if index == 0 else "  "
                     out.append([(prefix, theme.style("error")),
                                 (line, theme.style("error"))])
+            elif entry.kind == "subagent":
+                depth = int(entry.meta.get("depth") or 0)
+                state = entry.meta.get("state", "ok")
+                # ↳ reads as "spawned by", which is what a sub-agent is; the
+                # state is spelled out because colour alone is easy to miss.
+                role = {"ok": "accentSoft", "failed": "error"}.get(state, "warning")
+                lead = "  " + "  " * depth
+                label = entry.text
+                if state != "ok":
+                    label += "  · " + ("failed" if state == "failed" else state)
+                out.append([(lead, PLAIN),
+                            ("↳ ", theme.style(role)),
+                            (truncate(label, max(4, width - len(lead) - 4)),
+                             theme.style(role, bold=depth == 0))])
             elif entry.kind == "tool":
                 name = entry.meta.get("name", "tool")
                 state = entry.meta.get("state", "ok")
+                depth = int(entry.meta.get("depth") or 0)
                 role = "success" if state == "ok" else "error"
                 dot = "●" if state == "ok" else "✗"
-                out.append([("  ", PLAIN), (dot + " ", theme.style(role)),
+                lead = "  " + "  " * depth
+                room = max(8, width - 20 - len(lead))
+                out.append([(lead, PLAIN), (dot + " ", theme.style(role)),
                             (name, theme.style("accent")),
-                            ("  " + truncate(entry.text, width - 20), theme.style("muted"))])
+                            ("  " + truncate(entry.text, room), theme.style("muted"))])
+                if entry.meta.get("diff"):
+                    self._append_diff(out, entry.meta["diff"], depth, width, theme)
         # Drop the trailing blank line so the last answer sits one row above the
         # status line instead of two.
         while out and not out[-1][0][0] and len(out) > 1:
@@ -2320,6 +2927,163 @@ class App:
                       truncate(tail, inner_w), theme.style("subtle"))
 
 
+    def _side_width(self, width: int) -> int:
+        """Columns the side panel takes, or 0 when it is not showing.
+
+        A split needs room on both sides. Below the threshold the panel would
+        squeeze the transcript into a strip, which reads worse than the
+        full-screen panels the slash commands already open.
+        """
+        if not self.side_panel or self.panel is not None:
+            return 0
+        return SIDE_WIDTH if width >= SIDE_MIN else 0
+
+    def _side_lines(self, width: int) -> list[list[tuple[str, object]]]:
+        """The side panel's content, top to bottom, already styled."""
+        theme = self.theme
+        rows: list[list[tuple[str, object]]] = []
+
+        def head(text: str, role: str = "accentSoft") -> None:
+            if rows:
+                rows.append([])
+            rows.append([(text, theme.style(role, bold=True))])
+
+        def pair(left: str, right: str, role: str = "subtle") -> None:
+            pad = max(1, width - display_width(left) - display_width(right))
+            rows.append([(left, theme.style("muted")), (" " * pad, PLAIN),
+                         (right, theme.style(role))])
+
+        head("context")
+        used, window = self.context_used, self.context_window
+        if not window:
+            rows.append([("ctx --", theme.style("subtle"))])
+        else:
+            percent = round(used / window * 100)
+            bar = context_bar(theme, percent, max(6, width - 6))
+            rows.append(list(bar) + [(f" {percent:>3d}%", theme.style("muted"))])
+            mark = "~" if self.context_source == "default" else ""
+            pair(human_tokens(used), mark + human_tokens(window))
+            for key, label in (("system", "system"), ("tools", "tools"),
+                               ("skills", "skills"), ("mcp", "mcp"),
+                               ("conversation", "convo")):
+                value = self.context_breakdown.get(key)
+                if value:
+                    pair(label, human_tokens(int(value)))
+            if self.context_threshold:
+                pair("compacts at", human_tokens(self.context_threshold))
+            if self.compact_tier and self.compact_tier != "none":
+                pair("compact", self.compact_tier, "warning")
+            cache = self.context_breakdown.get("cache") or {}
+            if isinstance(cache, dict) and cache.get("cache_profile"):
+                pair("cache", str(cache["cache_profile"])[:16])
+
+        todos = session_view.latest_todos(self.task_rows)
+        if todos:
+            done, total = session_view.todo_progress(todos)
+            head(f"todos · {done}/{total}")
+            marks = {"completed": "✓", "in_progress": "▸", "pending": "·",
+                     "cancelled": "×"}
+            for item in todos[:7]:
+                status = item.get("status", "pending")
+                role = {"completed": "success", "in_progress": "accent",
+                        "cancelled": "subtle"}.get(status, "muted")
+                rows.append([(marks.get(status, "·") + " ", theme.style(role)),
+                             (truncate(item["content"], width - 2),
+                              theme.style("text" if status == "in_progress" else "muted"))])
+            if len(todos) > 7:
+                rows.append([(f"  … {len(todos) - 7} more · /todo", theme.style("subtle"))])
+
+        if self.git_branch:
+            changed = len(self.git_files)
+            head(f"git · {self.git_branch}" + (f" · {changed} changed" if changed else ""))
+            if not changed:
+                rows.append([("clean", theme.style("success"))])
+            for entry in self.git_files[:6]:
+                code = (str(entry.get("index") or " ") + str(entry.get("worktree") or " ")).strip() or "?"
+                rows.append([(f"{code:<3}", theme.style("warning")),
+                             (truncate(str(entry.get("path") or ""), width - 4),
+                              theme.style("muted"))])
+            if changed > 6:
+                rows.append([(f"  … {changed - 6} more", theme.style("subtle"))])
+
+        head("live")
+        agent, implied = self._resolved_agent()
+        if agent is None:
+            who = "none"
+        else:
+            who = self._agent_short(agent) + (" (auto)" if implied else "")
+        pair("agent", truncate(who, max(6, width - 8)))
+        pair("model", truncate(self.model or "default", max(6, width - 8)))
+        if self.intensity:
+            level = EFFORT_STEPS[self._step_index(self._intensity_value())]
+            pair("effort", f"{self.effort_frame()} {level}")
+        pair("permission", "full access" if self.permission == "full_access" else "normal",
+             "warning" if self.permission == "full_access" else "subtle")
+        if self.queued:
+            pair("queued", str(len(self.queued)), "accentSoft")
+        return rows
+
+    def _draw_side(self, frame, x: int, y: int, width: int, height: int) -> None:
+        theme = self.theme
+        for row in range(y, y + height):
+            frame.put(x - 2, row, "│", theme.style("border"))
+        if height <= 0:
+            return
+        frame.put(x - 1, y, " side ", theme.style("subtle"))
+        lines = self._side_lines(width)
+        for offset, spans in enumerate(lines[:height]):
+            if not spans:
+                continue
+            # _put_spans takes the right edge, not the span width.
+            self._put_spans(frame, x, y + offset, spans, x + width)
+
+    def _refresh_git(self) -> None:
+        """Ask for the working-tree status, at most now and then."""
+        if not self.side_panel:
+            return
+        if time.monotonic() - self.git_at < GIT_EVERY:
+            return
+        self.git_at = time.monotonic()
+
+        def work():
+            try:
+                payload = self.client.git(self.workdir)
+            except Exception:  # noqa: BLE001 - a panel never breaks a turn
+                return
+            self.queue.put(("git", (str(payload.get("branch") or ""),
+                                    list(payload.get("files") or [])), None))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _append_diff(self, out, diff: dict, depth: int, width: int, theme) -> None:
+        """Draw a file change under the tool call that made it.
+
+        Additions and deletions are the point, so they get their own colours
+        and a sign; context rows stay quiet. A long diff folds, because the
+        rest of the conversation is what the reader is scrolling through.
+        """
+        lines = diff.get("lines") or []
+        lead = "  " + "  " * (depth + 1)
+        room = max(12, width - len(lead) - 6)
+        folded = len(lines) > DIFF_ROWS and not self.expand_last
+        shown = lines[:DIFF_ROWS - 1] if folded else lines
+        for kind, text in shown:
+            if kind == "hunk":
+                out.append([(lead, PLAIN), ("· ", theme.style("subtle")),
+                            (truncate(text, room), theme.style("accentSoft"))])
+                continue
+            role = "success" if kind == "add" else ("error" if kind == "del" else "subtle")
+            mark = "+" if kind == "add" else ("-" if kind == "del" else " ")
+            out.append([(lead, PLAIN), (mark + " ", theme.style(role)),
+                        (truncate(text[1:], room), theme.style(role if kind != "ctx" else "muted"))])
+        hidden = len(lines) - len(shown)
+        if hidden:
+            out.append([(lead, PLAIN), ("  ", PLAIN),
+                        (f"… {hidden} more lines · ctrl+o", theme.style("subtle"))])
+        if diff.get("more"):
+            out.append([(lead, PLAIN), ("  ", PLAIN),
+                        (f"… {diff['more']} lines not captured", theme.style("subtle"))])
+
     def _draw_status(self, frame, x: int, y: int, width: int) -> None:
         theme = self.theme
         spans: list[tuple[str, object]] = []
@@ -2374,8 +3138,17 @@ class App:
             spans.append((f"  ·  {len(self.questions)} question"
                           f"{'' if len(self.questions) == 1 else 's'} · /questions",
                           theme.style("warning", bold=True)))
+        todos = session_view.latest_todos(self.task_rows)
+        if todos:
+            done, total = session_view.todo_progress(todos)
+            spans.append((f"  ·  ☑ {done}/{total}", theme.style("subtle")))
+
         if self.permission == "full_access":
             spans.append(("  ·  full access", theme.style("warning", bold=True)))
+
+        if self.queued:
+            spans.append((f"  ·  ⋯ {len(self.queued)} queued",
+                          theme.style("accentSoft")))
 
         # Only the agent needs a slot here when it is either chosen or
         # ambiguous: with one implicit agent the prompt border and the landing
@@ -2398,11 +3171,22 @@ class App:
 
         self._put_spans(frame, x, y, spans, width)
 
+    def _input_limit(self) -> int:
+        """How many draft rows the prompt may show.
+
+        The draft editor gives the input the body: a long prompt is what the
+        reader is looking at then, so the transcript steps aside.
+        """
+        if not self.editor:
+            return MAX_INPUT_ROWS
+        _, height = self.terminal.size()
+        return max(MAX_INPUT_ROWS, height - 8)
+
     def _draw_prompt(self, frame, y: int, width: int, text: str,
                      rows: list[str], caret: tuple[int, int]) -> tuple[int, int]:
         theme = self.theme
         focus = not self.busy
-        shown = min(len(rows), MAX_INPUT_ROWS)
+        shown = min(len(rows), self._input_limit())
         title = self._workdir_title()
         box(frame, 0, y, width, shown + 2, theme, focus=focus,
             title=title if title and width > len(title) + 12 else "")
@@ -2452,6 +3236,10 @@ class App:
     def _draw_footer(self, frame, y: int, width: int) -> None:
         theme = self.theme
         text = KEYMAP_HINT
+        if self.editor:
+            text = EDITOR_HINT
+        elif self.busy:
+            text = BUSY_HINT
         if self.panel is not None:
             text = self._panel_hint or "↑↓ scroll · esc close"
         frame.put(2, y, truncate(text, width - 4), theme.style("subtle"))
@@ -2468,6 +3256,33 @@ class App:
             piece = truncate(text, remaining)
             frame.put(cursor, y, piece, style if style is not None else PLAIN)
             cursor += display_width(piece)
+
+
+PASTE_BURST = 8
+
+
+def _takes_osc_notifications() -> bool:
+    """Whether this terminal turns OSC 9 into a desktop notification.
+
+    There is no handshake for it, so the check is the environment: a terminal
+    that does not understand the sequence swallows it silently, and the bell
+    is the fallback that always arrives.
+    """
+    program = os.environ.get("TERM_PROGRAM", "").lower()
+    if program in NOTIFY_TERMINALS:
+        return True
+    return bool(os.environ.get("WT_SESSION") or os.environ.get("KITTY_WINDOW_ID"))
+
+
+def _looks_like_paste(keys: list[str]) -> bool:
+    """A read that produced a wall of plain characters is a paste.
+
+    Eight is above any human burst at a 80ms poll, and being wrong costs
+    nothing: the characters land in the buffer either way.
+    """
+    if len(keys) < PASTE_BURST:
+        return False
+    return all(len(key) == 1 and key.isprintable() for key in keys)
 
 
 def _is_online(agent: dict) -> bool:

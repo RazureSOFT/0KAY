@@ -194,6 +194,12 @@ class FakeClient:
         self.section_rows_meta = {}
         self.setting_values = {}
         self.saved_settings = []
+        self.renamed = []
+        self.deleted = []
+        self.forked = []
+        self.archived = []
+        self.git_branch = ""
+        self.git_files = []
 
     def get(self, path):
         return {}
@@ -223,6 +229,9 @@ class FakeClient:
     def settings_sections(self):
         return list(self.section_rows)
 
+    def git(self, path=""):
+        return {"branch": self.git_branch, "files": list(self.git_files)}
+
     def settings(self, section):
         return {"section": self.section_rows_meta.get(section, {"id": section, "fields": []}),
                 "values": dict(self.setting_values)}
@@ -234,6 +243,26 @@ class FakeClient:
 
     def sessions(self):
         return list(self.session_rows)
+
+    def rename_session(self, session, title):
+        self.renamed.append((session, title))
+        return {}
+
+    def fork_session(self, session):
+        self.forked.append(session)
+        return "agent-session:fork"
+
+    def archive_session(self, session, restore=False):
+        self.archived.append((session, restore))
+        return {}
+
+    def search_sessions(self, query):
+        return [row for row in self.session_rows
+                if query.lower() in str(row.get("prompt") or "").lower()]
+
+    def delete_session(self, session):
+        self.deleted.append(session)
+        return {}
 
     def session_turns(self, session, limit=100, before=""):
         return {"tasks": list(self.turn_rows.get(session, [])), "more": False, "next": ""}
@@ -489,6 +518,45 @@ class SessionView(unittest.TestCase):
         self.assertEqual([line["meta"]["name"] for line in tools], ["read", "exec"])
         self.assertEqual(tools[0]["meta"]["state"], "ok")
         self.assertEqual(tools[1]["meta"]["state"], "failed")
+
+    def test_a_subagent_shows_its_own_work(self):
+        # Sub-agents are recorded as kind=subagent under the turn; dropping
+        # them made a fan-out look like one silent tool call.
+        rows = {
+            "t": {"task_id": "t", "kind": "agent", "state": "running",
+                  "prompt": "refactor", "started_at": "1"},
+            "s1": {"task_id": "s1", "kind": "subagent", "state": "running",
+                   "parent_id": "t", "prompt": "explore #1", "started_at": "2"},
+            "b": {"task_id": "b", "kind": "tool", "state": "done",
+                  "parent_id": "s1", "prompt": "grep", "result": "3 matches",
+                  "started_at": "3"},
+            "c": {"task_id": "c", "kind": "think", "state": "running",
+                  "parent_id": "s1", "result": "three call sites", "started_at": "4"},
+        }
+        lines = session.transcript(rows)
+        kinds = [line["kind"] for line in lines]
+        self.assertIn("subagent", kinds)
+        sub = [line for line in lines if line["kind"] == "subagent"][0]
+        self.assertEqual(sub["text"], "explore #1")
+        self.assertEqual(sub["meta"]["depth"], 0)
+        nested_tool = [line for line in lines if line["kind"] == "tool"][0]
+        self.assertEqual(nested_tool["meta"]["depth"], 1)
+        nested_answer = [line for line in lines
+                         if line["kind"] == "assistant" and line["meta"].get("depth")]
+        self.assertEqual(nested_answer[0]["text"], "three call sites")
+
+    def test_a_nested_subagent_gets_a_deeper_depth(self):
+        rows = {
+            "t": {"task_id": "t", "kind": "agent", "state": "running",
+                  "prompt": "go", "started_at": "1"},
+            "s1": {"task_id": "s1", "kind": "subagent", "state": "running",
+                   "parent_id": "t", "prompt": "level one", "started_at": "2"},
+            "s2": {"task_id": "s2", "kind": "subagent", "state": "running",
+                   "parent_id": "s1", "prompt": "level two", "started_at": "3"},
+        }
+        labels = [(line["text"], line["meta"]["depth"]) for line in session.transcript(rows)
+                  if line["kind"] == "subagent"]
+        self.assertEqual(labels, [("level one", 0), ("level two", 1)])
 
     def test_another_sessions_rows_are_ignored(self):
         current = {"t": {"task_id": "t", "kind": "agent", "state": "done",
@@ -1198,6 +1266,9 @@ class ScrollAnchor(unittest.TestCase):
     def _long_app(self):
         app, capture = make_app(width=60, height=18)
         app.entries = [Entry("user", "q"), Entry("assistant", "line " * 200)]
+        # Anchoring is about the transcript growing, so the answer is shown in
+        # full here; folding has its own tests.
+        app.expand_last = True
         app._draw()
         return app, capture
 
@@ -1217,6 +1288,39 @@ class ScrollAnchor(unittest.TestCase):
         app._draw()
         self.assertGreater(app.scroll, before_scroll)
         self.assertEqual(capture.frame.lines()[2:10], visible)
+
+
+class Folding(unittest.TestCase):
+    """A long answer is folded so the shape of the conversation survives."""
+
+    def _long(self):
+        app, capture = make_app(width=70, height=30)
+        app.entries = [Entry("user", "q"),
+                       Entry("assistant", (chr(10) * 2).join(
+                           f"para {i}" for i in range(60)))]
+        return app, capture
+
+    def test_a_long_answer_is_folded(self):
+        app, capture = self._long()
+        app._draw()
+        body = chr(10).join(capture.frame.lines())
+        self.assertIn("more lines · ctrl+o", body)
+        self.assertNotIn("para 59", body)
+
+    def test_ctrl_o_opens_it(self):
+        app, capture = self._long()
+        app._draw()
+        app._handle_key("ctrl+o")
+        app._draw()
+        body = chr(10).join(capture.frame.lines())
+        self.assertTrue(app.expand_last)
+        self.assertNotIn("more lines · ctrl+o", body)
+
+    def test_a_short_answer_is_never_folded(self):
+        app, capture = make_app(width=70, height=30)
+        app.entries = [Entry("user", "q"), Entry("assistant", "short answer")]
+        app._draw()
+        self.assertNotIn("ctrl+o", chr(10).join(capture.frame.lines()))
 
 
 class StreamingTransport(unittest.TestCase):

@@ -19,6 +19,19 @@ HIDE_CURSOR = "\x1b[?25l"
 SHOW_CURSOR = "\x1b[?25h"
 ALT_SCREEN_ON = "\x1b[?1049h"
 ALT_SCREEN_OFF = "\x1b[?1049l"
+# Bracketed paste makes the terminal tell us where a paste starts and ends, so
+# a newline inside pasted text is text and not a submitted prompt.
+BRACKETED_PASTE_ON = "\x1b[?2004h"
+BRACKETED_PASTE_OFF = "\x1b[?2004l"
+PASTE_END = "\x1b[201~"
+# The alternate screen kills native scrollback, so the wheel has to be
+# reported to us; SGR (1006) is the encoding worth parsing.
+MOUSE_ON = "\x1b[?1000h\x1b[?1006h"
+MOUSE_OFF = "\x1b[?1006l\x1b[?1000l"
+# Focus reporting: a notification is only worth sending when the window is in
+# the background, and only the terminal can tell us that.
+FOCUS_ON = "\x1b[?1004h"
+FOCUS_OFF = "\x1b[?1004l"
 WRAP_OFF = "\x1b[?7l"
 WRAP_ON = "\x1b[?7h"
 
@@ -77,6 +90,11 @@ def win_key_name(vk: int, char: str, control: int) -> str | None:
             return "ctrl+" + chr(vk + 32)
         return None
     if named is not None:
+        # A modified arrow or Home/End is a different key to the editor.
+        if ctrl:
+            return "ctrl+" + named
+        if alt:
+            return "alt+" + named
         return named
     if alt and char:
         return "alt+" + char
@@ -91,7 +109,7 @@ _SPECIAL_CSI = {
     "H": "home", "F": "end", "Z": "btab",
     "~": {
         "1": "home", "2": "insert", "3": "del", "4": "end",
-        "5": "pgup", "6": "pgdn", "7": "home", "8": "end",
+        "5": "pgup", "6": "pgdn", "7": "home", "8": "end", "12": "f2",
     },
 }
 
@@ -188,13 +206,15 @@ class Terminal:
                 tty.setraw(sys.stdin.fileno())
             except Exception:
                 self._saved = None
-        self.write(ALT_SCREEN_ON + CSI_CLEAR + CSI_HOME + HIDE_CURSOR + WRAP_OFF)
+        self.write(BRACKETED_PASTE_ON + MOUSE_ON + FOCUS_ON + ALT_SCREEN_ON + CSI_CLEAR
+                   + CSI_HOME + HIDE_CURSOR + WRAP_OFF)
         self._active = True
 
     def leave(self) -> None:
         if not self._active:
             return
-        self.write(WRAP_ON + SHOW_CURSOR + ALT_SCREEN_OFF)
+        self.write(FOCUS_OFF + MOUSE_OFF + BRACKETED_PASTE_OFF + WRAP_ON + SHOW_CURSOR
+                   + ALT_SCREEN_OFF)
         if IS_WINDOWS:
             self._console_mode(False)
         elif self._saved is not None:
@@ -360,6 +380,8 @@ class KeyReader:
         self._buffer = ""
         self._decoder = codecs.getincrementaldecoder("utf-8")("replace")
         self._console = _ConsoleInput() if IS_WINDOWS else None
+        # Non-None while a bracketed paste is open: the characters so far.
+        self._pasting: list[str] | None = None
 
     @property
     def using_console_queue(self) -> bool:
@@ -415,6 +437,21 @@ class KeyReader:
         index = 0
         while index < len(data):
             char = data[index]
+            if self._pasting is not None:
+                # Inside a paste only the terminator is special. Everything
+                # else -- newlines, escape sequences, control bytes -- is the
+                # pasted text itself, so it must not be interpreted.
+                if data.startswith(PASTE_END, index):
+                    keys.append("paste:" + "".join(self._pasting))
+                    self._pasting = None
+                    index += len(PASTE_END)
+                    continue
+                tail = data[index:]
+                if len(tail) < len(PASTE_END) and PASTE_END.startswith(tail):
+                    break                      # a split terminator: wait
+                self._pasting.append(char)
+                index += 1
+                continue
             if char == "\x1b":
                 # A lone ESC is the escape key; a sequence continues with [ or O.
                 if index + 1 >= len(data):
@@ -429,8 +466,14 @@ class KeyReader:
                     if end >= len(data):
                         # Incomplete: keep it for the next read.
                         break
-                    keys.append(self._parse_csi(data[index + 2:end], follower == "O"))
+                    # `end` stops on the final byte, so the slice has to
+                    # include it: arrows end with a letter and nothing after.
+                    name = self._parse_csi(data[index + 2:end + 1], follower == "O")
                     index = end + 1
+                    if name == "paste_start":
+                        self._pasting = []
+                        continue
+                    keys.append(name)
                     continue
                 if follower in "\r\n":
                     keys.append("alt+enter")
@@ -446,14 +489,49 @@ class KeyReader:
 
     def _parse_csi(self, body: str, ss3: bool) -> str:
         if ss3:
+            # SS3 encodes the arrows as P/Q/R/S on many terminals.
             return {"A": "up", "B": "down", "C": "right", "D": "left",
+                    "P": "up", "Q": "down", "R": "right", "S": "left",
                     "H": "home", "F": "end"}.get(body, "unknown")
         final = body[-1] if body else ""
         params = body[:-1]
+        if not params and final == "I":
+            return "focus_in"
+        if not params and final == "O":
+            return "focus_out"
+        if params.startswith("<"):
+            # SGR mouse: \x1b[<button;x;yM -- only the wheel is interesting.
+            try:
+                button = int(params[1:].split(";")[0])
+            except (ValueError, IndexError):
+                return "unknown"
+            if button == 64:
+                return "wheel_up"
+            if button == 65:
+                return "wheel_down"
+            return "mouse"
+        if final == "~" and params in ("200", "201"):
+            return "paste_start" if params == "200" else "paste_end"
         if final == "~":
             table = _SPECIAL_CSI["~"]
             return table.get(params.split(";")[0], "unknown")
-        return _SPECIAL_CSI.get(final, "unknown")  # type: ignore[return-value]
+        name = _SPECIAL_CSI.get(final)
+        if isinstance(name, str):
+            # \x1b[1;3C is Alt+Right: the second parameter encodes modifiers
+            # as a bit field above one (1 shift, 2 alt, 4 ctrl).
+            fields = params.split(";")
+            if len(fields) >= 2 and fields[1].isdigit():
+                bits = int(fields[1]) - 1
+                prefix = ""
+                if bits & 4:
+                    prefix += "ctrl+"
+                if bits & 2:
+                    prefix += "alt+"
+                if bits & 1:
+                    prefix += "shift+"
+                return prefix + name
+            return name
+        return "unknown"
 
     # -- public ------------------------------------------------------------
     def read(self, timeout: float = 0.1) -> list[str]:

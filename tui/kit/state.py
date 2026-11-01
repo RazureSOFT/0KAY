@@ -46,5 +46,10 @@ def save(**values) -> None:
         pass
 
 
+def exports_dir() -> pathlib.Path:
+    """Where transcripts are written, beside the state file."""
+    return _path().parent / "exports"
+
+
 def last_session() -> str:
     return str(load().get("last_session") or "")

@@ -748,4 +748,15 @@
   <string name="pet.asrTooLong">这段录音太长了</string>
   <string name="pet.asrFailed">语音服务出错</string>
   <string name="pet.replyFailed">回复失败</string>
+  <string name="settings.evolveConfirmTitle">让它改自己的代码？</string>
+  <string name="settings.evolveConfirmBody">它先读仓库、自己判断哪里值得改，然后给你一份提案。不会部署，没你点头也不会提 PR。</string>
+  <string name="settings.evolveBoundaryWorktree">在独立的 git worktree、self/* 分支里动手。</string>
+  <string name="settings.evolveBoundaryMain">主分支和工作区一个字节都不会动。</string>
+  <string name="settings.evolveBoundaryTests">提 PR 之前必须先跑测试。</string>
+  <string name="settings.evolveConfirmAction">开始</string>
+  <string name="settings.evolveStarting">启动中…</string>
+  <string name="settings.evolveStarted">已启动 —— 到 Agent 页面跟进。</string>
+  <string name="settings.evolveSessionTitle">自我改进提案</string>
+  <string name="settings.evolveNoSession">agent 没有返回会话 id。</string>
+  <string name="settings.evolvePrompt">先读这个仓库，自己判断哪里最值得改：挑一个投入产出比最高的改动，并说明为什么。先给方案再动手——用 evolve_begin 在独立 worktree 里做，主分支保持不变，跑完测试，并在 evolve_finish(open_pr=true) 之前问我。</string>
 </resources>

@@ -707,7 +707,18 @@
     "uploadFail": "模型上传失败",
     "uploadFolder": "上传模型文件夹",
     "uploadFolderHint": "选择包含 .model.json 或 .model3.json 的完整模型目录",
-    "uploadOk": "模型已上传"
+    "uploadOk": "模型已上传",
+    "evolveConfirmTitle": "让它改自己的代码？",
+    "evolveConfirmBody": "它先读仓库、自己判断哪里值得改，然后给你一份提案。不会部署，没你点头也不会提 PR。",
+    "evolveBoundaryWorktree": "在独立的 git worktree、self/* 分支里动手。",
+    "evolveBoundaryMain": "主分支和工作区一个字节都不会动。",
+    "evolveBoundaryTests": "提 PR 之前必须先跑测试。",
+    "evolveConfirmAction": "开始",
+    "evolveStarting": "启动中…",
+    "evolveStarted": "已启动 —— 到 Agent 页面跟进。",
+    "evolveSessionTitle": "自我改进提案",
+    "evolveNoSession": "agent 没有返回会话 id。",
+    "evolvePrompt": "先读这个仓库，自己判断哪里最值得改：挑一个投入产出比最高的改动，并说明为什么。先给方案再动手——用 evolve_begin 在独立 worktree 里做，主分支保持不变，跑完测试，并在 evolve_finish(open_pr=true) 之前问我。"
   },
   "status": {
     "activeTasks": "活跃任务",

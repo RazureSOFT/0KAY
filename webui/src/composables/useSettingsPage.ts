@@ -59,6 +59,63 @@ export function useSettingsPage() {
   const sectionMsgKind = ref<'ok' | 'error'>('ok')
   const sectionSaving = ref(false)
   const sectionTesting = ref(false)
+  /**
+   * Self-improvement, fired from Settings > Experiments.
+   *
+   * It asks before doing anything: rewriting its own source is the one action a
+   * misclick must not trigger. The confirmation names the three boundaries the
+   * run keeps — separate worktree, main untouched, tests before any PR.
+   */
+  const evolveDialog = ref(false)
+  const evolveBusy = ref(false)
+  const evolveMsg = ref('')
+
+  function openEvolveDialog() {
+    evolveMsg.value = ''
+    evolveDialog.value = true
+  }
+
+  function closeEvolveDialog() {
+    if (evolveBusy.value) return
+    evolveDialog.value = false
+  }
+
+  async function confirmEvolve() {
+    if (evolveBusy.value) return
+    evolveBusy.value = true
+    evolveMsg.value = ''
+    try {
+      // A fresh session keeps the proposal readable on its own instead of burying
+      // it in whatever conversation happened to be open.
+      const created = await fetch('/api/agent/sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: t('settings.evolveSessionTitle') }),
+      })
+      if (!created.ok) throw new Error(`HTTP ${created.status}`)
+      const session = await created.json()
+      const sessionId = session?.session_id || session?.id
+      if (!sessionId) throw new Error(t('settings.evolveNoSession'))
+
+      const sent = await fetch('/api/agent/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_id: sessionId,
+          prompt: t('settings.evolvePrompt'),
+          agent_type: 'general',
+        }),
+      })
+      if (!sent.ok) throw new Error(`HTTP ${sent.status}`)
+      evolveDialog.value = false
+      evolveMsg.value = t('settings.evolveStarted')
+    } catch (error: unknown) {
+      evolveMsg.value = error instanceof Error ? error.message : String(error)
+    } finally {
+      evolveBusy.value = false
+    }
+  }
+
   const sectionTestMsg = ref('')
   const live2dSaving = ref(false)
 
@@ -369,6 +426,12 @@ export function useSettingsPage() {
     sectionMsgKind,
     sectionSaving,
     sectionTesting,
+    evolveDialog,
+    evolveBusy,
+    evolveMsg,
+    openEvolveDialog,
+    closeEvolveDialog,
+    confirmEvolve,
     sectionTestMsg,
     live2dSaving,
     availableModels,

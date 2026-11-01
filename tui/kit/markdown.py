@@ -27,9 +27,117 @@ _CODE_SPAN = re.compile(r"`([^`]+)`")
 _STRONG = re.compile(r"\*\*([^*]+)\*\*")
 _STRIKE = re.compile(r"~~([^~]+)~~")
 _EM = re.compile(r"(?<![\w*])\*([^*\s][^*]*)\*(?![\w*])")
+_MATH = re.compile(r"\$([^$
+]+)\$")
 
 CODE_GUTTER = "▏ "
 QUOTE_GUTTER = "▏ "
+
+# Words worth colouring, per language. A missing language gets no colour at
+# all rather than a wrong guess: coloured-wrong code reads as broken.
+KEYWORDS = {
+    "python": {"def", "class", "return", "if", "elif", "else", "for", "while",
+               "import", "from", "as", "with", "try", "except", "finally",
+               "raise", "yield", "await", "async", "lambda", "pass", "break",
+               "continue", "and", "or", "not", "in", "is", "None", "True",
+               "False", "global", "nonlocal", "assert", "del"},
+    "js": {"const", "let", "var", "function", "return", "if", "else", "for",
+           "while", "class", "new", "this", "throw", "try", "catch", "finally",
+           "await", "async", "yield", "import", "export", "from", "default",
+           "true", "false", "null", "undefined", "typeof", "instanceof"},
+    "go": {"func", "package", "import", "return", "if", "else", "for", "range",
+           "var", "const", "type", "struct", "interface", "map", "chan", "go",
+           "defer", "select", "case", "switch", "break", "continue", "nil",
+           "true", "false", "error"},
+    "sh": {"if", "then", "else", "elif", "fi", "for", "in", "do", "done",
+           "while", "case", "esac", "function", "return", "exit", "local",
+           "export", "set", "source", "cd", "echo"},
+}
+KEYWORDS["javascript"] = KEYWORDS["js"]
+KEYWORDS["typescript"] = KEYWORDS["js"]
+KEYWORDS["ts"] = KEYWORDS["js"]
+KEYWORDS["tsx"] = KEYWORDS["js"]
+KEYWORDS["jsx"] = KEYWORDS["js"]
+KEYWORDS["bash"] = KEYWORDS["sh"]
+KEYWORDS["zsh"] = KEYWORDS["sh"]
+KEYWORDS["py"] = KEYWORDS["python"]
+
+_TOKEN = re.compile(
+    r"(#[^\n]*|//[^\n]*)"            # comment
+    r"|(\"(?:[^\"\\]|\\.)*\"|'(?:[^'\\]|\\.)*')"   # string
+    r"|(\b\d+(?:\.\d+)?\b)"          # number
+    r"|([A-Za-z_][A-Za-z0-9_]*)"     # word
+)
+
+# LaTeX, to the extent an answer actually uses it.
+GREEK = {
+    "alpha": "α", "beta": "β", "gamma": "γ", "delta": "δ", "epsilon": "ε",
+    "zeta": "ζ", "eta": "η", "theta": "θ", "iota": "ι", "kappa": "κ",
+    "lambda": "λ", "mu": "μ", "nu": "ν", "xi": "ξ", "pi": "π", "rho": "ρ",
+    "sigma": "σ", "tau": "τ", "upsilon": "υ", "phi": "φ", "chi": "χ",
+    "psi": "ψ", "omega": "ω", "Gamma": "Γ", "Delta": "Δ", "Theta": "Θ",
+    "Lambda": "Λ", "Xi": "Ξ", "Pi": "Π", "Sigma": "Σ", "Phi": "Φ",
+    "Psi": "Ψ", "Omega": "Ω",
+}
+SYMBOLS = {
+    "times": "×", "div": "÷", "pm": "±", "le": "≤", "leq": "≤", "ge": "≥",
+    "geq": "≥", "ne": "≠", "neq": "≠", "approx": "≈", "infty": "∞",
+    "sum": "∑", "prod": "∏", "int": "∫", "partial": "∂", "nabla": "∇",
+    "rightarrow": "→", "to": "→", "leftarrow": "←", "Rightarrow": "⇒",
+    "leftrightarrow": "↔", "cdot": "·", "ldots": "…", "dots": "…",
+    "in": "∈", "notin": "∉", "subset": "⊂", "supset": "⊃", "cup": "∪",
+    "cap": "∩", "forall": "∀", "exists": "∃", "emptyset": "∅",
+}
+SUPERSCRIPT = str.maketrans("0123456789+-=()nix", "⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾ⁿⁱˣ")
+SUBSCRIPT = str.maketrans("0123456789+-=()aehijklmnoprstuvx",
+                          "₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎ₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ")
+
+
+def _latex(source: str) -> str:
+    """A formula as unicode text. Unknown commands keep their name."""
+    text = source
+    # Fractions first, so their braces do not confuse the rest.
+    for _ in range(3):
+        text = re.sub(r"\\frac\{([^{}]*)\}\{([^{}]*)\}", r"(\1)/(\2)", text)
+        text = re.sub(r"\\sqrt\{([^{}]*)\}", r"√(\1)", text)
+    for name, symbol in {**GREEK, **SYMBOLS}.items():
+        text = re.sub(r"\\" + name + r"\b", symbol, text)
+    text = re.sub(r"\^\{([^{}]*)\}", lambda m: m.group(1).translate(SUPERSCRIPT), text)
+    text = re.sub(r"_\{([^{}]*)\}", lambda m: m.group(1).translate(SUBSCRIPT), text)
+    text = re.sub(r"\^(\w)", lambda m: m.group(1).translate(SUPERSCRIPT), text)
+    text = re.sub(r"_(\w)", lambda m: m.group(1).translate(SUBSCRIPT), text)
+    text = text.replace("\\left", "").replace("\\right", "")
+    text = re.sub(r"\\[,;:!]", " ", text)
+    text = text.replace("{", "").replace("}", "")
+    return text.strip()
+
+
+def _highlight(line: str, language: str, theme) -> list[tuple[str, Style]]:
+    """Colour one code line: comments, strings, numbers, keywords."""
+    words = KEYWORDS.get(language.lower())
+    if not words:
+        return [(line, theme.style("text"))]
+    spans: list[tuple[str, Style]] = []
+    position = 0
+    for match in _TOKEN.finditer(line):
+        if match.start() > position:
+            spans.append((line[position:match.start()], theme.style("text")))
+        comment, string, number, word = match.groups()
+        if comment:
+            spans.append((comment, theme.style("subtle")))
+        elif string:
+            spans.append((string, theme.style("success")))
+        elif number:
+            spans.append((number, theme.style("warning")))
+        elif word in words:
+            spans.append((word, theme.style("accentSoft", bold=True)))
+        else:
+            spans.append((word, theme.style("text")))
+        position = match.end()
+    if position < len(line):
+        spans.append((line[position:], theme.style("text")))
+    return spans or [(line, theme.style("text"))]
+
 
 
 def _italics(style: Style | None) -> Style:
@@ -71,6 +179,9 @@ def _hanging(spans, width: int, first: str, theme,
 
 def _emphasis(chunk: str, theme) -> list[tuple[str, Style]]:
     """Bold, strike, links and italic inside a stretch with no code spans."""
+    # Inline formulas first: their braces and backslashes must not reach the
+    # emphasis patterns, which would eat the asterisks inside them.
+    chunk = _MATH.sub(lambda match: _latex(match.group(1)), chunk)
     out: list[tuple[str, Style]] = []
     position = 0
     plain = theme.style("text")
@@ -120,16 +231,124 @@ def _inline(text: str, theme) -> list[tuple[str, Style]]:
     return spans or [("", theme.style("text"))]
 
 
-def _code_rows(line: str, width: int, theme) -> list[list[tuple[str, Style]]]:
+def _code_rows(line: str, width: int, theme,
+               language: str = "") -> list[list[tuple[str, Style]]]:
     """Code keeps its columns: slice, never reflow."""
-    body = theme.style("text")
     gutter = display_width(CODE_GUTTER)
+    room = max(4, width - gutter)
     rows: list[list[tuple[str, Style]]] = []
-    head, rest = _slice(line, width - gutter)
-    rows.append([(CODE_GUTTER, theme.style("subtle")), (head, body)])
+    head, rest = _slice(line, room)
+    pieces = [head]
     while rest:
-        head, rest = _slice(rest, width - gutter)
-        rows.append([(CODE_GUTTER, theme.style("subtle")), (head, body)])
+        head, rest = _slice(rest, room)
+        pieces.append(head)
+    for piece in pieces:
+        body = (_highlight(piece, language, theme) if language
+                else [(piece, theme.style("text"))])
+        rows.append([(CODE_GUTTER, theme.style("subtle"))] + body)
+    return rows
+
+
+_MERMAID_EDGE = re.compile(r"^(.*?)-->(?:\|([^|]*)\|)?\s*(.*)$")
+_MERMAID_NODE = re.compile(
+    r"([A-Za-z0-9_]+)\s*(?:\[([^\]]*)\]|\{([^}]*)\}|\(\(([^)]*)\)\)|\(([^)]*)\))?")
+
+
+def _mermaid_node(text: str) -> tuple[str, str]:
+    """Split `A[Start]` into its id and its label."""
+    match = _MERMAID_NODE.search(text.strip())
+    if match is None:
+        return "", ""
+    ident = match.group(1)
+    label = next((piece for piece in match.groups()[1:] if piece), "") or ident
+    return ident, label
+
+
+def _mermaid_chain(nodes: dict[str, str], edges: list[tuple[str, str, str]]):
+    """The node order when the graph is a single line, else None.
+
+    A chain is what most diagrams in an answer are; a branching one is listed
+    as edges instead of pretending to be a picture.
+    """
+    outgoing: dict[str, list[str]] = {}
+    incoming = set()
+    for left, right, _ in edges:
+        outgoing.setdefault(left, []).append(right)
+        incoming.add(right)
+    if not edges:
+        return list(nodes)
+    starts = [ident for ident in nodes if ident not in incoming]
+    if len(starts) != 1:
+        return None
+    order: list[str] = []
+    current = starts[0]
+    while current and current not in order:
+        order.append(current)
+        following = outgoing.get(current) or []
+        if len(following) > 1:
+            return None
+        current = following[0] if following else ""
+    return order if len(order) == len(nodes) else None
+
+
+def _mermaid_rows(lines: list[str], width: int, theme) -> list[list[tuple[str, Style]]]:
+    """A flowchart as boxes and arrows, or as edges when it branches."""
+    nodes: dict[str, str] = {}
+    edges: list[tuple[str, str, str]] = []
+    for raw in lines:
+        line = raw.strip().rstrip(";")
+        if not line or line.lower().startswith(("graph", "flowchart", "%%")):
+            continue
+        match = _MERMAID_EDGE.match(line)
+        if match:
+            left, label, right = (match.group(1).strip(),
+                                  (match.group(2) or "").strip(),
+                                  match.group(3).strip())
+            for side in (left, right):
+                ident, text = _mermaid_node(side)
+                if ident:
+                    nodes.setdefault(ident, text)
+            start = _mermaid_node(left)[0]
+            end = _mermaid_node(right)[0]
+            if start and end:
+                edges.append((start, end, label))
+            continue
+        ident, text = _mermaid_node(line)
+        if ident:
+            nodes.setdefault(ident, text)
+
+    if not nodes:
+        return _code_rows(" ".join(lines), width, theme, "mermaid")
+
+    order = _mermaid_chain(nodes, edges)
+    if order is None:
+        rows: list[list[tuple[str, Style]]] = []
+        for left, right, label in edges:
+            text = f"{nodes.get(left, left)}  ──▶  {nodes.get(right, right)}"
+            if label:
+                text += f"  ({label})"
+            head, rest = _slice(text, width)
+            rows.append([(head, theme.style("muted"))])
+            while rest:
+                head, rest = _slice(rest, width)
+                rows.append([(head, theme.style("muted"))])
+        return rows
+
+    rows = []
+    limit = max(6, width - 4)
+    for index, ident in enumerate(order):
+        body = " " + nodes.get(ident, ident) + " "
+        if display_width(body) > limit:
+            body = _slice(body, limit)[0] + "…"
+        inner = "─" * display_width(body)
+        rows.append([("┌" + inner + "┐", theme.style("accentSoft"))])
+        rows.append([("│", theme.style("accentSoft")), (body, theme.style("text")),
+                     ("│", theme.style("accentSoft"))])
+        rows.append([("└" + inner + "┘", theme.style("accentSoft"))])
+        if index < len(order) - 1:
+            label = next((text for left, right, text in edges
+                          if left == ident and right == order[index + 1]), "")
+            rows.append([("  ▼ " + label, theme.style("subtle"))])
     return rows
 
 

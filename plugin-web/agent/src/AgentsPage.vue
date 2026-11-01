@@ -2087,20 +2087,6 @@ async function send(override?: string, overrideAttachments?: Array<{ name: strin
   } catch (e: any) { error.value = e.message }
   finally { busy.value = false }
 }
-/**
- * Entry point for self-improvement (W6).
- *
- * It pre-fills the composer with the instruction instead of firing a background
- * task: the first thing a self-modifying request needs is a human reading it.
- */
-function startEvolve() {
-  const prompt = t('agent.page.evolvePrompt')
-  draft.value = draft.value.trim() ? `${draft.value.trim()}
-
-${prompt}` : prompt
-  void nextTick(() => composerInput.value?.focus())
-}
-
 async function stop() {
   if (!active.value || active.value.kind!=='agent') return
   try { await store.cancelTask(active.value.task_id) } catch (e: any) { error.value = e.message }
@@ -2224,7 +2210,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
 <template>
   <main class="workspace">
     <aside class="sessions">
-      <header><h1>Agent</h1><button class="evolve-btn" type="button" :disabled="busy || !!active" :title="t('agent.page.evolveHint')" :aria-label="t('agent.page.evolve')" @click="startEvolve"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1m0-12.8-2.1 2.1M7.7 16.3l-2.1 2.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="12" cy="12" r="3.2" stroke="currentColor" stroke-width="1.8"/></svg> {{ t('agent.page.evolve') }}</button><button @click="create" :disabled="busy" :title="t('agent.page.newSession')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> {{ t('agent.page.newChat') }}</button></header>
+      <header><h1>Agent</h1><button @click="create" :disabled="busy" :title="t('agent.page.newSession')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> {{ t('agent.page.newChat') }}</button></header>
       <div class="connection"><i :class="{online:store.onlineCount>0}" />{{ store.onlineCount }} {{ t('agent.page.executorsOnline') }} <button @click="store.fetchAgents()" :title="t('agent.page.refresh')" aria-label="refresh"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
       <p v-if="doneBanner" class="run-banner" role="status" @click="doneBanner = ''">{{ doneBanner }}</p>
       <nav class="sidebar-mode">

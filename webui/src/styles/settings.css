@@ -817,3 +817,12 @@
  * belongs to the field name turns "D:\Genie" and "/api/tts" into shouting and
  * makes paths hard to read, so opt the helper line back out of it. */
 .toggle-label small.helper-text { text-transform: none; letter-spacing: normal; font-weight: 400; }
+
+/* Confirmation veil for actions that touch its own source. */
+.dialog-veil{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:24px;
+  background:color-mix(in srgb,#000 42%,transparent);backdrop-filter:blur(2px)}
+.dialog-card{max-width:520px;width:100%;padding:22px 24px;border-radius:16px;
+  background:var(--md-surface-container-lowest);box-shadow:var(--shadow-2)}
+.dialog-card h2{margin:0 0 10px;font-size:16px;font-weight:700}
+.dialog-card ul{margin:8px 0 14px;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.dialog-card .actions-row{margin-top:14px;justify-content:flex-end}

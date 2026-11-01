@@ -34,6 +34,12 @@ const {
   availableModels,
   modelOptions,
   testPluginSection,
+  evolveDialog,
+  evolveBusy,
+  evolveMsg,
+  openEvolveDialog,
+  closeEvolveDialog,
+  confirmEvolve,
   pickerField,
   pickerOpen,
   pickerTitle,
@@ -208,6 +214,24 @@ const {
             <p v-if="f.help" class="helper-text">{{ f.help }}</p>
           </div>
 
+          <div
+            v-for="f in pluginSection(activeTab)!.fields.filter(x => x.type === 'action')"
+            :key="f.key"
+            class="field"
+          >
+            <label>{{ f.label }}</label>
+            <div class="actions-row">
+              <button
+                class="btn btn-tonal"
+                type="button"
+                :disabled="evolveBusy || String(sectionDrafts[activeTab]?.self_evolve_enabled) !== 'true'"
+                @click="openEvolveDialog"
+              >{{ f.label }}</button>
+              <span v-if="evolveMsg" class="helper-text">{{ evolveMsg }}</span>
+            </div>
+            <p v-if="f.help" class="helper-text">{{ f.help }}</p>
+          </div>
+
           <div v-if="sectionMsg" class="helper-text" :class="sectionMsgKind === 'error' ? 'msg-error' : 'msg-success'" role="status">{{ sectionMsg }}</div>
           <div class="actions-row">
             <button class="btn btn-primary" type="button" :disabled="sectionSaving" @click="saveSection(activeTab)">
@@ -275,6 +299,25 @@ const {
       :title="pickerTitle"
       @pick="applyPickedPath"
     />
+
+    <div v-if="evolveDialog" class="dialog-veil" role="dialog" aria-modal="true" :aria-label="t('settings.evolveConfirmTitle')">
+      <div class="dialog-card">
+        <h2>{{ t('settings.evolveConfirmTitle') }}</h2>
+        <p class="helper-text">{{ t('settings.evolveConfirmBody') }}</p>
+        <ul class="helper-text">
+          <li>{{ t('settings.evolveBoundaryWorktree') }}</li>
+          <li>{{ t('settings.evolveBoundaryMain') }}</li>
+          <li>{{ t('settings.evolveBoundaryTests') }}</li>
+        </ul>
+        <p v-if="evolveMsg" class="helper-text msg-error">{{ evolveMsg }}</p>
+        <div class="actions-row">
+          <button class="btn btn-tonal" type="button" :disabled="evolveBusy" @click="closeEvolveDialog">{{ t('settings.cancel') }}</button>
+          <button class="btn btn-primary" type="button" :disabled="evolveBusy" @click="confirmEvolve">
+            {{ evolveBusy ? t('settings.evolveStarting') : t('settings.evolveConfirmAction') }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 

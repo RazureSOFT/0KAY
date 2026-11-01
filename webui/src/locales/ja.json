@@ -707,7 +707,18 @@
     "uploadFail": "モデルのアップロードに失敗しました",
     "uploadFolder": "モデルフォルダをアップロード",
     "uploadFolderHint": ".model.json または .model3.json を含む完全なフォルダを選択",
-    "uploadOk": "モデルをアップロードしました"
+    "uploadOk": "モデルをアップロードしました",
+    "evolveConfirmTitle": "自分のコードを書き換えさせますか？",
+    "evolveConfirmBody": "まずリポジトリを読み、どこを改善すべきか自分で判断して提案を出します。デプロイは行わず、承認なしに PR も作りません。",
+    "evolveBoundaryWorktree": "独立した git worktree（self/* ブランチ）で作業します。",
+    "evolveBoundaryMain": "main ブランチと作業ツリーには一切触れません。",
+    "evolveBoundaryTests": "PR の前にテストを実行します。",
+    "evolveConfirmAction": "開始",
+    "evolveStarting": "開始中…",
+    "evolveStarted": "開始しました — Agent ページで確認できます。",
+    "evolveSessionTitle": "自己改善の提案",
+    "evolveNoSession": "agent がセッション id を返しませんでした。",
+    "evolvePrompt": "このリポジトリを読み、どこを改善する価値が最も高いか自分で判断してください。費用対効果が最大の変更を選び、理由を説明し、コードに触れる前に計画を示してください。evolve_begin で独立した worktree を使い、main は変更せず、テストを実行し、evolve_finish(open_pr=true) の前に確認してください。"
   },
   "status": {
     "activeTasks": "実行中タスク",
