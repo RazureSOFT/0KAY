@@ -112,63 +112,53 @@ function submitFolder() {
 </template>
 
 <style scoped>
-/* Material 3 Expressive: one elevated sheet, large corner radius, and three
-   clearly ranked actions — text (close), tonal (secondary), filled (the way out).
-   Every rule here exists because the plugin's global `button,input` rule paints
-   everything like a text field; without them the dialog reads as a column of
-   boxes. */
-.directory-backdrop{position:fixed;inset:0;z-index:var(--z-modal,6000);display:flex;align-items:center;justify-content:center;padding:24px;background:color-mix(in srgb,#0b1220 42%,transparent)}
-.directory-dialog{
-  display:flex;flex-direction:column;gap:16px;width:min(720px,100%);max-height:min(760px,92vh);
-  padding:24px;border-radius:28px;
-  background:var(--md-surface-container-high,var(--md-surface-container-lowest));
-  color:var(--md-on-surface);
-  box-shadow:0 24px 60px color-mix(in srgb,#0b1220 32%,transparent);
-}
+/* Modelled on the 0.1.1 dialog: a bordered sheet, and rows that keep a quiet
+   container colour instead of being stripped bare. Clearing a button's own
+   background made it inherit the plugin's global input style, which is what made
+   the list read as a column of text fields. */
+.directory-backdrop{position:fixed;inset:0;z-index:var(--z-modal,6000);display:grid;place-items:center;padding:20px;background:#14111acc}
+.directory-dialog{display:flex;flex-direction:column;gap:14px;width:min(680px,100%);max-height:85vh;padding:22px;
+  border:1px solid var(--md-outline-variant);border-radius:20px;
+  background:var(--md-surface);color:var(--md-on-surface);box-shadow:var(--shadow-4)}
 .directory-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.directory-dialog h2{margin:0;font-size:20px;font-weight:600;line-height:1.3;letter-spacing:-.01em}
+.directory-dialog h2{margin:0;font-size:16px;font-weight:650}
 
-/* Text button: the least important action, so it carries no container. */
-.directory-dialog header button{flex:none;height:40px;padding:0 14px;border:0;border-radius:999px;
-  background:transparent;box-shadow:none;color:var(--md-primary);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+/* Text action: no container, so it cannot be mistaken for a field. */
+.directory-dialog header button{flex:none;padding:4px 10px;border:0;border-radius:9px;background:transparent;
+  color:var(--md-primary);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
 .directory-dialog header button:hover{background:color-mix(in srgb,var(--md-primary) 10%,transparent)}
 
-/* Root chips: outlined, 32px tall, the shape a filter chip has. */
 .directory-roots{display:flex;flex-wrap:wrap;gap:8px}
-.directory-roots button{height:32px;padding:0 14px;border:1px solid var(--md-outline-variant);border-radius:999px;
-  background:transparent;box-shadow:none;color:var(--md-on-surface-variant);font:inherit;font-size:12.5px;font-weight:500;cursor:pointer}
-.directory-roots button:hover:not(:disabled){border-color:var(--md-primary);color:var(--md-primary);background:color-mix(in srgb,var(--md-primary) 8%,transparent)}
+.directory-roots button{padding:6px 12px;border:1px solid var(--md-outline-variant);border-radius:999px;
+  background:transparent;color:var(--md-on-surface);font:inherit;font-size:12px;cursor:pointer}
+.directory-roots button:hover:not(:disabled){border-color:var(--md-primary);color:var(--md-primary)}
 
-.directory-dialog code{display:block;padding:12px 14px;border:0;border-radius:12px;
-  background:var(--md-surface-container-highest,var(--md-surface-container-low));
-  font-family:var(--code-font);font-size:12.5px;color:var(--md-on-surface-variant);overflow-wrap:anywhere}
+.directory-dialog code{padding:8px 10px;border-radius:10px;background:var(--md-surface-container-low);
+  font-family:var(--code-font);font-size:12px;overflow-wrap:anywhere}
 
-/* Filled field: a container with no outline, which is how M3 marks input. */
 .new-folder{display:flex;gap:8px}
-.new-folder input{flex:1;min-width:0;height:44px;padding:0 14px;border:0;border-radius:12px;
-  background:var(--md-surface-container-highest,var(--md-surface-container-low));color:var(--md-on-surface);font:inherit;font-size:13px}
-.new-folder input::placeholder{color:var(--md-on-surface-variant)}
-.new-folder button{flex:none;height:44px;padding:0 18px;border:0;border-radius:999px;
+.new-folder input{flex:1;min-width:0;padding:8px 10px;border:1px solid var(--md-outline-variant);border-radius:10px;
+  background:var(--md-surface-container-lowest);color:var(--md-on-surface);font:inherit;font-size:13px}
+.new-folder button{flex:none;padding:8px 14px;border:0;border-radius:10px;
   background:var(--md-secondary-container);color:var(--md-on-secondary-container);
-  font:inherit;font-size:13px;font-weight:600;cursor:pointer;box-shadow:none}
-.new-folder button:hover:not(:disabled){filter:brightness(1.04)}
-.new-folder button:disabled{opacity:.4;cursor:not-allowed}
+  font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.new-folder button:disabled{opacity:.45;cursor:not-allowed}
 
 .directory-dialog .error{margin:0;color:var(--md-error,#ba1a1a);font-size:12.5px}
-/* Rows: list items. 12px radius, hover only. */
-.directory-list{display:flex;flex-direction:column;gap:2px;min-height:120px;max-height:340px;overflow:auto;padding:2px}
-.directory-list button{display:flex;align-items:center;gap:10px;justify-content:flex-start;width:100%;
-  border:0;border-radius:12px;background:transparent;box-shadow:none;
-  padding:0 12px;height:44px;font:inherit;font-size:13.5px;text-align:left;color:var(--md-on-surface);cursor:pointer}
-.directory-list button:hover:not(:disabled){background:var(--md-surface-container-highest,var(--md-surface-container-low))}
-.directory-list button svg{flex:none;color:var(--md-on-surface-variant)}
-.directory-list button.parent{color:var(--md-on-surface-variant)}
 
-.directory-dialog footer{display:flex;justify-content:flex-end;gap:8px}
-.directory-dialog footer button{height:44px;padding:0 24px;border:0;border-radius:999px;
+/* Rows keep a quiet container, which is what separates them from the path field. */
+.directory-list{display:flex;flex-direction:column;gap:6px;min-height:180px;max-height:360px;overflow:auto}
+.directory-list button{display:flex;align-items:center;gap:9px;justify-content:flex-start;
+  padding:8px 10px;border:0;border-radius:10px;
+  background:var(--md-surface-container-low);color:var(--md-on-surface);
+  font:inherit;font-size:13px;text-align:left;cursor:pointer}
+.directory-list button:hover:not(:disabled){background:var(--md-secondary-container)}
+.directory-list button svg{flex:none;color:var(--md-on-surface-variant)}
+.muted{margin:6px 2px;opacity:.7;font-size:12.5px}
+
+.directory-dialog footer{display:flex;justify-content:flex-end}
+.directory-dialog footer button{padding:9px 18px;border:0;border-radius:999px;
   background:var(--md-primary);color:var(--md-on-primary);
-  font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;box-shadow:0 1px 2px color-mix(in srgb,#0b1220 24%,transparent)}
-.directory-dialog footer button:hover:not(:disabled){filter:brightness(1.06)}
-.directory-dialog footer button:disabled{opacity:.4;cursor:not-allowed}
-.muted{opacity:.7;font-size:12.5px;margin:8px 12px}
+  font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.directory-dialog footer button:disabled{opacity:.45;cursor:not-allowed}
 </style>
