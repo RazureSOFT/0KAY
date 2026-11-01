@@ -17,7 +17,7 @@ const errorMsg = ref('')
 
 /** `bare` drops the card, the gradient and the overlays, so the desktop pet can
  *  draw straight onto the desktop instead of inside a panel. */
-const props = withDefaults(defineProps<{ bare?: boolean }>(), { bare: false })
+const props = withDefaults(defineProps<{ bare?: boolean; transformScope?: string }>(), { bare: false, transformScope: '' })
 const isBare = computed(() => props.bare)
 const enabled = computed(() => wizard.live2d.enabled)
 const modelUrl = computed(() => wizard.live2d.modelUrl.trim())
@@ -294,7 +294,11 @@ function clamp(v: number, min: number, max: number) {
 }
 
 function transformKey() {
-  return TRANSFORM_KEY_PREFIX + (modelUrl.value || 'default')
+  // The pet window is 450x600; a transform saved in the full-size stage means
+  // nothing there, so each scope remembers its own. No saved transform in the
+  // pet scope means defaultFit() centres her, which is the wanted default.
+  const scope = props.transformScope ? `${props.transformScope}|` : ''
+  return TRANSFORM_KEY_PREFIX + scope + (modelUrl.value || 'default')
 }
 
 function loadSavedTransform(): { x: number; y: number; scale: number } | null {

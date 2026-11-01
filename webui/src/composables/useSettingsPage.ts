@@ -58,6 +58,21 @@ export function useSettingsPage() {
   const sectionMsg = ref('')
   const sectionMsgKind = ref<'ok' | 'error'>('ok')
   const sectionSaving = ref(false)
+  /** Desktop shell present? Its own preferences only make sense there. */
+  const isDesktop = typeof window !== 'undefined' && !!(window as any).okayDesktop?.isDesktop
+
+  /**
+   * Open the shell's preferences window.
+   *
+   * Run from Settings because that is where settings belong; the tray entry stays
+   * as a shortcut for people who already know it is there.
+   */
+  async function openDesktopSettings() {
+    try {
+      await (window as any).okayDesktop?.openSettings?.()
+    } catch { /* a browser build simply has nothing to open */ }
+  }
+
   const sectionTesting = ref(false)
   /**
    * Self-improvement, fired from Settings > Experiments.
@@ -426,6 +441,8 @@ export function useSettingsPage() {
     sectionMsgKind,
     sectionSaving,
     sectionTesting,
+    isDesktop,
+    openDesktopSettings,
     evolveDialog,
     evolveBusy,
     evolveMsg,

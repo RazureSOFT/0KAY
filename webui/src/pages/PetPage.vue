@@ -10,6 +10,33 @@ import Live2DStage from '../components/Live2DStage.vue'
 
 const reply = ref('')
 const asking = ref(false)
+/**
+ * The conversation shown in the dialogue box.
+ *
+ * A pet that only answers your last sentence is a widget; a pet that keeps the
+ * last few exchanges on screen is someone you are talking to. Kept short on
+ * purpose — this is a 450x600 window, not a chat client.
+ */
+type Line = { role: 'you' | 'her'; text: string }
+const transcript = ref<Line[]>([])
+const draft = ref('')
+const TRANSCRIPT_LIMIT = 12
+
+function remember(role: 'you' | 'her', text: string) {
+  const trimmed = text.trim()
+  if (!trimmed) return
+  transcript.value = [...transcript.value, { role, text: trimmed }].slice(-TRANSCRIPT_LIMIT)
+}
+
+/** Send what was typed. The answer streams into `reply`, then joins the transcript. */
+async function sendText() {
+  const text = draft.value.trim()
+  if (!text || asking.value) return
+  draft.value = ''
+  remember('you', text)
+  await ask(text)
+  remember('her', reply.value)
+}
 const { t } = useI18n()
 const recording = ref(false)
 const transcribing = ref(false)
@@ -156,6 +183,7 @@ async function ask(prompt: string) {
       }
     }
     if (!reply.value.trim()) reply.value = '……'
+    remember('her', reply.value)
   } catch (cause: any) {
     error.value = cause?.message || t('pet.replyFailed')
   } finally {
@@ -194,32 +222,57 @@ onUnmounted(() => {
 
 <template>
   <div class="pet-stage">
-    <Live2DStage bare class="pet-canvas" />
+    <!-- scope="pet": her position here is her own, not the one dragged in the
+         full-size stage. Without it a past drag lands her off-centre. -->
+    <Live2DStage bare transform-scope="pet" class="pet-canvas" />
 
-    <div class="voice-bar" :class="{ live: recording }">
-      <button
-        class="mic"
-        :class="{ on: recording, busy }"
-        :disabled="busy"
-        :aria-label="recording ? t('pet.releaseToSend') : t('pet.holdToTalk')"
-        :title="recording ? t('pet.releaseToSend') : t('pet.holdToTalk')"
-        @pointerdown.prevent="start"
-        @pointerup.prevent="stop"
-        @pointerleave="stop"
-        @pointercancel="stop"
-      >
-        <span class="ring" :style="{ transform: `scale(${1 + level * 0.6})`, opacity: 0.25 + level * 0.75 }"></span>
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
-          <path d="M12 4a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V7a3 3 0 0 1 3-3Z" stroke="currentColor" stroke-width="1.8" fill="none"/>
-          <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-        </svg>
-      </button>
+    <div class="dock">
+      <!-- Dialogue box: the last few exchanges, oldest first. This is what makes
+           it a conversation instead of a one-line widget. -->
+      <div v-if="transcript.length || asking || heard || error" class="dialog" role="log" aria-live="polite">
+        <p v-for="(line, index) in transcript" :key="index" :class="['line', line.role]">{{ line.text }}</p>
+        <p v-if="asking" class="line her live">{{ reply || '……' }}</p>
+        <p v-if="heard && !asking" class="line you heard">{{ heard }}</p>
+        <p v-if="error" class="line bad">{{ error }}</p>
+      </div>
 
-      <p v-if="busy" class="say">{{ t('pet.transcribing') }}</p>
-      <p v-else-if="asking" class="say">{{ reply || '……' }}</p>
-      <p v-else-if="reply" class="say heard">{{ reply }}</p>
-      <p v-else-if="heard" class="say heard">{{ heard }}</p>
-      <p v-else-if="error" class="say bad">{{ error }}</p>
+      <form class="composer" :class="{ live: recording }" @submit.prevent="sendText">
+        <button
+          class="mic"
+          type="button"
+          :class="{ on: recording, busy }"
+          :disabled="busy"
+          :aria-label="recording ? t('pet.releaseToSend') : t('pet.holdToTalk')"
+          :title="recording ? t('pet.releaseToSend') : t('pet.holdToTalk')"
+          @pointerdown.prevent="start"
+          @pointerup.prevent="stop"
+          @pointerleave="stop"
+          @pointercancel="stop"
+        >
+          <span class="ring" :style="{ transform: `scale(${1 + level * 0.6})`, opacity: 0.25 + level * 0.75 }"></span>
+          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+            <path d="M12 4a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V7a3 3 0 0 1 3-3Z" stroke="currentColor" stroke-width="1.8" fill="none"/>
+            <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+          </svg>
+        </button>
+
+        <input
+          v-model="draft"
+          class="type"
+          type="text"
+          :placeholder="busy ? t('pet.transcribing') : t('pet.typeMessage')"
+          :disabled="busy"
+          autocomplete="off"
+          spellcheck="false"
+          @keydown.esc="draft = ''"
+        />
+
+        <button class="send" type="submit" :disabled="!draft.trim() || asking" :aria-label="t('pet.send')" :title="t('pet.send')">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path d="M4 12h13M11 6l6 6-6 6" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+          </svg>
+        </button>
+      </form>
     </div>
   </div>
 </template>
@@ -240,23 +293,48 @@ onUnmounted(() => {
 :global(html.pet-mode #app) { padding: 0 !important; height: 100%; }
 .pet-canvas { width: 100%; height: 100%; }
 
-.voice-bar {
-  position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 10px;
-  padding: 6px 14px 6px 6px; border-radius: 999px;
-  background: #0f1620cc; backdrop-filter: blur(10px);
-  box-shadow: 0 8px 24px #00000059, inset 0 1px 0 #ffffff14;
-  color: #e8eef7; font: 500 12px/1.3 system-ui, -apple-system, 'Segoe UI', 'PingFang SC', sans-serif;
-  max-width: min(90vw, 420px);
+/* The dock: dialogue above, composer below, both pinned to the bottom. The model
+   keeps the whole window behind them, which is why it can stay centred. */
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 0 12px 12px;
   -webkit-app-region: no-drag;
+}
+
+.dialog {
+  max-height: 42vh; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px 12px; border-radius: 14px;
+  background: #0b1118d9; backdrop-filter: blur(12px);
+  box-shadow: 0 10px 30px #0000004d, inset 0 1px 0 #ffffff14;
+  color: #e8eef7;
+  font: 500 12.5px/1.5 system-ui, -apple-system, 'Segoe UI', 'PingFang SC', sans-serif;
+  scrollbar-width: thin;
+}
+.dialog::-webkit-scrollbar { width: 6px; }
+.dialog::-webkit-scrollbar-thumb { background: #ffffff2e; border-radius: 3px; }
+.line { margin: 0; overflow-wrap: anywhere; }
+.line.her { color: #eaf2ff; }
+.line.you { color: #9fc4cc; }             /* your words are quieter than hers */
+.line.you.heard { font-style: italic; opacity: .8; }
+.line.bad { color: #ffb4b4; }
+.line.live::after { content: '▍'; margin-left: 1px; opacity: .6; animation: caret 1s steps(1) infinite; }
+@keyframes caret { 50% { opacity: 0; } }
+
+.composer {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px 6px 6px; border-radius: 999px;
+  background: #0f1620d9; backdrop-filter: blur(10px);
+  box-shadow: 0 8px 24px #00000059, inset 0 1px 0 #ffffff14;
   transition: opacity .18s ease, background .18s ease;
 }
 /* Fades back so she is not framed by a permanent widget. */
-.voice-bar:not(.live):not(:hover) { opacity: .5; }
-.voice-bar.live { background: #1a2230e6; }
+.composer:not(.live):not(:hover):not(:focus-within) { opacity: .55; }
+.composer.live { background: #1a2230e6; }
 
 .mic {
-  position: relative; width: 34px; height: 34px; flex: none;
+  position: relative; width: 32px; height: 32px; flex: none;
   display: grid; place-items: center; border: 0; border-radius: 50%;
   background: #86afb5; color: #0b1118; cursor: pointer;
   transition: background .15s ease, transform .08s ease;
@@ -271,7 +349,20 @@ onUnmounted(() => {
   border: 2px solid #e5484d; opacity: 0; pointer-events: none;
   transition: transform .08s linear, opacity .12s ease;
 }
-.say { margin: 0; font-size: 12px; line-height: 1.35; overflow-wrap: anywhere; }
-.say.heard { color: #dbe7f7; }
-.say.bad { color: #ffb4b4; }
+
+.type {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
+  color: #e8eef7; font: 500 13px/1.4 system-ui, -apple-system, 'Segoe UI', 'PingFang SC', sans-serif;
+  padding: 4px 2px;
+}
+.type::placeholder { color: #93a4bb; }
+
+.send {
+  width: 30px; height: 30px; flex: none; display: grid; place-items: center;
+  border: 0; border-radius: 50%; cursor: pointer;
+  background: #86afb5; color: #0b1118;
+  transition: background .15s ease, opacity .15s ease;
+}
+.send:hover:not(:disabled) { background: #9cc3c9; }
+.send:disabled { opacity: .35; cursor: default; }
 </style>

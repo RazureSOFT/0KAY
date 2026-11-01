@@ -718,7 +718,8 @@
     "evolveStarted": "開始しました — Agent ページで確認できます。",
     "evolveSessionTitle": "自己改善の提案",
     "evolveNoSession": "agent がセッション id を返しませんでした。",
-    "evolvePrompt": "このリポジトリを読み、どこを改善する価値が最も高いか自分で判断してください。費用対効果が最大の変更を選び、理由を説明し、コードに触れる前に計画を示してください。evolve_begin で独立した worktree を使い、main は変更せず、テストを実行し、evolve_finish(open_pr=true) の前に確認してください。"
+    "evolvePrompt": "このリポジトリを読み、どこを改善する価値が最も高いか自分で判断してください。費用対効果が最大の変更を選び、理由を説明し、コードに触れる前に計画を示してください。evolve_begin で独立した worktree を使い、main は変更せず、テストを実行し、evolve_finish(open_pr=true) の前に確認してください。",
+    "desktopTitle": "デスクトップ設定"
   },
   "status": {
     "activeTasks": "実行中タスク",
@@ -870,6 +871,8 @@
     "asrBadKey": "ASR キーが無効です",
     "asrTooLong": "録音が長すぎます",
     "asrFailed": "音声サービスでエラー",
-    "replyFailed": "返信に失敗しました"
+    "replyFailed": "返信に失敗しました",
+    "typeMessage": "何か話して…",
+    "send": "送信"
   }
 }

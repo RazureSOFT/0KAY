@@ -34,6 +34,8 @@ const {
   availableModels,
   modelOptions,
   testPluginSection,
+  isDesktop,
+  openDesktopSettings,
   evolveDialog,
   evolveBusy,
   evolveMsg,
@@ -108,6 +110,14 @@ const {
           <span class="nav-label">{{ tabLabel(tab.id) }}</span>
         </button>
         </template>
+        <!-- Desktop-only entry, and deliberately here: "settings" is where people
+             look, and a tray menu is not. It opens the shell's own window because
+             these prefs live on this machine, not in Core. -->
+        <button v-if="isDesktop" class="nav-item nav-desktop" type="button" :title="t('settings.desktopTitle')" @click="openDesktopSettings">
+          <span class="nav-indicator"></span>
+          <span class="nav-icon" aria-hidden="true"><NavIcon name="chip" :size="20" /></span>
+          <span class="nav-label">{{ t('settings.desktopTitle') }}</span>
+        </button>
       </nav>
 
       <section class="settings-content">

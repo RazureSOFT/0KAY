@@ -759,4 +759,7 @@
   <string name="settings.evolveSessionTitle">自我改进提案</string>
   <string name="settings.evolveNoSession">agent 没有返回会话 id。</string>
   <string name="settings.evolvePrompt">先读这个仓库，自己判断哪里最值得改：挑一个投入产出比最高的改动，并说明为什么。先给方案再动手——用 evolve_begin 在独立 worktree 里做，主分支保持不变，跑完测试，并在 evolve_finish(open_pr=true) 之前问我。</string>
+  <string name="pet.typeMessage">说点什么…</string>
+  <string name="pet.send">发送</string>
+  <string name="settings.desktopTitle">桌面端设置</string>
 </resources>

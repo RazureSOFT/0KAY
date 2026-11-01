@@ -718,7 +718,8 @@
     "evolveStarted": "Started — follow it in the Agent page.",
     "evolveSessionTitle": "Self-improvement proposal",
     "evolveNoSession": "The agent did not return a session id.",
-    "evolvePrompt": "Look at this repository and decide for yourself what is worth improving: pick the change with the most value for the effort, and tell me why. Then plan it before touching code — use evolve_begin to work in an isolated worktree, keep main untouched, run the tests, and ask me before evolve_finish(open_pr=true)."
+    "evolvePrompt": "Look at this repository and decide for yourself what is worth improving: pick the change with the most value for the effort, and tell me why. Then plan it before touching code — use evolve_begin to work in an isolated worktree, keep main untouched, run the tests, and ask me before evolve_finish(open_pr=true).",
+    "desktopTitle": "Desktop settings"
   },
   "status": {
     "activeTasks": "Active Tasks",
@@ -870,6 +871,8 @@
     "asrBadKey": "ASR key is invalid",
     "asrTooLong": "That recording is too long",
     "asrFailed": "Speech service error",
-    "replyFailed": "Reply failed"
+    "replyFailed": "Reply failed",
+    "typeMessage": "Say something…",
+    "send": "Send"
   }
 }
