@@ -31,7 +31,14 @@ const emit = defineEmits<{
 const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {})
 const folderName = ref(props.folder || '')
 const path = computed(() => props.path || '')
-const parent = computed(() => props.parent || '')
+const parent = computed(() => {
+  // At a drive root the server reports the root as its own parent, which made the
+  // "go up" row vanish exactly when you reached D:\ — a dead end with no way back
+  // to the drive list. Going up from a root means the list itself (empty path).
+  const reported = props.parent || ''
+  if (reported && reported === (props.path || '')) return ''
+  return reported
+})
 const dirs = computed(() => props.dirs || [])
 const roots = computed(() => props.roots || [])
 const canCreate = computed(() => !!folderName.value.trim() && !!path.value && !props.busy)
@@ -39,7 +46,7 @@ const canSelect = computed(() => !!path.value && !props.busy && !props.error)
 
 // The parent folder is the first real destination; only offer it when it is not
 // the current folder, which is what makes it useful as a "go up" button.
-const showParent = computed(() => !!parent.value && parent.value !== path.value)
+const showParent = computed(() => !!path.value && (parent.value !== path.value))
 
 watch(() => props.open, (open) => { if (!open) folderName.value = '' })
 

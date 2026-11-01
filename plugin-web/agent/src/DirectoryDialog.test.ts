@@ -40,10 +40,20 @@ describe('DirectoryDialog', () => {
     expect(wrapper.emitted('browse')?.[0]).toEqual(['/work/app/src'])
   })
 
-  it('offers "go up" only when it goes somewhere', () => {
+  it('offers "go up" until it would go nowhere', async () => {
     expect(mountDialog().findAll('.directory-list button')[0].text()).toContain('agent.page.parentDirectory')
+
+    // A drive root reports itself as its own parent. That used to hide the row —
+    // a dead end you could not escape — so going up now means the drive list.
     const atRoot = mountDialog({ parent: '/work/app' })
-    expect(atRoot.text()).not.toContain('agent.page.parentDirectory')
+    const goUp = atRoot.findAll('.directory-list button')[0]
+    expect(goUp.text()).toContain('agent.page.parentDirectory')
+    await goUp.trigger('click')
+    expect(atRoot.emitted('browse')?.[0]).toEqual([''])
+
+    // Only the drive list itself has nowhere left to go.
+    const driveList = mountDialog({ path: '', parent: '' })
+    expect(driveList.text()).not.toContain('agent.page.parentDirectory')
   })
 
   it('will not create a folder without a name', async () => {
