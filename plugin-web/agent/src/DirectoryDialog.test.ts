@@ -13,7 +13,10 @@ const baseProps = {
 }
 
 function mountDialog(overrides: Record<string, unknown> = {}) {
-  return mount(DirectoryDialog, { props: { ...baseProps, ...overrides } })
+  // `teleport: true` renders the slot in place: the dialog lives in body at
+  // runtime (it must, to escape the transformed composer), but a test wants it
+  // inside the wrapper it queries.
+  return mount(DirectoryDialog, { props: { ...baseProps, ...overrides }, global: { stubs: { teleport: true } } })
 }
 
 describe('DirectoryDialog', () => {
