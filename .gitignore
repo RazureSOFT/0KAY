@@ -167,3 +167,6 @@ life/life-review-report.md
 
 # Machine credential shared by Core and 0KAY IDE.
 /.run/api-token
+
+# The VSCodium-based editor is its own repo, like agent/ and 0kay-ide/.
+/0kay-code/
