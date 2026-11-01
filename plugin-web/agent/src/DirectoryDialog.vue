@@ -51,6 +51,10 @@ function submitFolder() {
 </script>
 
 <template>
+  <!-- Teleported: the composer it is rendered from is transformed, and a
+       position:fixed child of a transformed ancestor is sized by that ancestor —
+       which is why this dialog kept appearing tiny no matter what width it got. -->
+  <Teleport to="body">
   <div v-if="open" class="directory-backdrop" @click.self="emit('close')">
     <section class="directory-dialog" role="dialog" aria-modal="true" tabindex="-1"
       :aria-label="t('agent.page.selectWorkspaceDirAria')">
@@ -94,6 +98,7 @@ function submitFolder() {
       </footer>
     </section>
   </div>
+  </Teleport>
 </template>
 
 <style scoped>
@@ -115,7 +120,7 @@ function submitFolder() {
 .directory-dialog footer button{padding:8px 16px;border:0;border-radius:10px;background:var(--md-primary);color:var(--md-on-primary);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
 .directory-dialog footer button:disabled{opacity:.45;cursor:not-allowed}
 .directory-dialog .error{margin:0;color:var(--md-error,#ba1a1a);font-size:12px}
-.directory-list{display:flex;flex-direction:column;gap:2px;min-height:60px;min-height:220px;max-height:420px;overflow:auto}
+.directory-list{display:flex;flex-direction:column;gap:2px;min-height:220px;max-height:420px;overflow:auto}
 .directory-list button{display:flex;align-items:center;gap:7px;justify-content:flex-start;border:0;background:transparent;padding:7px 9px;border-radius:8px;text-align:left}
 .directory-list button:hover{background:var(--md-secondary-container)}
 .directory-dialog footer{display:flex;justify-content:flex-end}
