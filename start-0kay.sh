@@ -114,6 +114,9 @@ cmd_start() {
 
   # Each service is launched in its own directory. CORE_PLUGIN_REGISTRATION_TOKEN
   # carries the per-plugin enrollment key (matched against Core's CORE_PLUGIN_TOKEN_*).
+  # CORE_API_TOKEN lets a local client (0KAY IDE) call /api/agent/* without a
+  # plugin identity; the same value is read by the IDE shell from .run/api-token.
+  export CORE_API_TOKEN="$(cat "$ROOT/.run/api-token" 2>/dev/null || true)"
   ( cd "$ROOT/core"  && nohup go run ./cmd/core  >> "$LOGDIR/core.log"  2>&1 & echo "core $!"  >> "$PIDFILE"; disown )
   ( cd "$ROOT/mocr"  && CORE_PLUGIN_REGISTRATION_TOKEN="$MOCR_REGISTRATION_TOKEN" nohup go run ./cmd/mocr  >> "$LOGDIR/mocr.log"  2>&1 & echo "mocr $!"  >> "$PIDFILE"; disown )
   ( cd "$ROOT/life"  && CORE_PLUGIN_REGISTRATION_TOKEN="$LIFE_REGISTRATION_TOKEN" nohup .venv/Scripts/python.exe -m life.main >> "$LOGDIR/life.log"  2>&1 & echo "life $!"  >> "$PIDFILE"; disown )

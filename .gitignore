@@ -164,3 +164,6 @@ life/life-review-report.md
 
 # The IDE fork keeps its own git history (like agent/).
 /0kay-ide/
+
+# Machine credential shared by Core and 0KAY IDE.
+/.run/api-token
