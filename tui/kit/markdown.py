@@ -11,8 +11,10 @@ At 80 columns a wrong guess is more confusing than showing the source.
 
 from __future__ import annotations
 
+import os
 import re
 
+from . import graphics
 from .ansi import PLAIN, Style, char_width, display_width, spans_to_text, wrap_spans
 
 _FENCE = re.compile(r"^\s*(`{3,}|~{3,})\s*(\S*)\s*$")
@@ -27,8 +29,24 @@ _CODE_SPAN = re.compile(r"`([^`]+)`")
 _STRONG = re.compile(r"\*\*([^*]+)\*\*")
 _STRIKE = re.compile(r"~~([^~]+)~~")
 _EM = re.compile(r"(?<![\w*])\*([^*\s][^*]*)\*(?![\w*])")
-_MATH = re.compile(r"\$([^$
-]+)\$")
+_MATH = re.compile(r"\$(?!\s)([^$\n]*?\S)\$")
+_IMAGE = re.compile(r"^\s*!\[([^\]]*)\]\((.+?)\)\s*$")
+# A picture tall enough to fill the screen would push the conversation away.
+MAX_IMAGE_ROWS = 14
+# One cell shows two rows of pixels: the glyph's colour is the lower one and
+# its background the upper one.
+HALF_BLOCK = "▀"
+
+
+def _local_path(source: str, base: str = "") -> str:
+    """A path on this machine, or "" when the source is remote."""
+    if "://" in source:
+        return ""
+    candidate = source[7:] if source.startswith("file://") else source
+    candidate = candidate.replace("%20", " ")
+    if not os.path.isabs(candidate) and base:
+        candidate = os.path.join(base, candidate)
+    return candidate if os.path.exists(candidate) else ""
 
 CODE_GUTTER = "▏ "
 QUOTE_GUTTER = "▏ "
@@ -179,9 +197,6 @@ def _hanging(spans, width: int, first: str, theme,
 
 def _emphasis(chunk: str, theme) -> list[tuple[str, Style]]:
     """Bold, strike, links and italic inside a stretch with no code spans."""
-    # Inline formulas first: their braces and backslashes must not reach the
-    # emphasis patterns, which would eat the asterisks inside them.
-    chunk = _MATH.sub(lambda match: _latex(match.group(1)), chunk)
     out: list[tuple[str, Style]] = []
     position = 0
     plain = theme.style("text")
@@ -213,18 +228,27 @@ def _emphasis(chunk: str, theme) -> list[tuple[str, Style]]:
 def _inline(text: str, theme) -> list[tuple[str, Style]]:
     """One line of prose to styled runs.
 
-    Code spans are taken out first so `**` inside them is left alone; the rest
-    is coloured left to right and anything unmatched stays plain.
+    Code spans and formulas are taken out first so `**` inside them is left
+    alone; the rest is coloured left to right and anything unmatched stays
+    plain.
     """
     spans: list[tuple[str, Style]] = []
     position = 0
     while True:
-        match = _CODE_SPAN.search(text, position)
-        if match is None:
+        code = _CODE_SPAN.search(text, position)
+        math = _MATH.search(text, position)
+        if code is None and math is None:
             break
+        if code is not None and (math is None or code.start() <= math.start()):
+            match, is_math = code, False
+        else:
+            match, is_math = math, True
         if match.start() > position:
             spans.extend(_emphasis(text[position:match.start()], theme))
-        spans.append((match.group(1), theme.style("accentSoft")))
+        if is_math:
+            spans.append((_latex(match.group(1)), theme.style("accentSoft", italic=True)))
+        else:
+            spans.append((match.group(1), theme.style("accentSoft")))
         position = match.end()
     if position < len(text):
         spans.extend(_emphasis(text[position:], theme))
@@ -352,13 +376,38 @@ def _mermaid_rows(lines: list[str], width: int, theme) -> list[list[tuple[str, S
     return rows
 
 
-def render(text: str, width: int, theme) -> list[list[tuple[str, Style]]]:
-    """Render markdown to rows of styled spans, at most `width` columns wide."""
+def image_paths(text: str, base: str = "") -> list[str]:
+    """Local files this text refers to as pictures, in order, deduplicated.
+
+    Used before a turn: the agent is a different machine as far as the
+    filesystem is concerned, so a picture the model should see has to travel
+    as an attachment rather than as a path in the prompt.
+    """
+    found: list[str] = []
+    for match in re.finditer(r"!\[[^\]]*\]\(([^)]+)\)", text):
+        path = _local_path(match.group(1).strip(), base)
+        if path and path not in found:
+            found.append(path)
+    return found
+
+
+def render(text: str, width: int, theme, images: list | None = None,
+           base: str = "", protocol: bool | None = None) -> list[list[tuple[str, Style]]]:
+    """Render markdown to rows of styled spans, at most `width` columns wide.
+
+    `images` collects the pictures that need the terminal's graphics protocol:
+    each entry is where its rectangle starts, in rows, plus how big it is. The
+    rows themselves stay blank, which is what leaves the space.
+    """
     if width <= 2:
         return [[("", PLAIN)]]
     rows: list[list[tuple[str, Style]]] = []
     in_code = False
     fence_char = ""
+    language = ""
+    diagram: list[str] = []
+    in_math = False
+    math_lines: list[str] = []
     paragraph: list[str] = []
 
     def blank() -> None:
@@ -377,19 +426,63 @@ def render(text: str, width: int, theme) -> list[list[tuple[str, Style]]]:
         line = raw.rstrip()
         fenced = _FENCE.match(line)
 
+        if in_math:
+            if line.strip().endswith("$$"):
+                math_lines.append(line.strip()[:-2])
+                flush_paragraph()
+                blank()
+                formula = _latex(" ".join(math_lines))
+                head, rest = _slice(formula, max(8, width - 4))
+                rows.append([("  " + head, theme.style("accentSoft", italic=True))])
+                while rest:
+                    head, rest = _slice(rest, max(8, width - 4))
+                    rows.append([("  " + head, theme.style("accentSoft", italic=True))])
+                blank()
+                in_math = False
+                math_lines = []
+            else:
+                math_lines.append(line.strip())
+            continue
+
+        if line.strip().startswith("$$"):
+            inner = line.strip()[2:]
+            flush_paragraph()
+            blank()
+            if inner.endswith("$$"):
+                formula = _latex(inner[:-2])
+                head, rest = _slice(formula, max(8, width - 4))
+                rows.append([("  " + head, theme.style("accentSoft", italic=True))])
+                while rest:
+                    head, rest = _slice(rest, max(8, width - 4))
+                    rows.append([("  " + head, theme.style("accentSoft", italic=True))])
+                blank()
+            else:
+                in_math = True
+                math_lines = [inner] if inner else []
+            continue
+
         if in_code:
             if fenced and fenced.group(1).startswith(fence_char):
                 in_code = False
+                if diagram:
+                    rows.extend(_mermaid_rows(diagram, width, theme))
+                    blank()
+                    diagram = []
                 continue
-            rows.extend(_code_rows(line, width, theme))
+            if language.lower() == "mermaid":
+                # Drawn when the fence closes: a diagram needs all its edges.
+                diagram.append(line)
+            else:
+                rows.extend(_code_rows(line, width, theme, language))
             continue
         if fenced:
             flush_paragraph()
             in_code = True
             fence_char = fenced.group(1)[0]
-            blank()
             language = fenced.group(2)
-            if language:
+            diagram = []
+            blank()
+            if language and language.lower() != "mermaid":
                 rows.append([(CODE_GUTTER, theme.style("subtle")),
                              (language, theme.style("subtle"))])
             continue
@@ -397,6 +490,35 @@ def render(text: str, width: int, theme) -> list[list[tuple[str, Style]]]:
         if not line.strip():
             flush_paragraph()
             blank()
+            continue
+
+        picture = _IMAGE.match(line)
+        if picture:
+            flush_paragraph()
+            blank()
+            alt, source = picture.group(1), picture.group(2).strip()
+            path = _local_path(source, base)
+            # A graphics protocol gets a reserved rectangle painted over the
+            # text; anything else falls back to half blocks, which are text
+            # and so work in every terminal that can show colour at all.
+            covered = protocol if protocol is not None else bool(graphics.kind())
+            if path and covered and images is not None:
+                cols, tall = graphics.cells_for(path, max(10, width - 2), MAX_IMAGE_ROWS)
+                images.append({"row": len(rows), "path": path, "cols": cols,
+                               "rows": tall, "alt": alt})
+                for _ in range(tall):
+                    rows.append([("", PLAIN)])
+            else:
+                cells = (graphics.block_cells(path, max(10, width - 2), MAX_IMAGE_ROWS)
+                         if path else None)
+                if cells:
+                    for line in cells:
+                        rows.append([(HALF_BLOCK, Style(fg=upper, bg=lower))
+                                     for upper, lower in line])
+                else:
+                    rows.append([(graphics.caption(alt, path or source),
+                                  theme.style("subtle"))])
+            rows.append([("", PLAIN)])
             continue
 
         if _RULE.match(line):

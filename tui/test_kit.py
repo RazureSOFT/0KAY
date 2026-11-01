@@ -18,6 +18,7 @@ from kit import commands, markdown, session
 from kit.ansi import Style, display_width, spans_to_text, truncate, wrap
 from kit.app import App, Entry, _input_rows
 from kit.canvas import Frame, Renderer
+from kit.client import CoreError
 from kit.theme import build
 from kit.widgets import box, human_tokens
 
@@ -187,6 +188,8 @@ class FakeClient:
         self.pending_approvals = []
         self.pending_questions = []
         self.sent_options = []
+        self.uploaded = []
+        self.upload_error = ""
         self.agent_rows = []
         self.session_rows = []
         self.turn_rows = {}
@@ -198,6 +201,9 @@ class FakeClient:
         self.deleted = []
         self.forked = []
         self.archived = []
+        self.health_payload = {"status": "ok", "plugins": 4, "healthy": 3,
+                               "name": "0KAY", "version": "0.1.4"}
+        self.usage_payload = {}
         self.git_branch = ""
         self.git_files = []
 
@@ -216,18 +222,33 @@ class FakeClient:
         return "agent-session:test"
 
     def send_message(self, session, prompt, model="", intensity="", permission="",
-                     workdir="", executor=""):
+                     workdir="", executor="", attachments=None):
         self.sent.append(prompt)
         self.sent_options.append({"model": model, "intensity": intensity,
                                   "permission": permission, "workdir": workdir,
-                                  "executor": executor})
+                                  "executor": executor,
+                                  "attachments": list(attachments or [])})
         return {"accepted": True, "task_id": "agent-task:test"}
+
+    def upload(self, path):
+        self.uploaded.append(path)
+        if self.upload_error:
+            raise CoreError(self.upload_error)
+        return {"file": "file_1.png", "url": "/api/files?file=file_1.png",
+                "name": os.path.basename(str(path)), "size": 1234,
+                "mime": "image/png"}
 
     def agents(self):
         return {"agents": list(self.agent_rows), "online_count": len(self.agent_rows)}
 
     def settings_sections(self):
         return list(self.section_rows)
+
+    def health_info(self):
+        return dict(self.health_payload)
+
+    def usage(self):
+        return dict(self.usage_payload)
 
     def git(self, path=""):
         return {"branch": self.git_branch, "files": list(self.git_files)}

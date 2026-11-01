@@ -304,6 +304,9 @@ def _run_ui(args) -> int:
     # and NO_COLOR / TERM / COLORTERM are honoured at the one place that talks
     # to a real terminal.
     theme = build(args.theme, detect_colour())
+    if args.lang:
+        from kit import i18n
+        i18n.set_language(args.lang)
     client = Client(args.url, args.token)
     reader = KeyReader()
     with Terminal() as terminal:
@@ -376,6 +379,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--interval", type=float, default=3.0)
     parser.add_argument("--model", default=os.environ.get("CORE_MODEL") or "",
                         help="model id for chat; empty uses the gateway default")
+    parser.add_argument("--lang", default="", choices=("", "en", "zh"),
+                        help="interface language: en or zh")
     parser.add_argument("--theme", default="auto", choices=("auto", "light", "dark", "ansi"),
                         help="auto reads COLORFGBG; ansi is for 16-colour terminals")
     parser.add_argument("--full-access", dest="full_access", action="store_true",

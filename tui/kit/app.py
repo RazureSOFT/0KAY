@@ -17,8 +17,11 @@ import time
 from dataclasses import dataclass, field
 
 from . import commands as command_table
+from . import clipboard
 from . import markdown
 from . import session as session_view
+from . import i18n
+from .i18n import t
 from . import state as state_file
 from .ansi import PLAIN, display_width, truncate, wrap
 from .canvas import Frame
@@ -27,7 +30,8 @@ from .widgets import (
     spinner,
 )
 
-VERSION = "0.1.2"
+TUI_VERSION = "0.1.2"
+VERSION = TUI_VERSION
 PROMPT_GLYPH = "❯"
 FOLD_GLYPH = "▶"
 MORE_GLYPH = "↓"
@@ -47,6 +51,12 @@ BELL_AFTER = 8.0
 SIDE_WIDTH = 34
 SIDE_MIN = 96
 GIT_EVERY = 12.0
+# Health is the cheapest call there is, and it is how the version follows a
+# gateway restart: once per half minute is plenty.
+HEALTH_EVERY = 30.0
+# The usage ledger is filled per model request, so polling it during a turn is
+# what makes a live tokens-per-second readout possible.
+USAGE_EVERY = 2.0
 # Notifications: when to speak up, and the two ways to do it.
 NOTIFY_MODES = ("unfocused", "always", "off")
 NOTIFICATION_TITLE = "0KAY · task complete"
@@ -143,6 +153,8 @@ class App:
         self.history_index = 0
         self.scroll = 0
         self.palette_index = 0
+        # While this is in the future, input is still arriving from a paste.
+        self._paste_until = 0.0
         self.entries: list[Entry] = []
         # Agent session: the server keeps the conversation, this keeps a map of
         # its task rows and re-derives the transcript from them.
@@ -161,6 +173,19 @@ class App:
         self.git_branch = ""
         self.git_files: list[dict] = []
         self.git_at = 0.0
+        # Usage ledger: the last snapshot, the one the turn started from, and
+        # when we last asked. The delta is what the turn actually spent.
+        self.usage: dict = {}
+        self.usage_base: dict = {}
+        self.usage_at = 0.0
+        # Filled by _transcript_lines for the frame that is about to be drawn.
+        self._image_slots: list[dict] = []
+        # What the gateway says it is. The TUI version is only a fallback for
+        # when it cannot be reached; the product version is Core's.
+        self.core_version = ""
+        self.core_name = ""
+        self.core_plugins = 0
+        self.health_at = 0.0
         # Whether the terminal window has focus; notifications depend on it.
         self.focused = True
         self.notify_mode = "unfocused"
@@ -247,13 +272,16 @@ class App:
     def restore(self) -> None:
         """Re-apply what the last session was running with."""
         data = state_file.load()
+        saved_lang = str(data.get("lang") or "")
+        if saved_lang in i18n.LANGS:
+            i18n.set_language(saved_lang)
         mode = str(data.get("notify") or "")
         if mode in NOTIFY_MODES:
             self.notify_mode = mode
         remembered = str(data.get("permission") or "")
         if remembered == "full_access":
             self.permission = "full_access"
-            self.notice("starting with full access · tools will not ask", "warn")
+            self.notice(t("notice.full_access_start"), "warn")
             self._sync_view()
 
     def run(self) -> int:
@@ -266,18 +294,20 @@ class App:
         self._start_pending_poll()
         while self.running:
             keys = self.reader.read(0.08)
-            if _looks_like_paste(keys):
-                # Terminals without bracketed paste hand us the text as a
-                # burst of keystrokes; treating it as one insert is what keeps
-                # the newlines in it from submitting the prompt.
-                self._insert("".join(keys))
-                self.dirty = True
+            if self._absorb_paste(keys):
+                # The burst went into the draft as text, newlines and all.
                 keys = []
             for key in keys:
                 self._handle_key(key)
                 self.dirty = True
             self._drain()
             self._refresh_git()
+            if time.monotonic() - self.health_at >= HEALTH_EVERY:
+                self.health_at = time.monotonic()
+                self._load_health()
+            if self.busy and time.monotonic() - self.usage_at >= USAGE_EVERY:
+                self.usage_at = time.monotonic()
+                self._load_usage()
             if self.busy or self.animating():
                 self.tick += 1
                 self.dirty = True
@@ -290,7 +320,8 @@ class App:
     def _probe(self) -> None:
         def work():
             try:
-                self.client.get("/health")
+                payload = self.client.health_info()
+                self.queue.put(("health", payload, None))
                 self.online = True
                 self._load_agents()
                 self._load_context()
@@ -364,6 +395,37 @@ class App:
                     self.notice(note)
                     if self.settings_section:
                         self._open_settings(self.settings_section)
+                elif kind == "tell":
+                    # A message from a worker thread that is not an error.
+                    self.notice(str(payload))
+                    self.dirty = True
+                elif kind == "image":
+                    path = str(payload or "")
+                    if path:
+                        self._insert(f"![pasted]({path})")
+                        self.notice(t("notice.pasted_image",
+                                      name=os.path.basename(path)))
+                    else:
+                        self.notice(t("notice.no_image"))
+                    self.dirty = True
+                elif kind == "health":
+                    payload = payload or {}
+                    # A failed probe carries nothing: keep the last known
+                    # version rather than blanking it on every hiccup. The
+                    # offline state is said elsewhere, in words.
+                    if payload.get("version"):
+                        self.core_version = str(payload["version"])
+                    if payload.get("name"):
+                        self.core_name = str(payload["name"])
+                    if payload.get("healthy") is not None:
+                        self.core_plugins = int(payload["healthy"])
+                    self.dirty = True
+                elif kind == "usage":
+                    payload, baseline = payload
+                    if baseline:
+                        self.usage_base = payload
+                    self.usage = payload
+                    self.dirty = True
                 elif kind == "git":
                     self.git_branch, self.git_files = payload
                     self.dirty = True
@@ -478,6 +540,29 @@ class App:
         else:
             self._write(BELL)
 
+    def _pick_language(self, argument: str) -> None:
+        argument = argument.strip().lower()
+        if argument in i18n.LANGS:
+            self._set_language(argument)
+            return
+        if argument:
+            self.notice("/lang zh · /lang en")
+            self._sync_view()
+            return
+        self.panel = Panel(f"{t('panel.language')} · {i18n.language()}",
+                           ["en   English", "zh   中文"],
+                           choices=list(i18n.LANGS), first_choice_row=0,
+                           action="lang")
+        self.panel.cursor = list(i18n.LANGS).index(i18n.language())
+        self._panel_hint = "↑↓ choose · enter applies · esc closes"
+
+    def _set_language(self, lang: str) -> None:
+        current = i18n.set_language(lang)
+        state_file.save(lang=current)
+        self.panel = None
+        self.notice(t("notice.language", lang=current))
+        self._sync_view()
+
     def _pick_notify(self, argument: str) -> None:
         argument = argument.strip().lower()
         if argument in NOTIFY_MODES:
@@ -490,7 +575,7 @@ class App:
         lines = ["unfocused   only when the window is in the background",
                  "always      every finished turn",
                  "off         never"]
-        self.panel = Panel(f"notifications · now {self.notify_mode}", lines,
+        self.panel = Panel(f"{t('panel.notify')} · {self.notify_mode}", lines,
                            choices=list(NOTIFY_MODES), first_choice_row=0,
                            action="notify")
         self.panel.cursor = list(NOTIFY_MODES).index(self.notify_mode)
@@ -524,6 +609,7 @@ class App:
             self._send(following)
         # The turn probably touched the working tree; let the panel catch up.
         self.git_at = 0.0
+        self._load_usage()
         # The ceiling and the occupancy are per session, and the lookup is an
         # HTTP call: keep it off the drawing thread.
         threading.Thread(target=self._load_context, daemon=True).start()
@@ -641,6 +727,11 @@ class App:
             self._insert(key[6:])
             self.dirty = True
             return
+        if key == "ctrl+v":
+            # A terminal pastes text by itself and never sends this key; when
+            # it does arrive the clipboard holds something it could not paste.
+            self._paste_image()
+            return
         if self.debug_keys:
             self.last_key = key
         if key == "ctrl+d":
@@ -654,9 +745,9 @@ class App:
             self.git_at = 0.0
             if self.side_panel:
                 self._refresh_git()
-                self.notice("side panel on · ctrl+b hides it")
+                self.notice(t("notice.side_on"))
             else:
-                self.notice("side panel off")
+                self.notice(t("notice.side_off"))
             self.dirty = True
             return
         if key == "ctrl+o":
@@ -1036,6 +1127,8 @@ class App:
             self._open_settings(str(choice))
         elif action == "field":
             self._edit_field(str(choice))
+        elif action == "lang":
+            self._set_language(str(choice))
         elif action == "notify":
             self._set_notify(str(choice))
         elif action == "setting":
@@ -1084,6 +1177,79 @@ class App:
     def _reset_search(self) -> None:
         self.search_index = None
         self.search_query = ""
+
+    def _attachments_for(self, prompt: str) -> list[dict]:
+        """Upload the pictures the prompt refers to, so the model can see them.
+
+        A failure here must not lose the turn: the text is still worth sending,
+        and the reason is said out loud rather than swallowed.
+        """
+        refs: list[dict] = []
+        for path in markdown.image_paths(prompt, self.workdir):
+            try:
+                info = self.client.upload(path)
+            except Exception as error:  # noqa: BLE001 - the turn still runs
+                self.queue.put(("tell", t("notice.upload_failed",
+                                          name=os.path.basename(path),
+                                          reason=str(error)[:70]), None))
+                continue
+            url = str(info.get("url") or "")
+            if not url:
+                continue
+            refs.append({
+                "name": str(info.get("name") or os.path.basename(path)),
+                "url": url,
+                "mime": str(info.get("mime") or "application/octet-stream"),
+                "size": int(info.get("size") or 0),
+            })
+        if refs:
+            self.queue.put(("tell", t("notice.attached", count=len(refs)), None))
+        return refs
+
+    def _paste_image(self) -> None:
+        """Put the clipboard's picture into the draft as a markdown reference.
+
+        On a worker thread: opening the clipboard can block behind whatever
+        else is holding it, and that must not freeze the prompt.
+        """
+        def work() -> None:
+            try:
+                path = clipboard.save_image(str(state_file.pasted_dir()))
+            except Exception:  # noqa: BLE001 - a missing picture is not an error
+                path = None
+            self.queue.put(("image", path or "", None))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _absorb_paste(self, keys: list[str]) -> bool:
+        """Take a read as pasted text when it is one. True if it was.
+
+        This is the only thing standing between a pasted paragraph and a
+        submit per line, so it errs towards keeping text: once a burst has
+        been seen, whatever follows without a pause belongs to the same paste.
+        """
+        if not keys:
+            return False
+        now = time.monotonic()
+        continuing = now < self._paste_until
+        if not continuing:
+            if not _looks_like_paste(keys):
+                return False
+        elif not _pasteable(keys):
+            # ctrl+c, an arrow: the stream ended and this is somebody acting.
+            self._paste_until = 0.0
+            return False
+        text = _paste_chars(keys)
+        self._paste_until = now + PASTE_IDLE
+        if not text:
+            return True
+        self._insert(text)
+        lines = text.count("\n")
+        if lines >= 2:
+            # The prompt box shows six rows, so say how much went in.
+            self.notice(t("notice.pasted", lines=lines, chars=len(text)))
+        self.dirty = True
+        return True
 
     def _insert(self, text: str) -> None:
         """Put pasted text in the buffer as text, never as keystrokes.
@@ -1334,6 +1500,9 @@ class App:
         self.first_chunk_at = 0.0
         self.activity = "thinking"
         self._title("0KAY · working")
+        # Freeze the ledger before the turn so its cost can be subtracted.
+        self.usage_base = dict(self.usage)
+        self._load_usage(baseline=True)
         self._view_dirty = True
         self._sync_view()
         self._start_watch()
@@ -1347,7 +1516,7 @@ class App:
         running), so steering means stop-then-send. The conversation keeps its
         history, which is what the model needs to understand the new direction.
         """
-        self.notice("steering · interrupting this turn to send yours", "warn")
+        self.notice(t("notice.steering"), "warn")
         self._sync_view()
         task = self.turn_task
         if task:
@@ -1390,13 +1559,17 @@ class App:
         """
         try:
             session = self._session(prompt)
+            # Pictures travel as uploads: the agent fetches them over HTTP and
+            # hands them to the model as image content, so a bare path in the
+            # prompt would only be a string it cannot look at.
+            attachments = self._attachments_for(prompt)
             attempts = 0
             while True:
                 try:
                     result = self.client.send_message(
                         session, prompt, model=self.model, workdir=self.workdir,
                         intensity=self.intensity, permission=self.permission,
-                        executor=self.executor,
+                        executor=self.executor, attachments=attachments,
                     )
                     break
                 except Exception as error:  # noqa: BLE001 - inspected below
@@ -1485,7 +1658,7 @@ class App:
                 text += "  (dropped)"
             lines.append(f"{mark} {text}")
         done, total = session_view.todo_progress(todos)
-        self.panel = Panel(f"todos · {done}/{total}", lines)
+        self.panel = Panel(f"{t('panel.todos')} · {done}/{total}", lines)
         self._panel_hint = "esc closes"
 
     def _open_settings(self, section: str = "") -> None:
@@ -1616,7 +1789,7 @@ class App:
             lines.append("no matching session" if query else "no earlier session")
         if archived and not self.show_archived:
             lines.append(f"  {archived} archived · press a on one to hide, /resume archived to show")
-        title = f"sessions · {len(choices)}"
+        title = f"{t('panel.sessions')} · {len(choices)}"
         if query:
             title += f" · “{self.sessions_query}”"
         if self.show_archived:
@@ -1833,7 +2006,7 @@ class App:
             workdir = str(host.get("workdir") or "")
             rows.append(f"{label}{mark}" + (f" · {workdir}" if workdir else ""))
             choices.append(str(agent.get("plugin_id")))
-        self.panel = Panel("agent · now " + self._agent_label(), rows,
+        self.panel = Panel(f"{t('panel.agent')} · {self._agent_label()}", rows,
                            choices=choices, first_choice_row=0, action="agent")
         self.panel.cursor = (choices.index(self.executor)
                              if self.executor in choices else 0)
@@ -1990,6 +2163,10 @@ class App:
                 self._resume(word)
             else:
                 self._background("sessions", self._collect_sessions, "session")
+        elif command.name == "paste":
+            self._paste_image()
+        elif command.name == "lang":
+            self._pick_language(argument)
         elif command.name == "notify":
             self._pick_notify(argument)
         elif command.name == "fork":
@@ -2094,9 +2271,58 @@ class App:
         return (f"tasks · {len(rows)}", text.split("\n"))
 
     def _collect_usage(self):
+        """The ledger, plus what this turn cost on top of it."""
         payload = self.client.usage()
-        text = self.formatters.format_usage(payload) if self.formatters else str(payload)
-        return ("usage", text.split("\n"))
+        self.usage = payload
+        turn = self._turn_usage()
+        lines: list[str] = []
+        if turn.get("prompt"):
+            lines.append(self._usage_line("this turn", turn))
+        lines.append(self._usage_line("ledger", {
+            "prompt": int(payload.get("total_prompt_tokens") or 0),
+            "completion": int(payload.get("total_completion_tokens") or 0),
+            "cached": int(payload.get("total_cached_tokens") or 0),
+            "cost": float(payload.get("total_cost_usd") or 0),
+            "cache_rate": float(payload.get("cache_hit_ratio") or 0),
+        }))
+        lines += ["", f"requests        {payload.get('request_count') or 0}"
+                      f" · sessions {payload.get('session_count') or 0}"]
+
+        by_model = payload.get("by_model") or {}
+        if isinstance(by_model, dict) and by_model:
+            lines += ["", "by model"]
+            ranked = sorted(by_model.items(),
+                            key=lambda item: -int((item[1] or {}).get("total") or 0))
+            for name, row in ranked[:6]:
+                if not isinstance(row, dict):
+                    continue
+                count = max(1, int(row.get("count") or 1))
+                lines.append(
+                    f"  {name:<14} {human_tokens(int(row.get('prompt') or 0)):>7} in"
+                    f"  {human_tokens(int(row.get('completion') or 0)):>6} out"
+                    f"  {human_tokens(int(row.get('total') or 0) // count):>6}/req")
+
+        recent = [row for row in (payload.get("recent") or []) if isinstance(row, dict)]
+        if recent:
+            lines += ["", "recent"]
+            for row in list(reversed(recent))[:6]:
+                stamp = str(row.get("timestamp") or "")[11:16]
+                prompt = int(row.get("prompt_tokens") or 0)
+                cached = int(row.get("cached_tokens") or 0)
+                rate = f"{cached / prompt * 100:.0f}%" if prompt else "--"
+                lines.append(
+                    f"  {stamp}  {str(row.get('model') or '?'):<14}"
+                    f" {human_tokens(prompt):>6} in"
+                    f" {human_tokens(int(row.get('completion_tokens') or 0)):>5} out"
+                    f"  cache {rate:>4}  ${float(row.get('cost_usd') or 0):.4f}")
+        return (f"{t('panel.usage')} · {payload.get('request_count') or 0}", lines)
+
+    @staticmethod
+    def _usage_line(label: str, row: dict) -> str:
+        rate = float(row.get("cache_rate") or 0) * 100
+        return (f"{label:<10} {human_tokens(int(row.get('prompt') or 0)):>7} in"
+                f"  {human_tokens(int(row.get('completion') or 0)):>6} out"
+                f"  cache {rate:>4.0f}%  ≈${float(row.get('cost') or 0):.4f}")
 
     def _collect_models(self):
         payload = self.client.models()
@@ -2163,7 +2389,7 @@ class App:
             self._set_permission(value)
             return
         self.panel = Panel(
-            f"permission · now {self.permission}",
+            f"{t('panel.permission')} · {self.permission}",
             ["normal       ask before sensitive tools",
              "full_access  run anything, never ask"],
             choices=["normal", "full_access"], first_choice_row=0,
@@ -2175,9 +2401,9 @@ class App:
         self.permission = "full_access" if value == "full_access" else "normal"
         state_file.save(permission=self.permission)
         if self.permission == "full_access":
-            self.notice("permission → full access · tools run without asking", "warn")
+            self.notice(t("notice.permission_full"), "warn")
         else:
-            self.notice("permission → normal · sensitive tools will ask")
+            self.notice(t("notice.permission_normal"))
         self.panel = None
         self._sync_view()
 
@@ -2198,7 +2424,7 @@ class App:
         value = self._intensity_value()
         # The level moves with the knob, so it belongs in the body, not the
         # title -- a title that disagrees with the slider is a bug to read.
-        self.panel = Panel("thinking effort", [], action="intensity",
+        self.panel = Panel(t("panel.effort"), [], action="intensity",
                            slider=EFFORT_VALUES[EFFORT_STEPS[self._step_index(value)]])
         self._panel_hint = "←→ one level · enter applies · esc cancels"
 
@@ -2403,13 +2629,28 @@ class App:
         return (f"reconnect {name}", [str(result)])
 
     def _collect_health(self):
-        ok = self.client.health()
-        return ("health", [f"{self.client.base_url}  {'reachable' if ok else 'unreachable'}"])
+        """What the gateway says about itself, and what this build is."""
+        try:
+            payload = self.client.health_info()
+        except Exception:  # noqa: BLE001 - the panel reports it
+            payload = {}
+        healthy = payload.get("healthy")
+        lines = [
+            f"gateway   {self.client.base_url}"
+            f"  {'reachable' if payload else 'unreachable'}",
+            f"core      {payload.get('name') or '0KAY'}"
+            f"  v{payload.get('version') or 'unknown'}",
+            f"plugins   {healthy if healthy is not None else '?'}"
+            f" of {payload.get('plugins', '?')} healthy",
+            f"tui       v{TUI_VERSION}",
+        ]
+        name = payload.get("version") or "offline"
+        return (f"health · core {name}", lines)
 
     def _open_help(self) -> None:
         from .commands import COMMANDS
         self._panel_hint = ""
-        lines = ["keys", ""]
+        lines = [t("help.title"), ""]
         keymap = [
             ("enter", "send · while a turn runs: interrupt it and send this"),
             ("shift+enter", "newline in the draft (ctrl+j works everywhere)"),
@@ -2421,6 +2662,7 @@ class App:
             ("ctrl+b", "side panel: context, todos, git"),
             ("f2", "fullscreen draft editor"),
             ("alt+← alt+→", "move by word · alt+bs deletes one"),
+            ("ctrl+v", "paste a picture from the clipboard"),
             ("ctrl+c", "interrupt the running turn, then clear the input"),
             ("ctrl+l", "repaint after the terminal garbled the screen"),
             ("ctrl+p / ?", "this help"),
@@ -2457,11 +2699,14 @@ class App:
             "", "completion", "",
                   "  / shows commands. @ shows paths under the agent's working",
                   "  directory; keep typing to narrow, tab to fill in.",
-                  "", "commands", ""]
+                  "", t("help.commands"), ""]
         labels = [f"/{c.name + (' ' + c.argument if c.argument else '')}" for c in COMMANDS]
-        column = max(len(label) for label in labels) + 2
+        column = max(display_width(label) for label in labels) + 2
         for command, label in zip(COMMANDS, labels):
-            lines.append(f"  {label:<{column}}{command.description}")
+            key = "cmd." + command.name
+            description = i18n.t(key) if i18n.has(key) else command.description
+            pad = " " * max(1, column - display_width(label))
+            lines.append(f"  {label}{pad}{description}")
         lines += [
             "",
             "status line",
@@ -2569,7 +2814,7 @@ class App:
         theme = self.theme
         top = y + 1
         frame.put(x + 2, top, "0KAY", theme.style("strong", bold=True))
-        frame.put(x + 7, top, f"v{VERSION} · self-hosted agent stack",
+        frame.put(x + 7, top, f"v{self._version()} · self-hosted agent stack",
                   theme.style("muted"))
         top += 2
 
@@ -2619,7 +2864,7 @@ class App:
         label_x = 2 + label_column
         base = label_row
         frame.put(label_x, base, "0KAY", theme.style("strong", bold=True))
-        frame.put(label_x + 5, base, f"  v{VERSION}", theme.style("subtle"))
+        frame.put(label_x + 5, base, f"  v{self._version()}", theme.style("subtle"))
         frame.put(label_x, base + 1, "self-hosted agent stack", theme.style("muted"))
         frame.put(label_x, base + 2, self.model or "gateway default model",
                   theme.style("subtle"))
@@ -2663,10 +2908,20 @@ class App:
         visible = lines[start:start + height]
         for index, spans in enumerate(visible):
             frame.put_spans(x, y + index, spans)
+        # Pictures are painted over the blank rows the markdown reserved; a
+        # rectangle that scrolled out of view is simply not drawn.
+        for slot in self._image_slots:
+            line = slot["line"]
+            if start <= line < start + len(visible):
+                frame.image(x, y + (line - start), slot["cols"], slot["rows"],
+                            slot["path"], slot["alt"])
 
     def _transcript_lines(self, width: int) -> list[list[tuple[str, object]]]:
         theme = self.theme
         out: list[list[tuple[str, object]]] = []
+        # Pictures are positioned relative to the lines, so they are collected
+        # here and painted once the scroll offset is known.
+        self._image_slots: list[dict] = []
         gutter = 2
         last_answer = -1
         for index, entry in enumerate(self.entries):
@@ -2684,9 +2939,22 @@ class App:
                 key = (theme.name, width - gutter, len(entry.text))
                 if entry.cache and entry.cache[0] == key:
                     body_rows = entry.cache[1]
+                    body_images = entry.cache[2] if len(entry.cache) > 2 else []
                 else:
-                    body_rows = markdown.render(entry.text, width - gutter, theme)
-                    entry.cache = (key, body_rows)
+                    # Pictures are only reserved when the terminal can draw
+                    # them; otherwise the caption is the honest answer.
+                    body_images: list = []
+                    # markdown picks: a reserved rectangle when the terminal
+                    # speaks a graphics protocol, half blocks when it does not.
+                    body_rows = markdown.render(entry.text, width - gutter, theme,
+                                                images=body_images, base=self.workdir)
+                    entry.cache = (key, body_rows, body_images)
+                for picture in body_images:
+                    self._image_slots.append({
+                        "line": len(out) + int(picture["row"]),
+                        "path": picture["path"], "cols": picture["cols"],
+                        "rows": picture["rows"], "alt": picture.get("alt", ""),
+                    })
                 depth = int(entry.meta.get("depth") or 0)
                 pad = " " * gutter + "  " * depth
                 folded = (len(body_rows) > MAX_ANSWER_ROWS
@@ -2953,7 +3221,7 @@ class App:
             rows.append([(left, theme.style("muted")), (" " * pad, PLAIN),
                          (right, theme.style(role))])
 
-        head("context")
+        head(t("side.context"))
         used, window = self.context_used, self.context_window
         if not window:
             rows.append([("ctx --", theme.style("subtle"))])
@@ -2970,17 +3238,30 @@ class App:
                 if value:
                     pair(label, human_tokens(int(value)))
             if self.context_threshold:
-                pair("compacts at", human_tokens(self.context_threshold))
+                pair(t("side.compacts_at"), human_tokens(self.context_threshold))
             if self.compact_tier and self.compact_tier != "none":
-                pair("compact", self.compact_tier, "warning")
+                pair(t("side.compact"), self.compact_tier, "warning")
             cache = self.context_breakdown.get("cache") or {}
             if isinstance(cache, dict) and cache.get("cache_profile"):
-                pair("cache", str(cache["cache_profile"])[:16])
+                pair(t("side.cache"), str(cache["cache_profile"])[:16])
+
+        turn = self._turn_usage()
+        if turn.get("prompt") or self.usage.get("request_count"):
+            head(t("side.usage"))
+            if turn.get("prompt"):
+                pair(t("side.this_turn"), f"{human_tokens(turn['prompt'])} in · "
+                                  f"{human_tokens(turn['completion'])} out")
+                if turn.get("cache_rate"):
+                    pair(t("side.cache"), f"{turn['cache_rate'] * 100:.0f}%")
+                if turn.get("cost"):
+                    pair(t("side.cost"), f"≈${turn['cost']:.4f}")
+            if self.usage.get("total_cost_usd"):
+                pair(t("side.ledger"), f"≈${float(self.usage['total_cost_usd']):.4f}")
 
         todos = session_view.latest_todos(self.task_rows)
         if todos:
             done, total = session_view.todo_progress(todos)
-            head(f"todos · {done}/{total}")
+            head(f"{t('side.todos')} · {done}/{total}")
             marks = {"completed": "✓", "in_progress": "▸", "pending": "·",
                      "cancelled": "×"}
             for item in todos[:7]:
@@ -3006,21 +3287,21 @@ class App:
             if changed > 6:
                 rows.append([(f"  … {changed - 6} more", theme.style("subtle"))])
 
-        head("live")
+        head(t("side.live"))
         agent, implied = self._resolved_agent()
         if agent is None:
             who = "none"
         else:
             who = self._agent_short(agent) + (" (auto)" if implied else "")
-        pair("agent", truncate(who, max(6, width - 8)))
-        pair("model", truncate(self.model or "default", max(6, width - 8)))
+        pair(t("side.agent"), truncate(who, max(6, width - 8)))
+        pair(t("side.model"), truncate(self.model or "default", max(6, width - 8)))
         if self.intensity:
             level = EFFORT_STEPS[self._step_index(self._intensity_value())]
-            pair("effort", f"{self.effort_frame()} {level}")
-        pair("permission", "full access" if self.permission == "full_access" else "normal",
+            pair(t("side.effort"), f"{self.effort_frame()} {level}")
+        pair(t("side.permission"), t("status.full_access") if self.permission == "full_access" else "normal",
              "warning" if self.permission == "full_access" else "subtle")
         if self.queued:
-            pair("queued", str(len(self.queued)), "accentSoft")
+            pair(t("side.queued"), str(len(self.queued)), "accentSoft")
         return rows
 
     def _draw_side(self, frame, x: int, y: int, width: int, height: int) -> None:
@@ -3036,6 +3317,49 @@ class App:
                 continue
             # _put_spans takes the right edge, not the span width.
             self._put_spans(frame, x, y + offset, spans, x + width)
+
+    def _version(self) -> str:
+        """The running Core's version, or this build's when it is offline."""
+        return self.core_version or VERSION
+
+    def _load_health(self) -> None:
+        """Ask what the gateway is, so the version follows it across restarts."""
+        def work():
+            try:
+                payload = self.client.health_info()
+            except Exception:  # noqa: BLE001 - offline is a state, not an error
+                payload = {}
+            self.queue.put(("health", payload, None))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _load_usage(self, baseline: bool = False) -> None:
+        """Ask the ledger what has been spent, now or at the start of a turn."""
+        def work():
+            try:
+                payload = self.client.usage()
+            except Exception:  # noqa: BLE001 - a readout never breaks a turn
+                return
+            self.queue.put(("usage", (payload, baseline), None))
+
+        threading.Thread(target=work, daemon=True).start()
+
+    def _turn_usage(self) -> dict:
+        """What this turn spent: delta of two ledger snapshots."""
+        if not self.usage or not self.usage_base:
+            return {}
+        def delta(key: str) -> float:
+            return float(self.usage.get(key) or 0) - float(self.usage_base.get(key) or 0)
+        prompt = delta("total_prompt_tokens")
+        completion = delta("total_completion_tokens")
+        cached = delta("total_cached_tokens")
+        return {
+            "prompt": int(prompt),
+            "completion": int(completion),
+            "cached": int(cached),
+            "cost": delta("total_cost_usd"),
+            "cache_rate": (cached / prompt) if prompt > 0 else 0.0,
+        }
 
     def _refresh_git(self) -> None:
         """Ask for the working-tree status, at most now and then."""
@@ -3094,7 +3418,7 @@ class App:
             spans.append((f"{label} {elapsed:.0f}s", theme.style("text")))
         else:
             spans.append(("· ", theme.style("subtle")))
-            spans.append(("ready", theme.style("muted")))
+            spans.append((t("status.ready"), theme.style("muted")))
 
         percent = None
         if self.context_window:
@@ -3103,9 +3427,9 @@ class App:
         spans.append(("  ·  ", theme.style("subtle")))
         if percent is None:
             # An empty bar would read as "0% used"; say we do not know instead.
-            spans.append(("ctx --", theme.style("subtle")))
+            spans.append((f"{t('status.ctx')} --", theme.style("subtle")))
         else:
-            spans.append(("ctx ", theme.style("subtle")))
+            spans.append((t("status.ctx") + " ", theme.style("subtle")))
             spans.extend(context_bar(theme, percent, 10))
             spans.append((f" {percent:>3d}%", theme.style("muted")))
 
@@ -3118,11 +3442,26 @@ class App:
             spans.append((f"  {human_tokens(self.prompt_tokens)} in / "
                           f"{human_tokens(self.output_tokens)} out", theme.style("subtle")))
 
-        if self.busy and self.streamed and self.first_chunk_at:
-            window = max(0.2, time.monotonic() - self.first_chunk_at)
-            rate = human_rate(self.streamed / 4 / window)
-            if rate:
-                spans.append((f"  ·  {rate}", theme.style("subtle")))
+        usage = self._turn_usage()
+        if self.busy:
+            elapsed = time.monotonic() - self.started_at if self.started_at else 0
+            if usage.get("completion") and elapsed > 1.0:
+                # Real tokens per second: the ledger counts what the provider
+                # reported, not characters divided by four.
+                spans.append((f"  ·  {usage['completion'] / elapsed:.1f} t/s",
+                              theme.style("subtle")))
+            elif self.streamed and self.first_chunk_at:
+                window = max(0.2, time.monotonic() - self.first_chunk_at)
+                rate = human_rate(self.streamed / 4 / window)
+                if rate:
+                    spans.append((f"  ~{rate}", theme.style("subtle")))
+        elif usage.get("prompt"):
+            if usage.get("cache_rate"):
+                spans.append((f"  ·  {t('side.cache')} {usage['cache_rate'] * 100:.0f}%",
+                              theme.style("subtle")))
+            if usage.get("cost"):
+                spans.append((f"  ·  {t('side.cost')} ≈${usage['cost']:.4f}",
+                              theme.style("subtle")))
 
         if self.scroll > 0:
             spans.append((f"  ·  {MORE_GLYPH} {min(self.scroll, 999)} back",
@@ -3144,7 +3483,7 @@ class App:
             spans.append((f"  ·  ☑ {done}/{total}", theme.style("subtle")))
 
         if self.permission == "full_access":
-            spans.append(("  ·  full access", theme.style("warning", bold=True)))
+            spans.append((f"  ·  {t('status.full_access')}", theme.style("warning", bold=True)))
 
         if self.queued:
             spans.append((f"  ·  ⋯ {len(self.queued)} queued",
@@ -3155,7 +3494,7 @@ class App:
         # already say where the turn runs, and the model name is worth more.
         agent, implied = self._resolved_agent()
         if agent is None:
-            spans.append(("  ·  no agent", theme.style("error", bold=True)))
+            spans.append((f"  ·  {t('status.no_agent')}", theme.style("error", bold=True)))
         elif not implied:
             spans.append((f"  ·  {self._agent_short(agent)}", theme.style("subtle")))
 
@@ -3222,7 +3561,7 @@ class App:
                 if options:
                     placeholder += "  [" + " / ".join(options) + "]"
             else:
-                placeholder = "Ask 0KAY, or type / for commands"
+                placeholder = t("prompt.placeholder")
             frame.put(inner_x + 2, y + 1, truncate(placeholder, available),
                       theme.style("accentSoft" if target is not None else "subtle"))
         hint = "…" if self.busy else ("⇧⏎" if "\n" in text else "⏎")
@@ -3235,11 +3574,11 @@ class App:
 
     def _draw_footer(self, frame, y: int, width: int) -> None:
         theme = self.theme
-        text = KEYMAP_HINT
+        text = t("hint.keys")
         if self.editor:
-            text = EDITOR_HINT
+            text = t("hint.editor")
         elif self.busy:
-            text = BUSY_HINT
+            text = t("hint.busy")
         if self.panel is not None:
             text = self._panel_hint or "↑↓ scroll · esc close"
         frame.put(2, y, truncate(text, width - 4), theme.style("subtle"))
@@ -3259,6 +3598,12 @@ class App:
 
 
 PASTE_BURST = 8
+# A paste can reach us in pieces: after the first burst, the rest of the
+# stream is still text. Typing has gaps, so a short quiet spell ends it.
+PASTE_IDLE = 0.15
+# Keys a paste can contain besides plain characters. A terminal without
+# bracketed paste sends the Enter of a copied paragraph as an ordinary key.
+PASTE_KEYS = ("enter", "ctrl+j", "tab")
 
 
 def _takes_osc_notifications() -> bool:
@@ -3275,14 +3620,58 @@ def _takes_osc_notifications() -> bool:
 
 
 def _looks_like_paste(keys: list[str]) -> bool:
-    """A read that produced a wall of plain characters is a paste.
+    """A read that produced a wall of characters, or a newline inside one.
 
-    Eight is above any human burst at a 80ms poll, and being wrong costs
-    nothing: the characters land in the buffer either way.
+    Eight is above any human burst at an 80ms poll, and being wrong costs
+    little: the characters land in the buffer either way.
+
+    A newline counts as content, and that is the point of the check on a
+    terminal without bracketed paste: the Enter at the end of every pasted
+    line arrives as a key, and reading it as a submit fired off one message
+    per line of a pasted paragraph.
+
+    A short paste never reaches eight keys, so a newline that is not the last
+    thing in the read counts too -- a person's Enter is the last thing they do
+    before the queue drains. Tab is excluded from that rule on purpose: tab is
+    completion here, and typing right after it must not become a paste.
     """
-    if len(keys) < PASTE_BURST:
+    if not keys:
         return False
-    return all(len(key) == 1 and key.isprintable() for key in keys)
+    if len(keys) >= PASTE_BURST and all(
+            len(key) == 1 and key.isprintable() or key in PASTE_KEYS
+            for key in keys):
+        return True
+    return len(keys) >= 3 and any(key in ("enter", "ctrl+j") for key in keys[:-1])
+
+
+def _pasteable(keys: list[str]) -> bool:
+    """Whether every key here is something a paste could have produced.
+
+    A chord or an arrow is not: it means the paste is over and somebody is
+    typing or interrupting. Swallowing those would eat ctrl+c.
+    """
+    return all(len(key) == 1 and key.isprintable() or key in PASTE_KEYS
+               or key.startswith("paste:") for key in keys)
+
+
+def _paste_chars(keys: list[str]) -> str:
+    """The text a burst of keys stood for, newlines included.
+
+    Only keys a paste can plausibly contain are translated. Anything else --
+    an arrow, a chord -- is dropped rather than guessed at, because guessing
+    would put characters in the draft that nobody typed.
+    """
+    out: list[str] = []
+    for key in keys:
+        if key.startswith("paste:"):
+            out.append(key[6:])
+        elif key in ("enter", "ctrl+j"):
+            out.append("\n")
+        elif key == "tab":
+            out.append("\t")
+        elif len(key) == 1:
+            out.append(key)
+    return "".join(out)
 
 
 def _is_online(agent: dict) -> bool:

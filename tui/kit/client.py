@@ -7,14 +7,41 @@ disagree with what the browser shows.
 from __future__ import annotations
 
 import json
+import os
 import threading
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 
 
 class CoreError(Exception):
     """A failure the user should see as one line, not a traceback."""
+
+
+# The gateway caps an upload at 64MB; refusing here first gives a message
+# about this picture instead of an HTTP 413.
+MAX_UPLOAD = 24 * 1024 * 1024
+
+
+def multipart(path: str, boundary: str | None = None) -> tuple[bytes, str]:
+    """Body and content type for one file sent as `file`.
+
+    Split out of `Client.upload` so the wire format can be checked without a
+    server: a multipart body is easy to get subtly wrong and hard to see in a
+    test that only looks at the parsed result.
+    """
+    boundary = boundary or ("----0kay" + uuid.uuid4().hex)
+    name = os.path.basename(path).replace('"', "")
+    with open(path, "rb") as handle:
+        payload = handle.read()
+    head = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="file"; filename="{name}"\r\n'
+        "Content-Type: application/octet-stream\r\n\r\n"
+    ).encode("utf-8")
+    tail = f"\r\n--{boundary}--\r\n".encode("utf-8")
+    return head + payload + tail, f"multipart/form-data; boundary={boundary}"
 
 
 def _set_read_timeout(response, seconds: float) -> None:
@@ -273,9 +300,41 @@ class Client:
         payload = self.get(f"/api/agent/sessions/{urllib.parse.quote(session)}/turns" + query)
         return payload if isinstance(payload, dict) else {}
 
+    def upload(self, path: str) -> dict:
+        """Hand a local file to the gateway and get back how to reference it.
+
+        The agent is a separate process and does not share this filesystem, so
+        a picture reaches it as a URL on the gateway: the gateway hands the
+        bytes over on demand, and the agent turns them into image content the
+        model can actually see.
+        """
+        try:
+            size = os.path.getsize(path)
+        except OSError as error:
+            raise CoreError(str(error)) from None
+        if size > MAX_UPLOAD:
+            raise CoreError(f"{os.path.basename(path)} is {size >> 20}MB, too big to attach")
+        body, content_type = multipart(path)
+        headers = self._headers()
+        headers["Content-Type"] = content_type
+        request = urllib.request.Request(self.base_url + "/api/files", data=body,
+                                         headers=headers, method="POST")
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                payload = json.loads(response.read().decode("utf-8", "replace"))
+        except urllib.error.HTTPError as error:
+            detail = error.read().decode("utf-8", "replace")[:200]
+            raise CoreError(f"upload failed: HTTP {error.code} {detail}") from None
+        except urllib.error.URLError as error:
+            raise CoreError(f"cannot reach {self.base_url}: {error.reason}") from None
+        except ValueError:
+            raise CoreError("upload failed: the gateway sent no JSON") from None
+        return payload if isinstance(payload, dict) else {}
+
     def send_message(self, session: str, prompt: str, model: str = "",
                      intensity: str = "", permission: str = "",
-                     workdir: str = "", executor: str = "") -> dict:
+                     workdir: str = "", executor: str = "",
+                     attachments: list[dict] | None = None) -> dict:
         body = {"session_id": session, "prompt": prompt}
         if executor:
             body["executor_id"] = executor
@@ -287,6 +346,10 @@ class Client:
             body["permission_mode"] = permission
         if workdir:
             body["workdir"] = workdir
+        if attachments:
+            # The gateway turns these into metadata; the agent downloads each
+            # URL and passes images to the model as real image content.
+            body["attachments"] = attachments
         return self.post("/api/agent/messages", body)
 
     def task_events(self, cursor: str = ""):
@@ -363,6 +426,15 @@ class Client:
         payload = self.get("/api/usage")
         return payload if isinstance(payload, dict) else {}
 
+    def usage(self) -> dict:
+        """Tokens, cache hits and cost, as the model proxy recorded them.
+
+        The ledger is filled per model request, not per turn, so a delta
+        between two reads is what one turn actually spent.
+        """
+        payload = self.get("/api/usage")
+        return payload if isinstance(payload, dict) else {}
+
     def git(self, path: str = "") -> dict:
         """Branch and working-tree status for the agent's directory."""
         query = f"?path={urllib.parse.quote(path)}" if path else ""
@@ -421,3 +493,12 @@ class Client:
             return True
         except CoreError:
             return False
+
+    def health_info(self) -> dict:
+        """The probe's payload: status, plugin counts, and the core version.
+
+        The version is here rather than in a separate call so a client that
+        already polls health follows a restart onto a new build for free.
+        """
+        payload = self.get("/health")
+        return payload if isinstance(payload, dict) else {}

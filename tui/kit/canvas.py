@@ -11,6 +11,7 @@ these sizes and comparing strings catches style-only changes for free.
 
 from __future__ import annotations
 
+from . import graphics
 from .ansi import PLAIN, Colour, char_width, display_width, render
 
 
@@ -24,6 +25,23 @@ class Frame:
 
     def reset(self) -> None:
         self._cells = [[(" ", PLAIN) for _ in range(self.width)] for _ in range(self.height)]
+        # Pictures are not cells: they are recorded here and painted by the
+        # renderer after the text, because the terminal draws them, not us.
+        self.images: list[dict] = []
+
+    def image(self, x: int, y: int, cols: int, rows: int, path: str,
+              alt: str = "") -> None:
+        """Reserve a rectangle of cells for a picture."""
+        if cols < 2 or rows < 1:
+            return
+        if not (0 <= y < self.height) or x >= self.width:
+            return
+        for row in range(y, min(self.height, y + rows)):
+            for column in range(x, min(self.width, x + cols)):
+                self._cells[row][column] = (" ", PLAIN)
+        self.images.append({"x": x, "y": y, "cols": min(cols, self.width - x),
+                            "rows": min(rows, self.height - y), "path": path,
+                            "alt": alt})
 
     def fill_row(self, y: int, char: str = " ", style=PLAIN) -> None:
         if 0 <= y < self.height:
@@ -114,9 +132,51 @@ class Renderer:
         self._height = 0
         self._cursor: tuple[int, int] | None = None
         self._cursor_visible = False
+        # Pictures: which protocol, which files are already uploaded, and what
+        # is on screen right now (so a static image is not re-sent per frame).
+        self._graphics = graphics.kind()
+        self._uploads: dict[str, int] = {}
+        self._placed: list[tuple] = []
 
     def invalidate(self) -> None:
         self._previous = []
+        self._placed = []
+
+    def _paint_images(self, frame) -> str:
+        """Emit the graphics protocol for whatever the frame reserved.
+
+        Text has already been written, so the cursor can be moved to each
+        rectangle, the image drawn, and the cursor put back by the caller.
+        """
+        if not self._graphics:
+            return ""
+        wanted: list[tuple] = []
+        out: list[str] = []
+        for item in getattr(frame, "images", []):
+            path = item["path"]
+            ident = self._uploads.get(path)
+            if ident is None:
+                ident = graphics.new_image_id()
+                if self._graphics == "kitty":
+                    try:
+                        out.append(graphics.kitty_upload(path, ident))
+                    except OSError:
+                        continue
+                self._uploads[path] = ident
+            key = (ident, item["x"], item["y"], item["cols"], item["rows"])
+            wanted.append(key)
+            if key in self._placed:
+                continue
+            out.append(f"\x1b[{item['y'] + 1};{item['x'] + 1}H")
+            if self._graphics == "kitty":
+                # Replacing means removing the old placement first, or copies
+                # stack up every time the layout moves.
+                out.append(graphics.kitty_delete(ident))
+                out.append(graphics.kitty_place(ident, item["cols"], item["rows"]))
+            else:
+                out.append(graphics.sixel(path, item["cols"], item["rows"]))
+        self._placed = wanted
+        return "".join(out)
 
     def draw(self, frame: Frame, cursor: tuple[int, int] | None = None) -> None:
         chunks: list[str] = []
@@ -134,6 +194,10 @@ class Renderer:
             chunks.append(line)
 
         self._previous = rendered
+
+        painted = self._paint_images(frame)
+        if painted:
+            chunks.append(painted)
 
         if cursor is not None:
             row, column = cursor

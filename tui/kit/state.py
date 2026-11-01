@@ -51,5 +51,14 @@ def exports_dir() -> pathlib.Path:
     return _path().parent / "exports"
 
 
+def pasted_dir() -> pathlib.Path:
+    """Where pictures pasted into the draft are kept.
+
+    Beside the state file rather than in the system temp folder: a transcript
+    exported tomorrow should still be able to find the picture quoted in it.
+    """
+    return _path().parent / "pasted"
+
+
 def last_session() -> str:
     return str(load().get("last_session") or "")

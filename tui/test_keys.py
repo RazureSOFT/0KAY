@@ -123,8 +123,13 @@ class BurstHeuristic(unittest.TestCase):
     def test_a_few_keystrokes_are_not(self):
         self.assertFalse(_looks_like_paste(list("hi")))
 
+    def test_a_trailing_newline_stays_in_the_run(self):
+        # The Enter at the end of a pasted line is part of the paste; reading
+        # it as a submit is what sent one message per pasted line.
+        self.assertTrue(_looks_like_paste(list("helloworld") + ["enter"]))
+
     def test_a_named_key_breaks_the_run(self):
-        self.assertFalse(_looks_like_paste(list("helloworld") + ["enter"]))
+        self.assertFalse(_looks_like_paste(list("helloworld") + ["left"]))
 
 
 if __name__ == "__main__":
