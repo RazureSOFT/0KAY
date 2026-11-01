@@ -15,7 +15,6 @@ const fs = require('node:fs');
 const { spawn } = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const DEFAULT_URL = process.env.CORE_HTTP_ADDR || 'http://127.0.0.1:8080';
 
 let electron = {};
 try {
@@ -29,20 +28,80 @@ try {
   }
 }
 
-const { app, BrowserWindow, Menu, Tray, shell, nativeImage, ipcMain, Notification } = electron;
+const { app, BrowserWindow, Menu, Tray, shell, nativeImage, ipcMain, Notification, screen } = electron;
+
+// Packaged builds keep the whole stack (binaries, webui, agent, node runtime)
+// under Resources/0kay. A source checkout uses the repository itself.
+function stackRoot() {
+  if (process.env.OKAY_HOME) return path.resolve(process.env.OKAY_HOME);
+  if (app && app.isPackaged && process.resourcesPath) {
+    return path.join(process.resourcesPath, '0kay');
+  }
+  return ROOT;
+}
+
+function runtimePort(root) {
+  for (const relative of ['runtime-env.json', path.join('data', 'runtime-env.json')]) {
+    try {
+      const value = JSON.parse(fs.readFileSync(path.join(root, relative), 'utf8'));
+      if (value && value.CORE_HTTP_PORT) return String(value.CORE_HTTP_PORT);
+    } catch (error) {
+      // No runtime env yet: the installer or the bundled launcher writes it on
+      // first start, and until then the default port is the right guess.
+    }
+  }
+  return '';
+}
+
+const STACK_ROOT = stackRoot();
+const LOGS_DIR = path.join(STACK_ROOT, 'data', 'logs');
+const DEFAULT_URL = process.env.CORE_HTTP_ADDR || `http://127.0.0.1:${runtimePort(STACK_ROOT) || 8080}`;
+const CORE_URL = DEFAULT_URL.replace(/\/$/, '');
 
 /** @type {BrowserWindow | null} */
 let mainWindow = null;
 /** @type {BrowserWindow | null} */
 let companionWindow = null;
 /** Remembered position so the pet comes back where it was left. */
-/** Where and how big the pet window was left. */
+/**
+ * Where and how big the pet window was left.
+ *
+ * Persisted: a window you drag once should come back there, and "centred" has to
+ * be a state the app can return to rather than whatever happened on first launch.
+ */
 let companionBounds = { width: 450, height: 600 };
+
+/** Desktop-side preferences. Owned by the app, not by Core, so they work offline. */
+const prefsPath = () => path.join(app.getPath('userData'), 'prefs.json');
+let prefs = { petEnabled: false, petCentered: true };
+function loadPrefs() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(prefsPath(), 'utf8'));
+    prefs = { ...prefs, ...(raw && typeof raw === 'object' ? raw : {}) };
+  } catch { /* first run */ }
+  return prefs;
+}
+function savePrefs(patch) {
+  prefs = { ...prefs, ...patch };
+  try {
+    fs.mkdirSync(path.dirname(prefsPath()), { recursive: true });
+    fs.writeFileSync(prefsPath(), JSON.stringify(prefs, null, 2));
+  } catch { /* a read-only profile must not break the app */ }
+  return prefs;
+}
+/** Bottom-centre of the work area: visible without covering the middle of the screen. */
+function centeredPetBounds(width, height) {
+  const { workArea } = screen.getPrimaryDisplay();
+  return {
+    width,
+    height,
+    x: Math.round(workArea.x + (workArea.width - width) / 2),
+    y: Math.round(workArea.y + workArea.height - height - 24),
+  };
+}
 /** @type {Tray | null} */
 let tray = null;
 let stackProcess = null;
-
-const CORE_URL = DEFAULT_URL.replace(/\/$/, '');
 
 // Core serves the API and the plugin assets. In a source checkout the page
 // itself comes from the WebUI dev server, so the window has to look for a UI
@@ -122,6 +181,13 @@ function handleWindowControl(action) {
       return { ok: true };
     case 'is-maximized':
       return { ok: true, maximized: mainWindow.isMaximized() };
+    case 'show':
+      // Settings lives in its own window; bringing the main one back must also
+      // restore it from the tray, not just focus it.
+      if (!mainWindow.isVisible()) mainWindow.show();
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+      return { ok: true };
     default:
       return { ok: false, reason: `unknown action ${action}` };
   }
@@ -141,25 +207,46 @@ function stackIsUp() {
 }
 
 function stackEntry() {
-  // Reuse the launcher that already knows the ports, the .env and the plugin
-  // handshake. Duplicating that knowledge here is how the two drift apart.
+  // A packaged build runs the bundled supervisor; a source checkout reuses the
+  // launcher that already knows the ports, the .env and the plugin handshake.
+  const bundled = path.join(STACK_ROOT, 'bin', process.platform === 'win32' ? '0kay.exe' : '0kay');
   const candidates = [
+    bundled,
     path.join(ROOT, '.run', process.platform === 'win32' ? 'launch.cmd' : 'launch.sh'),
     path.join(ROOT, 'start-0kay.sh'),
   ];
   return candidates.find((candidate) => fs.existsSync(candidate)) || '';
 }
 
+function stackCommand(entry, action) {
+  const name = path.basename(entry).toLowerCase();
+  if (name === '0kay' || name === '0kay.exe') return { command: entry, args: [action] };
+  if (entry.endsWith('.sh')) return { command: 'bash', args: [entry, action === 'up' ? 'start' : 'stop'] };
+  return { command: entry, args: [] };
+}
+
 function startStack() {
   if (stackProcess) return { started: false, reason: 'already starting' };
   const entry = stackEntry();
   if (!entry) return { started: false, reason: 'no launcher found' };
-  const command = entry.endsWith('.sh') ? 'bash' : entry;
-  const args = entry.endsWith('.sh') ? [entry, 'start'] : [];
-  stackProcess = spawn(command, args, { cwd: ROOT, detached: true, stdio: 'ignore' });
+  const { command, args } = stackCommand(entry, 'up');
+  stackProcess = spawn(command, args, { cwd: STACK_ROOT, detached: true, stdio: 'ignore' });
   stackProcess.on('exit', () => { stackProcess = null; });
   stackProcess.unref();
   return { started: true, entry };
+}
+
+function stopStack() {
+  const entry = stackEntry();
+  if (!entry) return { stopped: false, reason: 'no launcher found' };
+  const { command, args } = stackCommand(entry, 'down');
+  try {
+    const child = spawn(command, args, { cwd: STACK_ROOT, detached: true, stdio: 'ignore' });
+    child.unref();
+  } catch (error) {
+    return { stopped: false, reason: error.message };
+  }
+  return { stopped: true, entry };
 }
 
 function waitForStackAt(url, timeoutMs = 90000) {
@@ -298,9 +385,10 @@ function createCompanionWindow() {
     roundedCorners: false,
     // Nothing is shown until the model has painted, which avoids a white flash.
     show: false,
-    // Remember where the user dragged her last time.
-    x: companionBounds.x,
-    y: companionBounds.y,
+    // Remember where the user dragged her last time; centre her the first time.
+    ...(Number.isFinite(companionBounds.x) && Number.isFinite(companionBounds.y)
+      ? { x: companionBounds.x, y: companionBounds.y }
+      : centeredPetBounds(companionBounds.width || 450, companionBounds.height || 600)),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -399,11 +487,71 @@ function focusMain() {
 }
 
 /** Rebuild the tray menu so its checkboxes reflect the live state. */
+let preferencesWindow = null;
+
+/**
+ * The app's own settings window.
+ *
+ * The pet switch used to live only in the tray, which is findable when you already
+ * know it is there and invisible otherwise. A separate window also keeps the
+ * setting where people look for settings.
+ */
+function openPreferences() {
+  if (preferencesWindow && !preferencesWindow.isDestroyed()) {
+    preferencesWindow.focus();
+    return preferencesWindow;
+  }
+  preferencesWindow = new BrowserWindow({
+    width: 460,
+    height: 400,
+    resizable: false,
+    minimizable: false,
+    maximizable: false,
+    title: '0KAY 设置',
+    parent: mainWindow || undefined,
+    show: false,
+    backgroundColor: '#faf9fd',
+    webPreferences: {
+      contextIsolation: true,
+      nodeIntegration: false,
+      preload: path.join(__dirname, 'preload.js'),
+    },
+  });
+  preferencesWindow.setMenuBarVisibility(false);
+  preferencesWindow.loadFile(path.join(__dirname, 'preferences.html'));
+  preferencesWindow.once('ready-to-show', () => preferencesWindow?.show());
+  preferencesWindow.on('closed', () => { preferencesWindow = null; });
+  return preferencesWindow;
+}
+
+function centerCompanionWindow() {
+  if (!companionWindow || companionWindow.isDestroyed()) return false;
+  const [width, height] = companionWindow.getSize();
+  const target = centeredPetBounds(width, height);
+  companionWindow.setPosition(target.x, target.y);
+  companionBounds = { ...companionBounds, ...target };
+  savePrefs({ petCentered: true, companionBounds });
+  return true;
+}
+
+/** Show or hide from the app itself: the tray is a shortcut, not the only way in. */
+function applyPetEnabled(enabled) {
+  savePrefs({ petEnabled: !!enabled });
+  if (enabled) {
+    createCompanionWindow();
+  } else {
+    hideCompanionWindow();
+  }
+  syncTrayMenu();
+  return !!enabled;
+}
+
 function syncTrayMenu() {
   if (!tray || tray.isDestroyed()) return;
   const petVisible = !!companionWindow && companionWindow.isVisible();
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open 0KAY', click: focusMain },
+    { label: '设置…', click: () => openPreferences() },
     { type: 'separator' },
     {
       label: petVisible ? 'Hide companion window' : 'Show companion window',
@@ -425,6 +573,8 @@ function syncTrayMenu() {
     {
       label: 'Restart stack',
       click: async () => {
+        stopStack();
+        await new Promise((resolve) => setTimeout(resolve, 1500));
         const result = startStack();
         if (!result.started) {
           notify('Could not start the stack', result.reason || 'no launcher found');
@@ -437,9 +587,17 @@ function syncTrayMenu() {
       },
     },
     {
+      label: 'Stop 0KAY stack',
+      click: () => {
+        const result = stopStack();
+        notify(result.stopped ? 'Stopping 0KAY' : 'Could not stop 0KAY', result.reason || '');
+      },
+    },
+    {
       label: 'Open logs folder',
       click: async () => {
-        const failed = await shell.openPath(path.join(ROOT, '.logs'));
+        const logs = fs.existsSync(LOGS_DIR) ? LOGS_DIR : path.join(ROOT, '.logs');
+        const failed = await shell.openPath(logs);
         if (failed) notify('Could not open the logs folder', failed);
       },
     },
@@ -469,6 +627,8 @@ function buildTray() {
 }
 
 async function boot() {
+  loadPrefs();
+  if (prefs.companionBounds) companionBounds = { ...companionBounds, ...prefs.companionBounds };
   if (!(await stackIsUp())) {
     startStack();
     const ready = await waitForStack();
@@ -485,6 +645,9 @@ async function boot() {
   }
   createMainWindow();
   buildTray();
+  // The pet is a preference, so it comes back on its own after a restart instead
+  // of being a thing you re-enable every launch.
+  if (prefs.petEnabled) createCompanionWindow();
 }
 
 if (app) {
@@ -513,13 +676,28 @@ if (app) {
     ipcMain.handle('0kay:window', (_event, action) => handleWindowControl(String(action || '')));
     ipcMain.handle('0kay:start-stack', () => startStack());
     ipcMain.handle('0kay:open-companion', () => { createCompanionWindow(); return true; });
+    ipcMain.handle('0kay:prefs', () => ({
+      ...prefs,
+      petVisible: !!companionWindow && companionWindow.isVisible(),
+      bounds: companionBounds,
+    }));
+    ipcMain.handle('0kay:prefs-set', (_event, patch) => {
+      const next = patch && typeof patch === 'object' ? patch : {};
+      if (typeof next.petEnabled === 'boolean') applyPetEnabled(next.petEnabled);
+      if (next.centerPet === true) centerCompanionWindow();
+      return { ...prefs, petVisible: !!companionWindow && companionWindow.isVisible() };
+    });
+    ipcMain.handle('0kay:open-settings', () => { openPreferences(); return true; });
     ipcMain.on('0kay:companion-drag', (_event, phase, point) => {
       if (!companionWindow || companionWindow.isDestroyed()) return;
       if (phase === 'move' && point) {
         companionWindow.setPosition(Math.round(point.x), Math.round(point.y));
       } else if (phase === 'end') {
         const [x, y] = companionWindow.getPosition();
-        companionBounds = { x, y };
+        const [width, height] = companionWindow.getSize();
+        companionBounds = { x, y, width, height };
+        // Dragging away from the centre is a state, not an accident: keep it.
+        savePrefs({ companionBounds, petCentered: false });
       }
     });
     ipcMain.handle('0kay:companion-menu', () => {
@@ -551,4 +729,7 @@ if (app) {
   }
 }
 
-module.exports = { stackIsUp, stackIsUpAt, stackEntry, startStack, waitForStack, waitForStackAt, resolveUiUrl, CORE_URL };
+module.exports = {
+  stackIsUp, stackIsUpAt, stackEntry, stackCommand, startStack, stopStack,
+  waitForStack, waitForStackAt, resolveUiUrl, CORE_URL, STACK_ROOT,
+};

@@ -13,6 +13,11 @@ contextBridge.exposeInMainWorld('okayDesktop', {
   status: () => ipcRenderer.invoke('0kay:stack-status'),
   startStack: () => ipcRenderer.invoke('0kay:start-stack'),
   openCompanion: () => ipcRenderer.invoke('0kay:open-companion'),
+  // Desktop preferences: the pet switch lives in the app's own settings window.
+  getPrefs: () => ipcRenderer.invoke('0kay:prefs'),
+  setPrefs: (patch) => ipcRenderer.invoke('0kay:prefs-set', patch),
+  openSettings: () => ipcRenderer.invoke('0kay:open-settings'),
+  showMain: () => ipcRenderer.invoke('0kay:window', 'show'),
   // Used by the injected companion chrome (drag bar + close/click-through).
   companion: (action) => ipcRenderer.invoke('0kay:companion', String(action || '')),
   companionMenu: () => ipcRenderer.invoke('0kay:companion-menu'),

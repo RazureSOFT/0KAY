@@ -14,9 +14,15 @@ const shell = require('./main.js');
 
 test('a launcher is found in the repo root', () => {
   const entry = shell.stackEntry();
-  assert.ok(entry, 'no launcher found; expected .run/launch.* or start-0kay.sh');
+  assert.ok(entry, 'no launcher found; expected bin/0kay, .run/launch.* or start-0kay.sh');
   assert.ok(fs.existsSync(entry));
   assert.ok(path.isAbsolute(entry));
+});
+
+test('the bundled launcher maps to up/down actions', () => {
+  const entry = path.join(shell.STACK_ROOT, 'bin', process.platform === 'win32' ? '0kay.exe' : '0kay');
+  assert.deepEqual(shell.stackCommand(entry, 'up'), { command: entry, args: ['up'] });
+  assert.deepEqual(shell.stackCommand(entry, 'down'), { command: entry, args: ['down'] });
 });
 
 test('the core url has no trailing slash and points at this machine', () => {

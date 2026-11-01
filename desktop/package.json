@@ -19,6 +19,7 @@
   "build": {
     "appId": "dev.0kay.desktop",
     "productName": "0KAY",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "directories": {
       "output": "release"
     },
@@ -29,6 +30,13 @@
       "companion-chrome.js",
       "assets/**"
     ],
+    "extraResources": [
+      {
+        "from": "resources-stack",
+        "to": "0kay"
+      }
+    ],
+    "npmRebuild": false,
     "win": {
       "target": [
         "nsis"
@@ -39,18 +47,21 @@
       "target": [
         "dmg"
       ],
-      "category": "public.app-category.productivity"
+      "category": "public.app-category.productivity",
+      "icon": "assets/icon.png"
     },
     "linux": {
       "target": [
-        "AppImage"
+        "AppImage",
+        "deb"
       ],
       "category": "Utility",
       "icon": "assets/icon.png"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true
     },
     "publish": null
   }

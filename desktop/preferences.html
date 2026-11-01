@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>0KAY 设置</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #faf9fd;
+      --surface: #ffffff;
+      --text: #1b1b1f;
+      --muted: #5f5f6a;
+      --line: #e3e1e8;
+      --primary: #5944c6;
+      --on-primary: #ffffff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 22px 24px 26px;
+      font: 13px/1.55 "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+      background: var(--bg); color: var(--text);
+      -webkit-user-select: none; user-select: none;
+    }
+    h1 { margin: 0 0 4px; font-size: 15px; font-weight: 700; }
+    .lede { margin: 0 0 18px; color: var(--muted); font-size: 12px; }
+    section { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 14px; }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+    .row + .row { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+    .label { font-weight: 600; }
+    .hint { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+    /* A switch, not a checkbox: this is a state that stays on. */
+    .switch { position: relative; width: 44px; height: 24px; flex: none; }
+    .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+    .track { position: absolute; inset: 0; border-radius: 999px; background: #c9c6d2; transition: background .16s; pointer-events: none; }
+    .trk-dot { position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: transform .16s; pointer-events: none; box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+    .switch input:checked ~ .track { background: var(--primary); }
+    .switch input:checked ~ .trk-dot { transform: translateX(20px); }
+    .switch input:disabled ~ .track { opacity: .5; }
+    button { font: inherit; border-radius: 9px; padding: 7px 13px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--text); }
+    button:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+    button.primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .status { margin-top: 10px; font-size: 11.5px; color: var(--muted); min-height: 16px; }
+    .status.error { color: #b3261e; }
+  </style>
+</head>
+<body>
+  <h1>0KAY 桌面设置</h1>
+  <p class="lede">这些设置只作用于这台电脑上的 0KAY 窗口，不写进 Core。</p>
+
+  <section>
+    <div class="row">
+      <div>
+        <div class="label">桌宠</div>
+        <div class="hint">在桌面上显示她的 Live2D 形象</div>
+      </div>
+      <label class="switch">
+        <input id="petEnabled" type="checkbox" />
+        <span class="track"></span>
+        <span class="trk-dot"></span>
+      </label>
+    </div>
+    <div class="row">
+      <div>
+        <div class="label">位置</div>
+        <div class="hint" id="posHint">拖到别处后会自动记住</div>
+      </div>
+      <button id="center" type="button">移回屏幕中央</button>
+    </div>
+  </section>
+
+  <section>
+    <div class="row">
+      <div>
+        <div class="label">服务状态</div>
+        <div class="hint" id="stackHint">检查中…</div>
+      </div>
+      <button id="openMain" type="button" class="primary">打开主窗口</button>
+    </div>
+  </section>
+
+  <div class="status" id="status"></div>
+
+  <script>
+    const api = window.okayDesktop
+    const $ = (id) => document.getElementById(id)
+    const status = (text, isError) => {
+      const el = $('status')
+      el.textContent = text || ''
+      el.className = isError ? 'status error' : 'status'
+    }
+
+    async function refresh() {
+      if (!api) { status('未在桌面环境中运行', true); return }
+      try {
+        const prefs = await api.getPrefs()
+        $('petEnabled').checked = !!prefs.petEnabled
+        // Centred is a state, not a button that always works: say which one it is.
+        $('posHint').textContent = prefs.petCentered === false
+          ? '当前按你拖动的位置显示'
+          : '当前居中（屏幕底部）'
+        $('center').disabled = !prefs.petEnabled
+      } catch (error) {
+        status(String(error && error.message || error), true)
+      }
+    }
+
+    $('petEnabled').addEventListener('change', async (event) => {
+      if (!api) return
+      try {
+        await api.setPrefs({ petEnabled: event.target.checked })
+        status(event.target.checked ? '桌宠已开启' : '桌宠已关闭')
+        await refresh()
+      } catch (error) {
+        status(String(error && error.message || error), true)
+        event.target.checked = !event.target.checked
+      }
+    })
+
+    $('center').addEventListener('click', async () => {
+      if (!api) return
+      try {
+        await api.setPrefs({ centerPet: true })
+        status('已移回屏幕中央')
+        await refresh()
+      } catch (error) {
+        status(String(error && error.message || error), true)
+      }
+    })
+
+    $('openMain').addEventListener('click', async () => {
+      if (!api) return
+      // The main window may be minimised or hidden; asking the shell to show it
+      // is the only way that works from a separate settings window.
+      try {
+        await api.showMain()
+        window.close()
+      } catch (error) {
+        status(String(error && error.message || error), true)
+      }
+    })
+
+    ;(async () => {
+      if (api && api.status) {
+        try {
+          const info = await api.status()
+          $('stackHint').textContent = info && info.up ? `服务运行中 · ${info.core || ''}` : '服务未启动'
+        } catch { $('stackHint').textContent = '状态未知' }
+      }
+      await refresh()
+    })()
+  </script>
+</body>
+</html>
