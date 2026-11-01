@@ -18,22 +18,28 @@ from core.v1 import core_pb2, core_pb2_grpc
 from plugin.v1 import plugin_pb2
 
 
+def _manifest() -> dict:
+    here = os.path.dirname(__file__)
+    # Source checkout: life/src/life -> life/manifest.json.
+    # Frozen onefile: _MEIPASS/life -> _MEIPASS/manifest.json (bundled by spec).
+    for candidate in (
+        os.path.join(here, '..', '..', 'manifest.json'),
+        os.path.join(here, '..', 'manifest.json'),
+    ):
+        try:
+            with open(candidate, encoding="utf-8") as handle:
+                return json.load(handle)
+        except (OSError, ValueError):
+            continue
+    return {}
+
+
 def _manifest_version(fallback: str = "0.1.2") -> str:
-    try:
-        manifest = os.path.join(os.path.dirname(__file__), '..', '..', 'manifest.json')
-        with open(manifest, encoding="utf-8") as handle:
-            return json.load(handle).get("version") or fallback
-    except (OSError, ValueError):
-        return fallback
+    return _manifest().get("version") or fallback
 
 
 def _manifest_permissions():
-    try:
-        manifest = os.path.join(os.path.dirname(__file__), '..', '..', 'manifest.json')
-        with open(manifest, encoding="utf-8") as handle:
-            perms = json.load(handle).get("permissions") or {}
-    except (OSError, ValueError):
-        return None
+    perms = _manifest().get("permissions") or {}
     api = perms.get("api") or {}
     requires = api.get("requires") or []
     exposes = api.get("exposes") or []

@@ -21,7 +21,8 @@
     "productName": "0KAY",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "../packaging/branding"
     },
     "files": [
       "main.js",
@@ -62,7 +63,17 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "runAfterFinish": true,
-      "include": "installer.nsh"
+      "include": "installer.nsh",
+      "installerIcon": "installerIcon.ico",
+      "uninstallerIcon": "uninstallerIcon.ico",
+      "installerHeaderIcon": "installerHeaderIcon.ico",
+      "installerHeader": "installerHeader.bmp",
+      "installerSidebar": "installerSidebar.bmp",
+      "uninstallerSidebar": "uninstallerSidebar.bmp",
+      "installerLanguages": [
+        "en_US"
+      ],
+      "language": "1033"
     },
     "publish": null
   }

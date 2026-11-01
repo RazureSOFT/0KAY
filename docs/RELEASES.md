@@ -16,38 +16,80 @@ The platform is split across independent repositories, each with its own
 All modules share the release tag `v0.1.2`. The tag always points at the current
 `main` commit, so `@0.1.2` and `main` currently resolve to the same source.
 
-## Install
+## Installers
+
+Every release publishes prebuilt installers for Windows, macOS and Linux on
+`x64` and `arm64`. The desktop and terminal variants share one stack: Core,
+mocr, LIFE (frozen with PyInstaller), the built WebUI, the `0kay` supervisor,
+`0kay-pm` and the TUI. Agent + MCP are included from the sibling repositories
+(`0KAY-agent`, `0KAY-mcp`) together with a bundled Node runtime. Nothing is
+compiled on the target machine and no Go/Node/Python/npm is required.
+
+| Variant | Windows | macOS | Linux |
+|---|---|---|---|
+| Desktop + TUI | `0KAY-<version>-win-<arch>.exe` (NSIS) | `0KAY-<version>-mac-<arch>.dmg` | `0KAY-<version>-linux-<arch>.AppImage`, `.deb` |
+| TUI only | `0KAY-Setup-<version>-<arch>.exe` (NSIS) | `0KAY-Setup-<version>-<arch>.pkg` | `0kay-terminal_<version>_<arch>.deb` |
+| Portable stack | `0kay-windows-<arch>-v<version>.tar.gz` | `0kay-macos-<arch>-v<version>.tar.gz` | `0kay-linux-<arch>-v<version>.tar.gz` |
+
+Each asset has a `.sha256`, and every target also publishes
+`SHA256SUMS-<os>-<arch>`. The Windows installers offer component and port pages:
+Core and `0kay-pm` are required, while WebUI, the TUI, LIFE, mocr and Agent + MCP
+can be deselected. Core HTTP/gRPC and the mocr/LIFE/Agent gRPC ports are chosen on
+the same page (defaults 8080/50051/50052/50053/50054) and written to
+`runtime-env.json`; PATH is optional. The WebUI is served on the Core HTTP port.
+The macOS and Linux packages install the full stack. The launcher detects missing
+components by their files and simply skips them; manage optional plugins later
+with `0kay-pm`.
+
+Windows arm64 has no upstream wheels for tantivy/numpy/grpcio, so its LIFE and
+TUI binaries are x64 and run under Windows' built-in x64 emulation. Everything
+else (Go services, Electron shell, Node runtime) is native arm64.
+
+The installers are built by `.github/workflows/release.yml` on every published
+release (and on manual dispatch). macOS packages are unsigned unless signing
+credentials are configured in the workflow; add them before shipping to end
+users.
+
+## Install (package manager)
 
 ```sh
-npm install -g ./pm                       # install the CLI
-0kay-pm install @razuresoft/0kay@0.1.2     # platform (Core, mocr, LIFE, WebUI, plugin UIs)
-0kay-pm install @razuresoft/0kay-agent@0.1.2
+npm install -g ./pm                        # install the CLI
+0kay-pm install                            # prebuilt bundle (fast path)
+0kay-pm install --build @razuresoft/0kay@0.1.4  # compile from source instead
 ```
+
+The default install downloads the platform bundle, verifies its checksum,
+unpacks it into `~/.0kay/packages/0kay`, writes `runtime-env.json` and starts
+the `0kay` supervisor as a service. `--build` keeps the source flow below.
 
 Each installable module declares its identity, version, build commands and
 optional start command in `manifest.json`. The umbrella manifest declares the
-agent and mcp repositories as sub-repositories, so one install assembles the
-full platform. Plugin web bundles are built by the umbrella manifest and served
-by Core; they do not need a separate server process.
+agent and mcp repositories as sub-repositories, so one source install
+assembles the full platform. Plugin web bundles are built by the umbrella
+manifest and served by Core; they do not need a separate server process.
 
 Installing the agent also fetches `@razuresoft/0kay-mcp` (which supplies `mcp/`
 and the shared `proto/`) and arranges the sibling layout the agent expects.
 
-Interactive installation asks for Core HTTP, Core gRPC and WebUI ports as
+Interactive source installation asks for Core HTTP, Core gRPC and WebUI ports as
 applicable; press Enter for the default. Source release archives are downloaded
-without git; Go, Node.js and Python are still build prerequisites.
+without git; Go, Node.js and Python are still build prerequisites for
+`--build`.
 
 ## Update
 
 ```sh
-0kay-pm update @razuresoft/0kay-agent@0.1.2
-0kay-pm start @razuresoft/0kay-agent
+0kay-pm update                                   # latest prebuilt bundle
+0kay-pm update --build @razuresoft/0kay           # rebuild from main (beta)
+0kay-pm update --build @razuresoft/0kay@0.1.4     # pin a source release
 ```
 
-Without a version suffix, update uses the `main` branch (the **beta** channel).
-Update carries over `runtime-env.json` and the standard component data
-directories, and retains the previous installation as an `.old-<id>` recovery
-copy. Stop a component before updating it, then restart it.
+A bundle update re-downloads the platform asset and carries over `data/`,
+`models/` and `runtime-env.json`. Stop the `0kay` service before updating and
+start it afterwards. Without `--build`, update uses the latest published release
+(the **beta** channel is `--build`, which follows `main`). Source updates carry
+over `runtime-env.json` and the standard component data directories, and retain
+the previous installation as an `.old-<id>` recovery copy.
 
 ## One-click updates (Settings → About)
 

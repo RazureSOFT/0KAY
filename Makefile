@@ -1,4 +1,4 @@
-.PHONY: all build lint test test-life clean docker-up docker-down proto deps-python
+.PHONY: all build lint test test-life clean docker-up docker-down proto deps-python package package-installers
 
 # Default target
 all: build
@@ -83,3 +83,13 @@ deps-python:
 # Install Node.js dependencies
 deps-node:
 	cd agent && npm install
+
+# Build a portable stack into dist/ (no Agent: pass AGENT_DIR/MCP_DIR to include it).
+# CI's release workflow builds the full installers for every OS/arch.
+package:
+	python packaging/build.py --variant tui --without-agent --pm-dir pm --skip-installers
+
+# Build both installer variants for the host OS/arch (needs PyInstaller,
+# electron-builder, and the platform's packaging tools).
+package-installers:
+	python packaging/build.py --variant both --without-agent --pm-dir pm

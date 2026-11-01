@@ -57,25 +57,46 @@ docker-compose logs -f    # 跟踪日志
 docker-compose down       # 停止
 ```
 
-### 包管理器安装（推荐）
+### 桌面 / 终端安装包
+
+从 [Releases](https://github.com/RazureSOFT/0KAY/releases) 下载对应系统和架构的安装包：
+
+| 安装包 | 安装内容 |
+|---|---|
+| `0KAY-<版本>-<os>-<arch>.exe` / `.dmg` / `.AppImage` | 桌面端 + 完整运行时 + TUI |
+| `0KAY-Setup-<版本>-<arch>.exe` / `0KAY-Setup-<版本>-<arch>.pkg` / `0kay-terminal_<版本>_<arch>.deb` | 仅终端版 |
+
+安装包已包含 Core、mocr、LIFE（PyInstaller 编译）、WebUI、TUI、`0kay` 启动器，
+以及 Agent + MCP 和内置 Node 运行时。目标机器**不需要** Go / Node / Python，
+也**不会**在本地编译。Windows、macOS、Linux 均提供 `x64` 与 `arm64`。Windows 安装器会询问要安装哪些组件
+（Core 必装；WebUI、TUI、LIFE、mocr、Agent + MCP 可选）、使用哪些本地端口
+（Core HTTP/gRPC 以及 mocr/LIFE/Agent gRPC，默认 8080/50051/50052/50053/50054），
+以及是否把 0KAY 加入 PATH。WebUI 使用 Core 的 HTTP 端口。更多插件可在安装后用
+自带的 `0kay-pm` 安装。Windows arm64 的 Python 组件为 x64
+（上游缺少 arm64 wheel），通过系统自带的 x64 模拟运行；其余组件为原生 arm64。
 
 ```sh
-# 独立仓库安装（推荐，不需要 git）
+0kay            # 启动全部服务并打开 TUI
+0kay status     # 健康状态、端口和进程
+0kay down       # 停止
+```
+
+### 包管理器安装（预编译，推荐）
+
+```sh
+# 独立仓库安装（不需要 git）
 npm install -g https://codeload.github.com/RazureSOFT/0KAY-pm/tar.gz/main
 
 # 或从本地检出安装
 npm install -g ./pm
 
-0kay-pm discover
-0kay-pm install @razuresoft/0kay-agent
-0kay-pm install @razuresoft/0kay
-0kay-pm update @razuresoft/0kay-agent
-0kay-pm start @razuresoft/0kay
+0kay-pm install     # 下载预编译包并作为后台服务启动
 ```
 
-`0kay-pm install` 会构建每个模块并把它作为**后台服务**启动（Linux systemd user
-unit / macOS LaunchAgent / Windows 登录任务），所以之后**不需要**再手动运行任何东西。
-可加 `@0.1.2` 固定版本；用 `0kay-pm status <包名>` 查看状态、`0kay-pm stop <包名>` 停止。
+`0kay-pm install` 会下载对应平台的 release 包、校验 SHA-256、解压到 `~/.0kay`，
+再注册为**后台服务**（Linux systemd user unit / macOS LaunchAgent / Windows 登录任务），
+不会下载任何工具链。需要未发布提交或局域网配对时加 `--build` 从源码编译。
+用 `0kay-pm status 0kay` 查看状态、`0kay-pm stop 0kay` 停止。
 
 ### 从源码运行（开发）
 

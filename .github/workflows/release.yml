@@ -1,0 +1,200 @@
+name: Release installers
+
+# Builds the portable stack and both installer variants (desktop + TUI) for
+# Windows, macOS and Linux on x64 and arm64, then attaches them to the release.
+#
+# Agent and MCP live in sibling repositories. They are cloned at the release tag
+# (falling back to main) and bundled into the installers. If those repositories
+# are private, add a SIBLING_REPO_TOKEN secret with read access; public
+# repositories work with the workflow token.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to build (defaults to the checked-out revision)
+        required: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-installers-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  package:
+    name: ${{ matrix.os }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows
+            arch: x64
+            runner: windows-latest
+            python_arch: x64
+          # Windows arm64 has no wheels for tantivy/numpy/grpcio, so LIFE and
+          # the TUI are frozen as x64 and run under Windows' x64 emulation. The
+          # Go services, Electron shell and Node runtime are native arm64.
+          - os: windows
+            arch: arm64
+            runner: windows-11-arm
+            python_arch: x64
+          - os: macos
+            arch: x64
+            runner: macos-15-intel
+            python_arch: x64
+          - os: macos
+            arch: arm64
+            runner: macos-15
+            python_arch: arm64
+          - os: linux
+            arch: x64
+            runner: ubuntu-24.04
+            python_arch: x64
+          - os: linux
+            arch: arm64
+            runner: ubuntu-24.04-arm
+            python_arch: arm64
+    env:
+      NODE_VERSION: '22.14.0'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.event.release.tag_name || github.ref }}
+
+      - name: Verify packaging sources
+        shell: bash
+        run: |
+          # A release tag created before the packaging work would otherwise
+          # fail midway through a six-way matrix.
+          test -f packaging/build.py
+          test -f packaging/branding/installer.nsh
+          test -f packaging/branding/installerSidebar.bmp
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.27'
+          cache-dependency-path: |
+            core/go.sum
+            mocr/go.sum
+            gen/go/go.sum
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.python_arch }}
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          tag="${{ inputs.tag || github.event.release.tag_name }}"
+          if [ -z "$tag" ]; then
+            tag="v$(python -c "import json;print(json.load(open('manifest.json'))['version'])")"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout Agent and MCP
+        shell: bash
+        env:
+          TOKEN: ${{ secrets.SIBLING_REPO_TOKEN || github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          mkdir -p .siblings
+          for repo in 0KAY-agent 0KAY-mcp 0KAY-pm; do
+            url="https://x-access-token:${TOKEN}@github.com/RazureSOFT/${repo}.git"
+            if ! git clone --depth 1 --branch "$TAG" "$url" ".siblings/$repo" 2>/dev/null; then
+              git clone --depth 1 "$url" ".siblings/$repo"
+            fi
+          done
+          test -f .siblings/0KAY-agent/package.json
+          test -f .siblings/0KAY-mcp/package.json
+          test -f .siblings/0KAY-pm/package.json
+          echo "Agent/MCP/pm checked out at $(git -C .siblings/0KAY-agent rev-parse --short HEAD) / $(git -C .siblings/0KAY-mcp rev-parse --short HEAD) / $(git -C .siblings/0KAY-pm rev-parse --short HEAD)"
+
+      - name: Download Node runtime
+        id: node-runtime
+        shell: bash
+        run: |
+          case "${{ matrix.os }}-${{ matrix.arch }}" in
+            windows-x64)   asset="node-v$NODE_VERSION-win-x64.zip" ;;
+            windows-arm64) asset="node-v$NODE_VERSION-win-arm64.zip" ;;
+            macos-x64)     asset="node-v$NODE_VERSION-darwin-x64.tar.gz" ;;
+            macos-arm64)   asset="node-v$NODE_VERSION-darwin-arm64.tar.gz" ;;
+            linux-x64)     asset="node-v$NODE_VERSION-linux-x64.tar.gz" ;;
+            linux-arm64)   asset="node-v$NODE_VERSION-linux-arm64.tar.gz" ;;
+          esac
+          mkdir -p "$RUNNER_TEMP/node-runtime"
+          curl -fsSL "https://nodejs.org/dist/v$NODE_VERSION/$asset" -o "$RUNNER_TEMP/$asset"
+          if [[ "$asset" == *.zip ]]; then
+            # Git Bash ships GNU tar, which cannot read zip. Python can, and is
+            # already a build dependency.
+            python - "$RUNNER_TEMP/$asset" "$RUNNER_TEMP/node-runtime" <<'PY'
+          import pathlib, sys, zipfile
+          archive, target = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+          with zipfile.ZipFile(archive) as bundle:
+              bundle.extractall(target)
+          entries = [entry for entry in target.iterdir() if entry.is_dir()]
+          if len(entries) == 1:
+              for child in entries[0].iterdir():
+                  child.rename(target / child.name)
+              entries[0].rmdir()
+          PY
+          else
+            tar -xf "$RUNNER_TEMP/$asset" -C "$RUNNER_TEMP/node-runtime" --strip-components=1
+          fi
+          echo "path=$RUNNER_TEMP/node-runtime" >> "$GITHUB_OUTPUT"
+
+      - name: Install Linux packaging tools
+        if: matrix.os == 'linux'
+        shell: bash
+        run: sudo apt-get update && sudo apt-get install -y patchelf
+
+      - name: Install NSIS (Windows)
+        if: matrix.os == 'windows'
+        shell: bash
+        run: choco install nsis --yes --no-progress
+
+      - name: Build installers
+        shell: bash
+        run: |
+          python packaging/build.py \
+            --variant both \
+            --os "${{ matrix.os }}" \
+            --arch "${{ matrix.arch }}" \
+            --version "${{ steps.version.outputs.version }}" \
+            --agent-dir .siblings/0KAY-agent \
+            --mcp-dir .siblings/0KAY-mcp \
+            --pm-dir .siblings/0KAY-pm \
+            --node-runtime "${{ steps.node-runtime.outputs.path }}" \
+            --out dist
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: 0kay-${{ matrix.os }}-${{ matrix.arch }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Attach to the GitHub release
+        if: github.event_name == 'release' || inputs.tag != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/* --clobber
+          else
+            echo "No release named $TAG; artifacts stay on the workflow run."
+          fi

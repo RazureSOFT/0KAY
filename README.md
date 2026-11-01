@@ -76,26 +76,56 @@ docker-compose logs -f                      # follow logs
 docker-compose down                         # stop
 ```
 
-### Package manager (recommended)
+### Desktop / terminal installers
+
+Download the installer for your OS and CPU from
+[Releases](https://github.com/RazureSOFT/0KAY/releases):
+
+| Asset | What it installs |
+|---|---|
+| `0KAY-<version>-win-<arch>.exe`, `-mac-<arch>.dmg`, `-linux-<arch>.AppImage` | Desktop shell + the full stack + the TUI |
+| `0KAY-Setup-<version>-<arch>.exe` / `0KAY-Setup-<version>-<arch>.pkg` / `0kay-terminal_<version>_<arch>.deb` | Terminal-only install |
+
+Every platform bundle ships Core, mocr, LIFE (frozen with PyInstaller), the built
+WebUI, the TUI, the `0kay` supervisor, `0kay-pm`, and — unless the release was
+built without them — Agent + MCP with a bundled Node runtime. Nothing is compiled
+on the target and no Go/Node/Python/npm is required. Installers cover `x64` and
+`arm64` for Windows, macOS and Linux. The Windows installers ask which components
+to install (Core is required; WebUI, TUI, LIFE, mocr and Agent + MCP are optional),
+which local ports to use (Core HTTP/gRPC and the mocr/LIFE/Agent gRPC ports;
+defaults 8080/50051/50052/50053/50054) and whether to add 0KAY to PATH. The WebUI
+is served on the Core HTTP port. More plugins can be installed later with the
+bundled `0kay-pm`.
+Runtime state lives in `<install>/data`, or in `~/.0kay/data` when the install
+tree is read-only (AppImage, `/opt`, `.app`). On Windows arm64 the Python
+components are x64 and run under Windows' built-in x64 emulation (upstream
+wheels are missing for that target); everything else is native.
 
 ```sh
-# Standalone repository install (recommended, no git involved)
+0kay            # start everything and open the TUI
+0kay status     # health, ports and pids
+0kay down       # stop
+0kay-pm --help  # the bundled package manager (no npm install -g needed)
+```
+
+### Package manager (prebuilt, recommended)
+
+```sh
+# Standalone repository install (no git involved)
 npm install -g https://codeload.github.com/RazureSOFT/0KAY-pm/tar.gz/main
 
 # Or from a local checkout
 npm install -g ./pm
 
-0kay-pm discover
-0kay-pm install @razuresoft/0kay-agent
-0kay-pm install @razuresoft/0kay
-0kay-pm update @razuresoft/0kay-agent
-0kay-pm start @razuresoft/0kay
+0kay-pm install     # download the prebuilt bundle and start it
 ```
 
-`0kay-pm install` builds each module and starts it as a background service
-(systemd user unit / LaunchAgent / logon task), so there is nothing else to run
-afterwards. Pin a release with `@0.1.2`, check with `0kay-pm status <package>`,
-and stop with `0kay-pm stop <package>`.
+`0kay-pm install` downloads the matching release asset, verifies its checksum,
+unpacks it into `~/.0kay`, and starts it as a background service (systemd user
+unit / LaunchAgent / logon task). No toolchain is fetched. Add `--build` to
+compile from source instead (needed for unreleased commits or LAN pairing), pin
+a release with `0kay-pm install --build @razuresoft/0kay@0.1.4`, check with
+`0kay-pm status 0kay`, and stop with `0kay-pm stop 0kay`.
 
 ### From source (development)
 
@@ -123,8 +153,9 @@ Health check: `GET http://127.0.0.1:8080/health`.
 Core only trusts loopback origins on an allowlisted port, so a dev WebUI on
 Vite's :3000 gets `403 origin_not_allowed` for every POST (`/api/run` included)
 while GETs look fine — same-origin GETs send no `Origin` header at all. Put
-`WEBUI_PORT=3000` in `.env` when running the UI that way. Serving the built UI
-from Core needs nothing: it is the same origin.
+`WEBUI_PORT=3000` in `.env` when running the UI that way. Packaged installs set
+`CORE_WEBUI_DIR=<install>/webui` and Core serves the built UI on its own port,
+so the packaged UI is always same-origin and needs no proxy.
 
 ### Security
 
