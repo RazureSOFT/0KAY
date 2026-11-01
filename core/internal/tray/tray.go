@@ -84,15 +84,28 @@ func (r *runner) onReady() {
 	go func() {
 		for {
 			select {
-			case <-open.ClickedCh:
+			// Every receive checks `ok`: these channels are closed when the tray goes
+			// away, and a closed channel yields the zero value immediately. Without
+			// the check, shutting the icon down looked exactly like someone choosing
+			// "quit" — and Core exited on its own.
+			case _, ok := <-open.ClickedCh:
+				if !ok {
+					return
+				}
 				if r.actions.OpenUI != nil {
 					_ = r.actions.OpenUI()
 				}
-			case <-status.ClickedCh:
+			case _, ok := <-status.ClickedCh:
+				if !ok {
+					return
+				}
 				if text := statusText(r.actions); text != "" {
 					status.SetTitle(text)
 				}
-			case <-quit.ClickedCh:
+			case _, ok := <-quit.ClickedCh:
+				if !ok {
+					return
+				}
 				if r.actions.Quit != nil {
 					r.actions.Quit()
 				} else {
