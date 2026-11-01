@@ -1779,6 +1779,15 @@ const planOpen = ref(true)
  */
 type PlanStep = { n: number; text: string }
 // The alias also keeps `>>` out of the SFC parser, which reads it as a shift.
+/** Long prompts and replies are clamped to four lines until asked for more. */
+const expandedTurns = ref<Set<string>>(new Set())
+function toggleTurn(id: string) {
+  const next = new Set(expandedTurns.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  expandedTurns.value = next
+}
+
 const planSteps = computed<PlanStep[]>(() => {
   const markdown = currentPlan.value?.markdown || ''
   const found: PlanStep[] = []
@@ -2613,7 +2622,13 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
               </div>
             </template>
             <template v-else>
-              <div class="message-text">{{ turn.prompt?.replace(/^\[thinking_intensity=\w+\]\s*/, '') }}</div>
+              <div class="message-text" :class="{ clamped: !expandedTurns.has(turn.task_id) }">{{ turn.prompt?.replace(/^\[thinking_intensity=\w+\]\s*/, '') }}</div>
+              <button
+                v-if="(turn.prompt || '').length > 420"
+                type="button"
+                class="expand-toggle"
+                @click="toggleTurn(turn.task_id)"
+              >{{ expandedTurns.has(turn.task_id) ? t('agent.page.collapse') : t('agent.page.expand') }}</button>
                             <div v-if="turn.attachments?.length" class="bubble-files">
                 <a v-for="(file, index) in turn.attachments" :key="`${file.url}-${index}`" class="bubble-file" :href="safeUrl(file.url) || undefined" target="_blank" rel="noopener" :title="file.name">
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>

@@ -98,15 +98,24 @@ function submitFolder() {
 
 <style scoped>
 .directory-backdrop{position:fixed;inset:0;z-index:var(--z-modal,6000);display:flex;align-items:center;justify-content:center;padding:24px;background:#0b122066}
-.directory-dialog{display:flex;flex-direction:column;gap:10px;width:min(560px,100%);max-height:min(620px,90vh);padding:16px;border-radius:14px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);box-shadow:0 24px 60px #0b12204d}
+.directory-dialog{display:flex;flex-direction:column;gap:10px;width:min(760px,100%);max-height:min(760px,92vh);padding:20px;border-radius:14px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);box-shadow:0 24px 60px #0b12204d}
 .directory-dialog header{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .directory-dialog h2{margin:0;font-size:15px;font-weight:650}
 .directory-roots{display:flex;flex-wrap:wrap;gap:6px}
 .directory-dialog code{display:block;padding:7px 9px;border-radius:9px;background:var(--md-surface-container-low);font-family:var(--code-font);font-size:12px;overflow-wrap:anywhere}
 .new-folder{display:flex;gap:6px}
 .new-folder input{flex:1;min-width:0}
+.directory-dialog header button{flex:none;padding:5px 11px;border:1px solid var(--md-outline-variant);border-radius:9px;background:transparent;color:var(--md-on-surface-variant);font:inherit;font-size:12px;cursor:pointer}
+.directory-dialog header button:hover{background:color-mix(in srgb,var(--md-on-surface) 8%,transparent)}
+.directory-roots button{padding:3px 10px;border:1px solid var(--md-outline-variant);border-radius:8px;background:transparent;color:var(--md-on-surface);font:inherit;font-size:12px;cursor:pointer}
+.directory-roots button:hover{border-color:var(--md-primary);color:var(--md-primary)}
+.new-folder button{flex:none;padding:6px 12px;border:1px solid var(--md-outline-variant);border-radius:9px;background:transparent;color:var(--md-on-surface);font:inherit;font-size:12px;cursor:pointer}
+.new-folder button:disabled{opacity:.45;cursor:not-allowed}
+/* The one affirmative action: filled, so it reads as "this is the way out". */
+.directory-dialog footer button{padding:8px 16px;border:0;border-radius:10px;background:var(--md-primary);color:var(--md-on-primary);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+.directory-dialog footer button:disabled{opacity:.45;cursor:not-allowed}
 .directory-dialog .error{margin:0;color:var(--md-error,#ba1a1a);font-size:12px}
-.directory-list{display:flex;flex-direction:column;gap:2px;min-height:60px;max-height:300px;overflow:auto}
+.directory-list{display:flex;flex-direction:column;gap:2px;min-height:60px;min-height:220px;max-height:420px;overflow:auto}
 .directory-list button{display:flex;align-items:center;gap:7px;justify-content:flex-start;border:0;background:transparent;padding:7px 9px;border-radius:8px;text-align:left}
 .directory-list button:hover{background:var(--md-secondary-container)}
 .directory-dialog footer{display:flex;justify-content:flex-end}
