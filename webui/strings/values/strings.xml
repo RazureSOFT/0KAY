@@ -762,4 +762,14 @@
   <string name="pet.typeMessage">Say something…</string>
   <string name="pet.send">Send</string>
   <string name="settings.desktopTitle">Desktop settings</string>
+  <string name="pet.poked">You poked her</string>
+  <string name="ide.files">Files</string>
+  <string name="ide.file">File</string>
+  <string name="ide.agent">Agent</string>
+  <string name="ide.loading">Loading…</string>
+  <string name="ide.pickFile">Pick a file on the left</string>
+  <string name="ide.refresh">Refresh</string>
+  <string name="ide.askAnything">Ask the agent about this repo…</string>
+  <string name="ide.send">Send</string>
+  <string name="ide.noSession">No session could be created</string>
 </resources>

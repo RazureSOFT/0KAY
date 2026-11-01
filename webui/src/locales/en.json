@@ -873,6 +873,18 @@
     "asrFailed": "Speech service error",
     "replyFailed": "Reply failed",
     "typeMessage": "Say something…",
-    "send": "Send"
+    "send": "Send",
+    "poked": "You poked her"
+  },
+  "ide": {
+    "files": "Files",
+    "file": "File",
+    "agent": "Agent",
+    "loading": "Loading…",
+    "pickFile": "Pick a file on the left",
+    "refresh": "Refresh",
+    "askAnything": "Ask the agent about this repo…",
+    "send": "Send",
+    "noSession": "No session could be created"
   }
 }

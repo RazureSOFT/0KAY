@@ -873,6 +873,18 @@
     "asrFailed": "语音服务出错",
     "replyFailed": "回复失败",
     "typeMessage": "说点什么…",
-    "send": "发送"
+    "send": "发送",
+    "poked": "你戳了戳她"
+  },
+  "ide": {
+    "files": "文件",
+    "file": "文件内容",
+    "agent": "Agent",
+    "loading": "加载中…",
+    "pickFile": "在左侧选择一个文件",
+    "refresh": "刷新",
+    "askAnything": "就这个仓库问 agent…",
+    "send": "发送",
+    "noSession": "没能创建会话"
   }
 }

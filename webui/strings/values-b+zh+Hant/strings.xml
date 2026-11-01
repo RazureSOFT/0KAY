@@ -762,4 +762,14 @@
   <string name="pet.typeMessage">說點什麼…</string>
   <string name="pet.send">傳送</string>
   <string name="settings.desktopTitle">桌面端設定</string>
+  <string name="pet.poked">你戳了戳她</string>
+  <string name="ide.files">檔案</string>
+  <string name="ide.file">檔案內容</string>
+  <string name="ide.agent">Agent</string>
+  <string name="ide.loading">載入中…</string>
+  <string name="ide.pickFile">在左側選擇一個檔案</string>
+  <string name="ide.refresh">重新整理</string>
+  <string name="ide.askAnything">就這個倉庫問 agent…</string>
+  <string name="ide.send">傳送</string>
+  <string name="ide.noSession">沒能建立工作階段</string>
 </resources>

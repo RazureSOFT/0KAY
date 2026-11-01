@@ -11,6 +11,8 @@ const router = createRouter({
   routes: [
     // The desktop pet: a frameless Electron window loads this and nothing else.
     { path: '/pet', name: 'pet', component: PetPage },
+    // The IDE: files on the left, contents in the middle, the agent on the right.
+    { path: '/ide', name: 'ide', component: () => import('../pages/IdePage.vue') },
     { path: '/:pathMatch(.*)*', name: 'catch-all', component: PatchPage },
   ],
 })

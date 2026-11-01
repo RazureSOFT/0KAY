@@ -12,6 +12,7 @@
 
 const path = require('node:path');
 const fs = require('node:fs');
+const os = require('node:os');
 const { spawn } = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -41,9 +42,15 @@ function stackRoot() {
 }
 
 function runtimePort(root) {
-  for (const relative of ['runtime-env.json', path.join('data', 'runtime-env.json')]) {
+  const candidates = [
+    path.join(root, 'runtime-env.json'),
+    path.join(root, 'data', 'runtime-env.json'),
+    // AppImages and .app bundles are read-only; the launcher moves state here.
+    path.join(os.homedir(), '.0kay', 'data', 'runtime-env.json'),
+  ];
+  for (const candidate of candidates) {
     try {
-      const value = JSON.parse(fs.readFileSync(path.join(root, relative), 'utf8'));
+      const value = JSON.parse(fs.readFileSync(candidate, 'utf8'));
       if (value && value.CORE_HTTP_PORT) return String(value.CORE_HTTP_PORT);
     } catch (error) {
       // No runtime env yet: the installer or the bundled launcher writes it on
@@ -53,8 +60,18 @@ function runtimePort(root) {
   return '';
 }
 
+function logsDir() {
+  for (const candidate of [
+    path.join(STACK_ROOT, 'data', 'logs'),
+    path.join(ROOT, '.logs'),
+    path.join(os.homedir(), '.0kay', 'data', 'logs'),
+  ]) {
+    if (fs.existsSync(candidate)) return candidate;
+  }
+  return path.join(os.homedir(), '.0kay', 'data', 'logs');
+}
+
 const STACK_ROOT = stackRoot();
-const LOGS_DIR = path.join(STACK_ROOT, 'data', 'logs');
 const DEFAULT_URL = process.env.CORE_HTTP_ADDR || `http://127.0.0.1:${runtimePort(STACK_ROOT) || 8080}`;
 const CORE_URL = DEFAULT_URL.replace(/\/$/, '');
 
@@ -108,8 +125,8 @@ let stackProcess = null;
 // instead of assuming Core's root is the app.
 const UI_CANDIDATES = [
   process.env.WEBUI_URL || '',
-  'http://127.0.0.1:3000',
   CORE_URL,
+  'http://127.0.0.1:3000',
 ].filter(Boolean);
 
 function isHtmlUrl(url) {
@@ -249,6 +266,25 @@ function stopStack() {
   return { stopped: true, entry };
 }
 
+/** Open the bundled TUI in the user's terminal; a GUI window has no console. */
+function openTui() {
+  const launcher = path.join(STACK_ROOT, 'bin', process.platform === 'win32' ? '0kay.exe' : '0kay');
+  if (!fs.existsSync(launcher)) return { opened: false, reason: 'TUI launcher not found' };
+  const launch = (command, args) => {
+    const child = spawn(command, args, { cwd: STACK_ROOT, detached: true, stdio: 'ignore' });
+    child.on('error', (error) => console.warn('could not open a terminal:', error.message));
+    child.unref();
+  };
+  if (process.platform === 'win32') {
+    launch('cmd.exe', ['/c', 'start', '""', 'cmd.exe', '/k', `"${launcher}" tui`]);
+  } else if (process.platform === 'darwin') {
+    launch('osascript', ['-e', `tell application "Terminal" to do script "\\"${launcher}\\" tui"`]);
+  } else {
+    launch('x-terminal-emulator', ['-e', launcher, 'tui']);
+  }
+  return { opened: true };
+}
+
 function waitForStackAt(url, timeoutMs = 90000) {
   const deadline = Date.now() + timeoutMs;
   return new Promise((resolve) => {
@@ -353,7 +389,7 @@ function createMainWindow() {
       // The first close looks like a quit to anyone who has not used a tray app.
       if (!toldAboutTray) {
         toldAboutTray = true;
-        notify('0KAY is still running', 'It is in the tray. Quit from the tray menu to stop it.');
+        notify('0KAY is still running', 'It is in the tray. Use "Stop 0KAY stack" to shut it down.');
       }
     }
   });
@@ -551,6 +587,14 @@ function syncTrayMenu() {
   const petVisible = !!companionWindow && companionWindow.isVisible();
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open 0KAY', click: focusMain },
+    {
+      label: 'Open terminal (TUI)',
+      enabled: fs.existsSync(path.join(STACK_ROOT, 'bin', process.platform === 'win32' ? '0kay-tui.exe' : '0kay-tui')),
+      click: () => {
+        const result = openTui();
+        if (!result.opened) notify('Could not open the TUI', result.reason || '');
+      },
+    },
     { label: '设置…', click: () => openPreferences() },
     { type: 'separator' },
     {
@@ -596,8 +640,7 @@ function syncTrayMenu() {
     {
       label: 'Open logs folder',
       click: async () => {
-        const logs = fs.existsSync(LOGS_DIR) ? LOGS_DIR : path.join(ROOT, '.logs');
-        const failed = await shell.openPath(logs);
+        const failed = await shell.openPath(logsDir());
         if (failed) notify('Could not open the logs folder', failed);
       },
     },

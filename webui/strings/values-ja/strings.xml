@@ -762,4 +762,14 @@
   <string name="pet.typeMessage">何か話して…</string>
   <string name="pet.send">送信</string>
   <string name="settings.desktopTitle">デスクトップ設定</string>
+  <string name="pet.poked">つついてみた</string>
+  <string name="ide.files">ファイル</string>
+  <string name="ide.file">ファイル内容</string>
+  <string name="ide.agent">Agent</string>
+  <string name="ide.loading">読み込み中…</string>
+  <string name="ide.pickFile">左の一覧からファイルを選択</string>
+  <string name="ide.refresh">更新</string>
+  <string name="ide.askAnything">このリポジトリについて agent に聞く…</string>
+  <string name="ide.send">送信</string>
+  <string name="ide.noSession">セッションを作成できませんでした</string>
 </resources>

@@ -251,9 +251,36 @@ function playMotion(group?: string, index?: number) {
   } catch { }
 }
 
+/* Models name their expressions freely, so a directive like `smile` has to be
+   translated: the first name matching the family wins, and an exact match always
+   wins over the family. Without this, "AI picks the expression" silently does
+   nothing on any model whose names differ from the prompt's vocabulary. */
+const EXPRESSION_FAMILIES: Record<string, RegExp> = {
+  smile: /smile|happy|joy|fun/i,
+  laugh: /laugh|joy|happy/i,
+  sad: /sad|sorrow|cry/i,
+  angry: /angry|anger|mad/i,
+  surprised: /surpris|shock|wow/i,
+  shy: /shy|blush|embarrass/i,
+  confused: /confus|puzzl|question/i,
+  sleepy: /sleep|tired|doz/i,
+  calm: /calm|normal|default|neutral/i,
+}
+
+function resolveExpression(name: string): number {
+  const exact = expressionNames.findIndex((candidate) => candidate.toLowerCase() === name.toLowerCase())
+  if (exact >= 0) return exact
+  const family = EXPRESSION_FAMILIES[name.toLowerCase()]
+  if (family) {
+    const byFamily = expressionNames.findIndex((candidate) => family.test(candidate))
+    if (byFamily >= 0) return byFamily
+  }
+  return expressionNames.indexOf(name)
+}
+
 function playExpression(name?: string) {
   if (!live2dModel || !name) return
-  const index = /^\d+$/.test(name) ? Number(name) : expressionNames.indexOf(name)
+  const index = /^\d+$/.test(name) ? Number(name) : resolveExpression(name)
   const target = index >= 0 ? index : name
   try {
     const em = live2dModel.internalModel?.motionManager?.expressionManager

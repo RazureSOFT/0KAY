@@ -873,6 +873,18 @@
     "asrFailed": "語音服務出錯",
     "replyFailed": "回覆失敗",
     "typeMessage": "說點什麼…",
-    "send": "傳送"
+    "send": "傳送",
+    "poked": "你戳了戳她"
+  },
+  "ide": {
+    "files": "檔案",
+    "file": "檔案內容",
+    "agent": "Agent",
+    "loading": "載入中…",
+    "pickFile": "在左側選擇一個檔案",
+    "refresh": "重新整理",
+    "askAnything": "就這個倉庫問 agent…",
+    "send": "傳送",
+    "noSession": "沒能建立工作階段"
   }
 }

@@ -7,6 +7,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Live2DStage from '../components/Live2DStage.vue'
+import { POKE_PROMPT, driveLive2DFromReply } from '../composables/live2dControl'
 
 const reply = ref('')
 const asking = ref(false)
@@ -29,13 +30,30 @@ function remember(role: 'you' | 'her', text: string) {
 }
 
 /** Send what was typed. The answer streams into `reply`, then joins the transcript. */
+/**
+ * Poking her.
+ *
+ * A tap is not a question, so it goes through the same conversation path with a
+ * physical prompt, and whatever expression she chooses rides back as a directive.
+ */
+async function poke() {
+  if (asking.value) return
+  remember('you', t('pet.poked'))
+  await ask(POKE_PROMPT)
+  const spoken = driveLive2DFromReply(reply.value)
+  reply.value = spoken
+  remember('her', spoken)
+}
+
 async function sendText() {
   const text = draft.value.trim()
   if (!text || asking.value) return
   draft.value = ''
   remember('you', text)
   await ask(text)
-  remember('her', reply.value)
+  const spoken = driveLive2DFromReply(reply.value)
+  reply.value = spoken
+  remember('her', spoken)
 }
 const { t } = useI18n()
 const recording = ref(false)
@@ -224,7 +242,15 @@ onUnmounted(() => {
   <div class="pet-stage">
     <!-- scope="pet": her position here is her own, not the one dragged in the
          full-size stage. Without it a past drag lands her off-centre. -->
-    <Live2DStage bare transform-scope="pet" class="pet-canvas" />
+    <button
+      class="poke"
+      type="button"
+      :aria-label="t('pet.poked')"
+      :disabled="asking"
+      @click="poke"
+    >
+      <Live2DStage bare transform-scope="pet" class="pet-canvas" />
+    </button>
 
     <div class="dock">
       <!-- Dialogue box: the last few exchanges, oldest first. This is what makes
@@ -291,7 +317,15 @@ onUnmounted(() => {
   overflow: hidden;
 }
 :global(html.pet-mode #app) { padding: 0 !important; height: 100%; }
-.pet-canvas { width: 100%; height: 100%; }
+.poke {
+  /* A bare button around the stage: it must not paint, size, or capture drags —
+     only report a click. The stage inside keeps its own pointer handling. */
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  padding: 0; border: 0; background: transparent; cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+.poke:disabled { cursor: default; }
+.pet-canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
 
 /* The dock: dialogue above, composer below, both pinned to the bottom. The model
    keeps the whole window behind them, which is why it can stay centred. */

@@ -873,6 +873,18 @@
     "asrFailed": "音声サービスでエラー",
     "replyFailed": "返信に失敗しました",
     "typeMessage": "何か話して…",
-    "send": "送信"
+    "send": "送信",
+    "poked": "つついてみた"
+  },
+  "ide": {
+    "files": "ファイル",
+    "file": "ファイル内容",
+    "agent": "Agent",
+    "loading": "読み込み中…",
+    "pickFile": "左の一覧からファイルを選択",
+    "refresh": "更新",
+    "askAnything": "このリポジトリについて agent に聞く…",
+    "send": "送信",
+    "noSession": "セッションを作成できませんでした"
   }
 }
