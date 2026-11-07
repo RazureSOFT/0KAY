@@ -721,7 +721,29 @@
     "evolveSessionTitle": "自我改进提案",
     "evolveNoSession": "agent 没有返回会话 id。",
     "evolvePrompt": "先读这个仓库，自己判断哪里最值得改：挑一个投入产出比最高的改动，并说明为什么。先给方案再动手——用 evolve_begin 在独立 worktree 里做，主分支保持不变，跑完测试，并在 evolve_finish(open_pr=true) 之前问我。",
-    "desktopTitle": "桌面端设置"
+    "desktopTitle": "桌面端设置",
+    "extensions": {
+      "lead": "改变 agent 行为的插件。每个插件是一个带 manifest 的目录，开关在下一个任务生效。",
+      "loading": "正在读取插件目录…",
+      "empty": "还没有安装插件。",
+      "emptyHint": "用 0kay-pm ext add <目录> 安装，或把一个含 manifest.json 的文件夹放进插件目录。",
+      "remove": "删除",
+      "removed": "已删除 {name}。",
+      "enabled": "已启用 {name}。",
+      "disabled": "已停用 {name}。",
+      "loadedNow": "agent 当前加载：{names}。",
+      "agentDown": "已保存，但 agent 没能重新加载：{reason}",
+      "effectPrompt": "改提示词",
+      "effectRules": "{n} 条规则",
+      "effectHide": "隐藏 {n} 个工具",
+      "effectModel": "模型参数",
+      "effectCode": "会运行代码",
+      "permissions": "可用能力：",
+      "noPermissions": "带模块但没声明任何权限，加载后什么都拿不到。",
+      "count": "{total} 个里启用了 {on} 个。",
+      "allOn": "没有设置白名单，所以已安装的全部生效。",
+      "dir": "插件目录：{dir}"
+    }
   },
   "status": {
     "activeTasks": "活跃任务",

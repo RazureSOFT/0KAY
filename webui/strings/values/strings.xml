@@ -776,4 +776,24 @@
   <string name="auth.loginDisabled">Sign-in is currently turned off; this page will not be needed until LAN access is enabled.</string>
   <string name="status.localBuild">Local build — not a release</string>
   <string name="status.releaseBuild">Release build</string>
+  <string name="settings.extensions.lead">Plugins that change how the agent behaves. Each one is a directory with a manifest; toggling it takes effect on the next task.</string>
+  <string name="settings.extensions.loading">Reading the plugin directory…</string>
+  <string name="settings.extensions.empty">No plugins installed.</string>
+  <string name="settings.extensions.emptyHint">Install one with 0kay-pm ext add <directory>, or drop a folder with a manifest.json into the plugin directory.</string>
+  <string name="settings.extensions.remove">Remove</string>
+  <string name="settings.extensions.removed">Removed {name}.</string>
+  <string name="settings.extensions.enabled">Enabled {name}.</string>
+  <string name="settings.extensions.disabled">Disabled {name}.</string>
+  <string name="settings.extensions.loadedNow">The agent now has: {names}.</string>
+  <string name="settings.extensions.agentDown">Saved, but the agent could not reload: {reason}</string>
+  <string name="settings.extensions.effectPrompt">changes the prompt</string>
+  <string name="settings.extensions.effectRules">{n} rules</string>
+  <string name="settings.extensions.effectHide">hides {n} tools</string>
+  <string name="settings.extensions.effectModel">model defaults</string>
+  <string name="settings.extensions.effectCode">runs code</string>
+  <string name="settings.extensions.permissions">May:</string>
+  <string name="settings.extensions.noPermissions">Ships a module but declares no permissions, so it is loaded with none granted.</string>
+  <string name="settings.extensions.count">{on} of {total} enabled.</string>
+  <string name="settings.extensions.allOn">No allow-list is set, so everything installed is on.</string>
+  <string name="settings.extensions.dir">Plugin directory: {dir}</string>
 </resources>

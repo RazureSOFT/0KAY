@@ -721,7 +721,29 @@
     "evolveSessionTitle": "自己改善の提案",
     "evolveNoSession": "agent がセッション id を返しませんでした。",
     "evolvePrompt": "このリポジトリを読み、どこを改善する価値が最も高いか自分で判断してください。費用対効果が最大の変更を選び、理由を説明し、コードに触れる前に計画を示してください。evolve_begin で独立した worktree を使い、main は変更せず、テストを実行し、evolve_finish(open_pr=true) の前に確認してください。",
-    "desktopTitle": "デスクトップ設定"
+    "desktopTitle": "デスクトップ設定",
+    "extensions": {
+      "lead": "エージェントの振る舞いを変えるプラグイン。各プラグインは manifest を持つディレクトリで、切り替えは次のタスクから有効になります。",
+      "loading": "プラグインディレクトリを読み込み中…",
+      "empty": "プラグインはまだありません。",
+      "emptyHint": "0kay-pm ext add <ディレクトリ> でインストールするか、manifest.json を含むフォルダをプラグインディレクトリに置いてください。",
+      "remove": "削除",
+      "removed": "{name} を削除しました。",
+      "enabled": "{name} を有効にしました。",
+      "disabled": "{name} を無効にしました。",
+      "loadedNow": "エージェントの読み込み: {names}",
+      "agentDown": "保存しましたが、エージェントが再読み込みできませんでした: {reason}",
+      "effectPrompt": "プロンプト変更",
+      "effectRules": "ルール {n} 件",
+      "effectHide": "ツール {n} 件を隠す",
+      "effectModel": "モデル既定値",
+      "effectCode": "コード実行",
+      "permissions": "権限:",
+      "noPermissions": "モジュールを含みますが権限を宣言していないため、何も許可されずに読み込まれます。",
+      "count": "{total} 件中 {on} 件が有効。",
+      "allOn": "許可リストが未設定なので、インストール済みはすべて有効です。",
+      "dir": "プラグインディレクトリ: {dir}"
+    }
   },
   "status": {
     "activeTasks": "実行中タスク",

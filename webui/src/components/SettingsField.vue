@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import AppSelect from './AppSelect.vue'
 import ModelsField from './ModelsField.vue'
 import MarkdownContent from './MarkdownContent.vue'
+import AgentExtensionsField from './AgentExtensionsField.vue'
 
 const { t } = useI18n()
 
@@ -57,6 +58,13 @@ function onNativeInput(event: Event): void {
           <small v-if="help" class="helper-text">{{ help }}</small>
         </span>
       </label>
+    </template>
+
+    <template v-else-if="field.type === 'extensions'">
+      <!-- No value of its own: the panel talks to Core directly, because a
+           plugin is a directory and toggling one is an action, not a draft. -->
+      <AgentExtensionsField />
+      <p v-if="help" class="helper-text">{{ help }}</p>
     </template>
 
     <template v-else-if="field.type === 'note'">

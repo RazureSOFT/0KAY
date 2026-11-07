@@ -199,3 +199,7 @@ life/life-review-report.md
 /core/data/plugin-ui/life/adapters.js
 /core/data/plugin-ui/minecraft/index.js
 /core/data/plugin-ui/skillsguishow/index.js
+
+# Installed agent extensions are user data: what an operator installed, not
+# what the repository ships. The bundled examples live in agent/plugins/.
+/core/data/extensions/

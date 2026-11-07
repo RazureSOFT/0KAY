@@ -776,4 +776,24 @@
   <string name="auth.loginDisabled">当前未开启登录校验；本机访问不需要这个页面，开 LAN 后才会用到。</string>
   <string name="status.localBuild">本地构建（非发布版）</string>
   <string name="status.releaseBuild">发布版</string>
+  <string name="settings.extensions.lead">改变 agent 行为的插件。每个插件是一个带 manifest 的目录，开关在下一个任务生效。</string>
+  <string name="settings.extensions.loading">正在读取插件目录…</string>
+  <string name="settings.extensions.empty">还没有安装插件。</string>
+  <string name="settings.extensions.emptyHint">用 0kay-pm ext add <目录> 安装，或把一个含 manifest.json 的文件夹放进插件目录。</string>
+  <string name="settings.extensions.remove">删除</string>
+  <string name="settings.extensions.removed">已删除 {name}。</string>
+  <string name="settings.extensions.enabled">已启用 {name}。</string>
+  <string name="settings.extensions.disabled">已停用 {name}。</string>
+  <string name="settings.extensions.loadedNow">agent 当前加载：{names}。</string>
+  <string name="settings.extensions.agentDown">已保存，但 agent 没能重新加载：{reason}</string>
+  <string name="settings.extensions.effectPrompt">改提示词</string>
+  <string name="settings.extensions.effectRules">{n} 条规则</string>
+  <string name="settings.extensions.effectHide">隐藏 {n} 个工具</string>
+  <string name="settings.extensions.effectModel">模型参数</string>
+  <string name="settings.extensions.effectCode">会运行代码</string>
+  <string name="settings.extensions.permissions">可用能力：</string>
+  <string name="settings.extensions.noPermissions">带模块但没声明任何权限，加载后什么都拿不到。</string>
+  <string name="settings.extensions.count">{total} 个里启用了 {on} 个。</string>
+  <string name="settings.extensions.allOn">没有设置白名单，所以已安装的全部生效。</string>
+  <string name="settings.extensions.dir">插件目录：{dir}</string>
 </resources>

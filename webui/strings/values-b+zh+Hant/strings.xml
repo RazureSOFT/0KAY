@@ -776,4 +776,24 @@
   <string name="auth.loginDisabled">目前未開啟登入校驗；本機存取不需要這個頁面，開 LAN 後才會用到。</string>
   <string name="status.localBuild">本機建置（非發佈版）</string>
   <string name="status.releaseBuild">發佈版</string>
+  <string name="settings.extensions.lead">改變 agent 行為的插件。每個插件是一個帶 manifest 的目錄，開關在下一個任務生效。</string>
+  <string name="settings.extensions.loading">正在讀取外掛目錄…</string>
+  <string name="settings.extensions.empty">還沒有安裝外掛。</string>
+  <string name="settings.extensions.emptyHint">用 0kay-pm ext add <目錄> 安裝，或把一個含 manifest.json 的資料夾放進外掛目錄。</string>
+  <string name="settings.extensions.remove">刪除</string>
+  <string name="settings.extensions.removed">已刪除 {name}。</string>
+  <string name="settings.extensions.enabled">已啟用 {name}。</string>
+  <string name="settings.extensions.disabled">已停用 {name}。</string>
+  <string name="settings.extensions.loadedNow">agent 目前載入：{names}。</string>
+  <string name="settings.extensions.agentDown">已儲存，但 agent 沒能重新載入：{reason}</string>
+  <string name="settings.extensions.effectPrompt">改提示詞</string>
+  <string name="settings.extensions.effectRules">{n} 條規則</string>
+  <string name="settings.extensions.effectHide">隱藏 {n} 個工具</string>
+  <string name="settings.extensions.effectModel">模型參數</string>
+  <string name="settings.extensions.effectCode">會執行程式碼</string>
+  <string name="settings.extensions.permissions">可用能力：</string>
+  <string name="settings.extensions.noPermissions">帶模組但沒宣告任何權限，載入後什麼都拿不到。</string>
+  <string name="settings.extensions.count">{total} 個裡啟用了 {on} 個。</string>
+  <string name="settings.extensions.allOn">沒有設定白名單，所以已安裝的全部生效。</string>
+  <string name="settings.extensions.dir">外掛目錄：{dir}</string>
 </resources>

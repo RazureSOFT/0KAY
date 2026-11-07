@@ -209,7 +209,9 @@ export function useSettingsPage() {
     if (!sec) return
     const base: Record<string, unknown> = {}
     for (const f of sec.fields) {
-      if (f.type === 'note') continue
+      // Display-only fields carry no value: a note is text, the extensions panel
+      // is a live view of what is installed.
+      if (f.type === 'note' || f.type === 'extensions') continue
       if (f.type === 'bool') base[f.key] = f.default_value === 'true' || f.default_value === '1'
       else if (f.type === 'number') base[f.key] = Number(f.default_value || 0)
       else base[f.key] = f.default_value || ''
@@ -288,7 +290,9 @@ export function useSettingsPage() {
     sectionSaving.value = true
     sectionMsg.value = ''
     try {
-      const notes = new Set((pluginSection(id)?.fields || []).filter((f) => f.type === 'note').map((f) => f.key))
+      const notes = new Set((pluginSection(id)?.fields || [])
+        .filter((f) => f.type === 'note' || f.type === 'extensions')
+        .map((f) => f.key))
       const payload = Object.fromEntries(
         Object.entries(sectionDrafts.value[id] || {}).filter(([key]) => !notes.has(key)),
       )
