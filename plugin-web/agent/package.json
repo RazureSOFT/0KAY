@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check:layout": "node scripts/verify-empty-layout.mjs"
   },
   "dependencies": {
     "docx-preview": "^0.4.1",

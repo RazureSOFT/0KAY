@@ -1033,32 +1033,45 @@ body.resizing-sidebar *{cursor:col-resize!important}
 #app .workspace .task-tab-hint{margin:10px 2px;font-size:12.5px}
 
 /* ---- empty conversation ----------------------------------------------------
-   Nothing said yet: the greeting and the input belong together in the middle of
-   the pane, not a title at the top and a box at the bottom with a screen of
-   nothing between them. The transcript takes the slack and centres its one
-   child; the composer stops reserving its bottom margin. */
+   Nothing said yet. The greeting and the input are one group, centred in the
+   pane: banner, then the box directly under it, the way a chat product opens.
+
+   Two things make that work. The transcript stops taking the leftover height
+   (it would otherwise push the greeting up and leave the composer pinned to the
+   bottom, which is what "a title at the top and a box at the bottom with a
+   screen of nothing between them" was), and the conversation itself centres its
+   children instead. */
+#app .workspace .conversation.is-empty{
+  justify-content:center;
+}
 #app .workspace .conversation.is-empty .transcript{
-  display:flex;flex-direction:column;justify-content:center;align-items:stretch;
-  padding-bottom:0;
+  /* Content-sized, not slack-taking: the group must sit together. A cap keeps a
+     very long greeting from pushing the input off the bottom. */
+  flex:0 1 auto;display:block;padding:0;overflow:visible;max-height:none;
+  min-height:0;
 }
 #app .workspace .conversation.is-empty .welcome{
-  /* Sits just above the composer once the composer is pulled up. */
-  margin:auto auto 4px;max-width:620px;padding:0 8px;
+  margin:0 auto 18px;max-width:620px;padding:0 8px;
 }
 #app .workspace .conversation.is-empty .welcome::before{
-  width:80px;height:80px;border-radius:28px 28px 28px 12px;margin-bottom:22px;
+  width:76px;height:76px;border-radius:26px 26px 26px 12px;margin-bottom:18px;
 }
-#app .workspace .conversation.is-empty .welcome h2{font-size:22px;margin-bottom:6px}
-#app .workspace .conversation.is-empty .welcome p{font-size:13.5px;opacity:.82}
-/* The two sentences after the title are guidance, not content; on a narrow pane
-   they are the first thing to go. */
+#app .workspace .conversation.is-empty .welcome h2{font-size:22px;margin:0 0 8px}
+#app .workspace .conversation.is-empty .welcome p{font-size:13.5px;opacity:.82;margin:4px 0}
+/* The last line is guidance, not content; it is the first thing to go when the
+   pane is short. */
 #app .workspace .conversation.is-empty .welcome p + p + p{display:none}
 #app .workspace .conversation.is-empty .composer{
-  max-width:min(720px,100%);margin:0 auto 18px;align-self:center;width:100%;
+  /* Directly below the banner, same width, no bottom margin to hover over. */
+  flex:0 0 auto;max-width:min(720px,100%);width:100%;margin:0 auto;
 }
-#app .workspace .conversation.is-empty .composer-input textarea{min-height:76px}
+#app .workspace .conversation.is-empty .composer-input textarea{min-height:72px}
+/* An error above an otherwise empty pane must not shove the group down: it keeps
+   its own height and the centring still means the same thing. */
+#app .workspace .conversation.is-empty .error-bar{flex:0 0 auto;margin-bottom:10px}
 
-@media (max-height: 720px){
+@media (max-height: 760px){
   #app .workspace .conversation.is-empty .welcome::before{display:none}
-  #app .workspace .conversation.is-empty .welcome h2{font-size:18px}
+  #app .workspace .conversation.is-empty .welcome h2{font-size:19px}
+  #app .workspace .conversation.is-empty .welcome{margin-bottom:14px}
 }
