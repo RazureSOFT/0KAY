@@ -444,4 +444,6 @@
   <string name="page.sidebarWidth">侧栏宽度</string>
   <string name="page.sidebarResetWidth">重置</string>
   <string name="page.openInNewTab">在新标签页打开</string>
+  <string name="page.taskPickHint">选择左侧的任务，详情会在这里打开。</string>
+  <string name="page.taskClose">返回对话</string>
 </resources>

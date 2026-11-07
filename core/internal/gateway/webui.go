@@ -1,6 +1,8 @@
 package gateway
 
 import (
+	"crypto/sha256"
+	"encoding/base64"
 	"net/http"
 	"os"
 	"path"
@@ -64,6 +66,15 @@ func (g *Gateway) handleWebUI(w http.ResponseWriter, r *http.Request) {
 		} else {
 			w.Header().Set("Cache-Control", "no-cache")
 		}
+		// index.html may be requested directly at /index.html, in which case it
+		// is served here rather than by the SPA fallback below; its inline
+		// scripts need the same policy either way.
+		if rel == "index.html" {
+			if body, readErr := os.ReadFile(full); readErr == nil {
+				serveShell(w, r, body)
+				return
+			}
+		}
 		http.ServeFile(w, r, full)
 		return
 	}
@@ -75,12 +86,24 @@ func (g *Gateway) handleWebUI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	index := filepath.Join(rootAbs, "index.html")
-	if _, statErr := os.Stat(index); statErr != nil {
+	body, readErr := os.ReadFile(index)
+	if readErr != nil {
 		http.NotFound(w, r)
 		return
 	}
 	w.Header().Set("Cache-Control", "no-cache")
-	http.ServeFile(w, r, index)
+	serveShell(w, r, body)
+}
+
+// serveShell writes index.html with a policy derived from its own contents.
+func serveShell(w http.ResponseWriter, r *http.Request, body []byte) {
+	w.Header().Set("Content-Security-Policy", webuiCSP(string(body)))
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	if r.Method == http.MethodHead {
+		return
+	}
+	w.Write(body)
 }
 
 func setWebUIHeaders(w http.ResponseWriter) {
@@ -88,5 +111,82 @@ func setWebUIHeaders(w http.ResponseWriter) {
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("X-Frame-Options", "DENY")
 	h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
-	h.Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'sha256-wN3WWRWGP7wKZRuoNamhg0C6dKUORsacwGyO+O5xUE4='; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self' data:; connect-src 'self' ws: wss: https://api.github.com https://raw.githubusercontent.com; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'")
+	h.Set("Content-Security-Policy", webuiCSP(""))
+}
+
+// The shell carries a few inline scripts — the pre-paint theme and language
+// choice, and the boot shim — that have to run before any module loads. They
+// cannot move to files without losing that property.
+//
+// Their hashes used to be written into the header by hand. That works exactly
+// until someone edits index.html, at which point every inline script is blocked
+// and the window is blank with nothing in the console but a CSP rule. So the
+// hashes are computed from the file being served, on the way out: the policy and
+// the document cannot disagree.
+func webuiCSP(html string) string {
+	scriptSrc := "'self'"
+	for _, hash := range inlineScriptHashes(html) {
+		scriptSrc += " '" + hash + "'"
+	}
+	return "default-src 'self'; script-src " + scriptSrc + "; " +
+		"style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; " +
+		"font-src 'self' data:; " +
+		"connect-src 'self' ws: wss: https://api.github.com https://raw.githubusercontent.com; " +
+		"worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+}
+
+// inlineScriptHashes returns sha256-… for every <script> in the document that
+// has no src. A malformed or empty body is skipped: an empty hash would be a
+// hash of nothing, which is not a policy anyone asked for.
+func inlineScriptHashes(html string) []string {
+	if html == "" {
+		return nil
+	}
+	var out []string
+	lower := strings.ToLower(html)
+	for cursor := 0; ; {
+		open := strings.Index(lower[cursor:], "<script")
+		if open < 0 {
+			break
+		}
+		open += cursor
+		tagEnd := strings.IndexByte(lower[open:], '>')
+		if tagEnd < 0 {
+			break
+		}
+		tagEnd += open
+		opening := lower[open : tagEnd+1]
+		closeRel := strings.Index(lower[tagEnd+1:], "</script>")
+		if closeRel < 0 {
+			break
+		}
+		body := html[tagEnd+1 : tagEnd+1+closeRel]
+		cursor = tagEnd + 1 + closeRel + len("</script>")
+		if strings.Contains(opening, "src=") {
+			continue
+		}
+		// A type attribute decides whether the browser executes the block.
+		// An importmap is executed (it configures module resolution), so it
+		// needs a hash exactly like a classic script; a data block does not.
+		if typeStart := strings.Index(opening, "type="); typeStart >= 0 {
+			rest := opening[typeStart+len("type="):]
+			rest = strings.TrimLeft(rest, `"' `)
+			end := strings.IndexAny(rest, `"' >`)
+			if end >= 0 {
+				rest = rest[:end]
+			}
+			kind := strings.ToLower(strings.TrimSpace(rest))
+			executable := kind == "" ||
+				strings.Contains(kind, "javascript") ||
+				strings.Contains(kind, "ecmascript") ||
+				strings.Contains(kind, "module") ||
+				strings.Contains(kind, "importmap")
+			if !executable {
+				continue
+			}
+		}
+		sum := sha256.Sum256([]byte(body))
+		out = append(out, "sha256-"+base64.StdEncoding.EncodeToString(sum[:]))
+	}
+	return out
 }

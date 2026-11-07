@@ -78,7 +78,7 @@ const lang = computed(() => getLanguage())
 // screen always describes the process that is serving it.
 const build = ref<{ version: string; source: string } | null>(null)
 onMounted(() => {
-  void fetch('/api/health', { signal: AbortSignal.timeout(4000) })
+  void fetch('/health', { signal: AbortSignal.timeout(4000) })
     .then((res) => (res.ok ? res.json() : null))
     .then((data) => {
       if (data?.version) build.value = { version: String(data.version), source: String(data.version_source || '') }

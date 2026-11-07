@@ -20,6 +20,48 @@ const MIME = {
   '.svg': 'image/svg+xml',
   '.html': 'text/html; charset=utf-8',
 }
+/**
+ * Cubism 2 ships as an ES module, and the widget needs it as globals.
+ *
+ * The rewrite used to happen at runtime: take the source as a string, strip the
+ * export statement, and inject it with `script.textContent`. That is inline
+ * script, which the Content-Security-Policy blocks — and when it is blocked the
+ * module graph throws and the whole app renders nothing.
+ *
+ * Doing the rewrite here turns it into an ordinary module the bundler owns, so
+ * it loads like every other chunk and needs no policy exception.
+ */
+const live2dGlobals = () => ({
+  name: '0kay-live2d-globals',
+  resolveId(id: string) {
+    return id === 'virtual:live2d-globals' ? '\0virtual:live2d-globals' : null
+  },
+  load(id: string) {
+    if (id !== '\0virtual:live2d-globals') return null
+    const source = fs.readFileSync(
+      path.resolve(repoRoot, 'webui/node_modules/live2d-widget/src/lib/live2d.core.js'),
+      'utf8',
+    )
+    // Same transform as before, but the result is module code rather than a
+    // string handed to the DOM.
+    //
+    // Wrapped in a function: the file is not real ESM, it is a script with an
+    // export statement bolted on, and parsing it at module scope finds
+    // redeclarations that were legal inside its own closures. A function body
+    // gives it the scope it was written against.
+    const rewritten = source.replace(/export\s*\{([\s\S]*?)\}\s*;?\s*$/, (_match, exports: string) =>
+      exports
+        .split(',')
+        .map((entry) => {
+          const match = entry.trim().match(/^(\w+)\s+as\s+(\w+)$/)
+          return match ? `window.${match[2]}=${match[1]};` : ''
+        })
+        .join('\n'),
+    )
+    return `(function(){\n${rewritten}\n})();\nexport {};\n`
+  },
+})
+
 const pluginUiFromDisk = () => ({
   name: '0kay-plugin-ui-from-disk',
   // Version the entry module per HTML response: some embedded WebViews cache
@@ -75,7 +117,7 @@ const sameOrigin = (proxy: any) => {
 }
 
 export default defineConfig({
-  plugins: [vue(), pluginUiFromDisk()],
+  plugins: [vue(), live2dGlobals(), pluginUiFromDisk()],
   test: {
     // Vitest stubs CSS modules by default, which makes `import css from
     // './x.css?raw'` yield an empty string. One test asserts that every `btn-*`

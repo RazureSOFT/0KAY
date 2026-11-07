@@ -104,7 +104,16 @@ ui.$subscribe(() => {
   applyPatchesAndRematch()
 }, { detached: true })
 
-app.mount('#app')
+// A mount that throws leaves an empty #app with no visible reason: the error
+// goes to the console and the window stays blank. That is the hardest failure
+// to report from a help thread, so the exception is preserved on the document
+// and re-thrown after the console has it.
+try {
+  app.mount('#app')
+} catch (error) {
+  ;(window as any).__0KAY_MOUNT_ERROR__ = String((error as any)?.stack || error)
+  throw error
+}
 
 const splash = document.getElementById('splash')
 if (splash) {

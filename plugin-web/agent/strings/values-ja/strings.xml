@@ -444,4 +444,6 @@
   <string name="page.sidebarWidth">サイドバー幅</string>
   <string name="page.sidebarResetWidth">リセット</string>
   <string name="page.openInNewTab">新しいタブで開く</string>
+  <string name="page.taskPickHint">左のタスクを選ぶと、ここに詳細が開きます。</string>
+  <string name="page.taskClose">会話に戻る</string>
 </resources>

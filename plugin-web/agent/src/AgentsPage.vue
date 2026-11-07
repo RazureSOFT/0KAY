@@ -1159,6 +1159,12 @@ async function loadTaskDetail() {
   if (!taskSelectedId.value) return
   taskDetail.value = await runAssessments({ action: 'get', id: taskSelectedId.value })
 }
+/** Leave the task pane and go back to the conversation it was opened from. */
+function closeTask(): void {
+  taskSelectedId.value = null
+  taskDetail.value = null
+}
+
 async function openTask(id: string) {
   taskSelectedId.value = id
   taskDetail.value = null
@@ -1288,6 +1294,33 @@ const taskReportBusy = ref(false)
 const taskSearch = ref('')
 const taskStatusFilter = ref('')
 const sidebarTab = ref<'sessions' | 'tasks'>('sessions')
+
+/**
+ * Is the right pane showing a task instead of a conversation?
+ *
+ * A task is a tree — planner rounds, worker intents, tool calls — and it needs
+ * the width. While one is open the chat header, transcript and composer step
+ * aside rather than stacking above it.
+ */
+const showingTask = computed(() => sidebarTab.value === 'tasks' && !!taskSelectedId.value)
+
+/**
+ * A session with nothing said in it yet.
+ *
+ * An empty conversation that pins the composer to the bottom of a tall pane
+ * looks like a chat that lost its history. Centring the greeting and the input
+ * together is what every chat product does, and it says "start here" without a
+ * sentence explaining it.
+ */
+const isEmptyChat = computed(() =>
+  !showingTask.value
+  && !activeSub.value
+  && !turnsLoading.value
+  && turns.value.length === 0
+  && !contextSummary.value
+  && !currentPlan.value
+  && !queuedMessages.value.length
+  && !todos.value.length)
 
 // Sidebar width, dragged and remembered. The bounds are what the layout can
 // actually take: below 220 the session cards lose their titles, above 520 the
@@ -2413,11 +2446,45 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
       </div>
       </template>
       <div v-else class="session-list task-tab">
+        <!-- The detail lives in the right pane now. Keeping the list here
+             means switching tasks does not require going back first. -->
+        <ul class="recon-items task-picklist">
+          <li v-for="row in assessmentRowsFiltered" :key="row.id" class="recon-taskrow" :class="{ picked: row.id === taskSelectedId }" @click="openTask(row.id)">
+            <div class="recon-taskrow-top">
+              <span class="recon-badge" :class="row.status"><i class="recon-pillardot"></i>{{ t('agent.page.taskStatus_' + row.status) }}</span>
+            </div>
+            <p>{{ row.objective }}</p>
+            <div class="recon-taskrow-meta">
+              <small v-if="row.goalProgress">{{ t('agent.page.taskGoalProgress') }} <b>{{ row.goalProgress }}</b></small>
+              <small>{{ row.createdAt.slice(5, 16).replace('T', ' ') }}</small>
+            </div>
+          </li>
+        </ul>
+        <p v-if="!assessmentRows.length" class="tree-msg">{{ t('agent.page.reconNoTasks') }}</p>
+      </div>
+      <div
+        class="sidebar-resizer"
+        :class="{ active: sidebarResizing }"
+        role="separator"
+        aria-orientation="vertical"
+        :aria-label="t('agent.page.sidebarWidth')"
+        :title="t('agent.page.sidebarWidth') + ' — ' + t('agent.page.sidebarResetWidth')"
+        @pointerdown="startSidebarResize"
+        @dblclick="onSidebarHandleDblClick"
+      />
+    </aside>
+
+    <section class="conversation" :class="{ 'is-empty': isEmptyChat, 'is-task': showingTask }">
+
+      <!-- 任务详情占满右栏。任务有层级（主 Agent → 子 Agent → 轮次 → 工具），
+           284px 的侧栏放不下，只能横向滚动硬塞；而看任务时右栏本来就是空的。
+           外层保留 task-tab 类，样式表里的 .task-tab .recon-* 规则继续生效。 -->
+      <div v-if="sidebarTab === 'tasks' && taskSelectedId" class="conversation-task task-tab">
         <!-- 任务详情：选中一个任务后列表就地换成详情（ARTEX 的任务详情页），← 返回列表。
              聊天列保持原样——看得见图，也看得见 agent 在干什么。 -->
         <div v-if="taskSelectedId" class="task-detail">
           <div class="recon-task-head">
-            <button type="button" class="recon-back" :title="t('agent.page.tasksTitle')" @click="taskSelectedId = null; taskDetail = null">←</button>
+            <button type="button" class="recon-back" :title="t('agent.page.taskClose')" :aria-label="t('agent.page.taskClose')" @click="closeTask">←</button>
             <div class="recon-task-headtext">
               <div class="recon-task-titleline">
                 <strong class="recon-task-objective">{{ taskDetail?.state.objective || '…' }}</strong>
@@ -2664,20 +2731,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
           </ul>
         </template>
       </div>
-      <div
-        class="sidebar-resizer"
-        :class="{ active: sidebarResizing }"
-        role="separator"
-        aria-orientation="vertical"
-        :aria-label="t('agent.page.sidebarWidth')"
-        :title="t('agent.page.sidebarWidth') + ' — ' + t('agent.page.sidebarResetWidth')"
-        @pointerdown="startSidebarResize"
-        @dblclick="onSidebarHandleDblClick"
-      />
-    </aside>
-
-    <section class="conversation">
-      <header class="conversation-header">
+      <header v-if="!showingTask" class="conversation-header">
         <div class="conversation-heading"><h2>{{ session?.prompt || t('agent.page.conversationTitle') }}</h2><p>{{ session && isLife(session) ? t('agent.page.lifeSessionSubtitle') : t('agent.page.ongoingSubtitle') }}</p></div>
         <div class="conversation-actions">
           <span class="browser-status" :class="{on:browserStatus?.running,off:browserStatus&&!browserStatus.enabled}" :title="browserTooltip"><i aria-hidden="true" />{{ browserLabel }}</span>
@@ -2688,8 +2742,8 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
           </div>
         </div>
       </header>
-      <div v-if="error || store.error" class="error error-bar" role="alert"><span class="error-text">{{ error || store.error }}</span><button type="button" class="error-close" :aria-label="t('agent.page.close')" :title="t('agent.page.close')" @click="dismissError"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
-      <div ref="transcript" class="transcript" @scroll.passive="onTranscriptScroll" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDropFiles">
+      <div v-if="!showingTask && (error || store.error)" class="error error-bar" role="alert"><span class="error-text">{{ error || store.error }}</span><button type="button" class="error-close" :aria-label="t('agent.page.close')" :title="t('agent.page.close')" @click="dismissError"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
+      <div v-if="!showingTask" ref="transcript" class="transcript" @scroll.passive="onTranscriptScroll" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDropFiles">
         <Transition name="view-swap" mode="out-in">
         <div v-if="activeSub" key="sub" class="sub-view">
           <header class="sub-view-header">
@@ -2827,7 +2881,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
         </Transition>
         <button v-if="!followLatest && !activeSub" type="button" class="jump-latest" :aria-label="t('agent.page.jumpLatest')" :title="t('agent.page.jumpLatest')" @click="jumpToLatest">↓ {{ t('agent.page.jumpLatest') }}</button>
       </div>
-      <section v-if="!activeSub && currentPlan" class="plan-card" :class="{ collapsed: !planOpen }">
+      <section v-if="!showingTask && !activeSub && currentPlan" class="plan-card" :class="{ collapsed: !planOpen }">
         <header class="plan-head">
           <span class="plan-dot" aria-hidden="true" />
           <strong>{{ t('agent.page.planReady') }}</strong>
@@ -2851,7 +2905,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
           <iframe v-if="currentPlan.demo" class="plan-demo" sandbox="" :srcdoc="currentPlan.demo" :title="currentPlan.title" />
         </div>
       </section>
-      <form v-if="!activeSub" class="composer" :class="{ dropping }" @submit.prevent="send()" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDropFiles">
+      <form v-if="!showingTask && !activeSub" class="composer" :class="{ dropping }" @submit.prevent="send()" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDropFiles">
         <ul v-if="queuedMessages.length" class="queued" :aria-label="t('agent.page.queuedTitle')">
           <li v-for="(item, index) in queuedMessages" :key="index">
             <span class="queued-n">{{ index + 1 }}</span>

@@ -444,4 +444,6 @@
   <string name="page.sidebarWidth">Sidebar width</string>
   <string name="page.sidebarResetWidth">Reset</string>
   <string name="page.openInNewTab">Open in a new tab</string>
+  <string name="page.taskPickHint">Pick a task to open it in this pane.</string>
+  <string name="page.taskClose">Back to the conversation</string>
 </resources>

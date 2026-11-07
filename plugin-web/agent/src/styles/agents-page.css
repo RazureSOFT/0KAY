@@ -1001,3 +1001,64 @@ body.resizing-sidebar *{cursor:col-resize!important}
 .steer-send{flex:none;height:28px;padding:0 12px;border:0;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary);font-size:12.5px;font-weight:650}
 .steer-send:disabled{opacity:.42}
 .steer-notice{margin:0 0 6px;padding:6px 10px;border-radius:10px;font-size:12px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant)}
+
+/* ---- task pane -------------------------------------------------------------
+   A task used to render inside the 284px sidebar, where a five-level tree is a
+   horizontal scrollbar. The right pane is empty while you are looking at tasks,
+   so the detail takes it: same padding as the transcript, its own scroll. */
+#app .workspace .conversation-task{
+  flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;gap:14px;
+  padding:18px 20px 22px;overflow-y:auto;overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
+#app .workspace .conversation-task::-webkit-scrollbar{width:10px}
+#app .workspace .conversation-task::-webkit-scrollbar-thumb{background:var(--md-outline-variant);border-radius:999px;border:2px solid transparent;background-clip:content-box}
+/* The head stays put: the tree below it can be long, and the objective is the
+   thing you check back against. */
+#app .workspace .conversation-task .recon-task-head{
+  position:sticky;top:-18px;z-index:3;margin:-18px -20px 0;padding:18px 20px 12px;
+  background:var(--md-surface);border-bottom:1px solid var(--md-outline-variant);
+}
+#app .workspace .conversation-task .recon-tabs{position:sticky;top:66px;z-index:2;background:var(--md-surface);padding-top:8px}
+#app .workspace .conversation-task .recon-items{gap:2px}
+#app .workspace .conversation-task .recon-taskrow{cursor:pointer}
+
+/* The list keeps the sidebar role while the detail is open, so switching tasks
+   does not mean going back first. */
+#app .workspace .task-picklist{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+#app .workspace .task-picklist .recon-taskrow.picked{
+  background:var(--md-secondary-container);color:var(--md-on-secondary-container);
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--md-primary) 34%,transparent);
+}
+#app .workspace .task-tab-hint{margin:10px 2px;font-size:12.5px}
+
+/* ---- empty conversation ----------------------------------------------------
+   Nothing said yet: the greeting and the input belong together in the middle of
+   the pane, not a title at the top and a box at the bottom with a screen of
+   nothing between them. The transcript takes the slack and centres its one
+   child; the composer stops reserving its bottom margin. */
+#app .workspace .conversation.is-empty .transcript{
+  display:flex;flex-direction:column;justify-content:center;align-items:stretch;
+  padding-bottom:0;
+}
+#app .workspace .conversation.is-empty .welcome{
+  /* Sits just above the composer once the composer is pulled up. */
+  margin:auto auto 4px;max-width:620px;padding:0 8px;
+}
+#app .workspace .conversation.is-empty .welcome::before{
+  width:80px;height:80px;border-radius:28px 28px 28px 12px;margin-bottom:22px;
+}
+#app .workspace .conversation.is-empty .welcome h2{font-size:22px;margin-bottom:6px}
+#app .workspace .conversation.is-empty .welcome p{font-size:13.5px;opacity:.82}
+/* The two sentences after the title are guidance, not content; on a narrow pane
+   they are the first thing to go. */
+#app .workspace .conversation.is-empty .welcome p + p + p{display:none}
+#app .workspace .conversation.is-empty .composer{
+  max-width:min(720px,100%);margin:0 auto 18px;align-self:center;width:100%;
+}
+#app .workspace .conversation.is-empty .composer-input textarea{min-height:76px}
+
+@media (max-height: 720px){
+  #app .workspace .conversation.is-empty .welcome::before{display:none}
+  #app .workspace .conversation.is-empty .welcome h2{font-size:18px}
+}
