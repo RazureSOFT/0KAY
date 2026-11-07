@@ -5,7 +5,7 @@ import grpc
 from core.v1 import core_pb2 as core_dot_v1_dot_core__pb2
 
 
-class PluginServiceStub:
+class PluginServiceStub(object):
     """PluginService is the service that plugins use to register with the Core.
     """
 
@@ -27,7 +27,7 @@ class PluginServiceStub:
                 _registered_method=True)
 
 
-class PluginServiceServicer:
+class PluginServiceServicer(object):
     """PluginService is the service that plugins use to register with the Core.
     """
 
@@ -66,7 +66,7 @@ def add_PluginServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class PluginService:
+class PluginService(object):
     """PluginService is the service that plugins use to register with the Core.
     """
 
@@ -125,7 +125,7 @@ class PluginService:
             _registered_method=True)
 
 
-class CoreServiceStub:
+class CoreServiceStub(object):
     """CoreService is the internal service that Core provides to plugins.
     """
 
@@ -197,7 +197,7 @@ class CoreServiceStub:
                 _registered_method=True)
 
 
-class CoreServiceServicer:
+class CoreServiceServicer(object):
     """CoreService is the internal service that Core provides to plugins.
     """
 
@@ -374,7 +374,7 @@ def add_CoreServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class CoreService:
+class CoreService(object):
     """CoreService is the internal service that Core provides to plugins.
     """
 

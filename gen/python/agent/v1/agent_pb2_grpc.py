@@ -5,7 +5,7 @@ import grpc
 from agent.v1 import agent_pb2 as agent_dot_v1_dot_agent__pb2
 
 
-class AgentServiceStub:
+class AgentServiceStub(object):
     """AgentService is the service exposed by the Agent plugin.
     Core calls this to dispatch, cancel, and inspect tasks.
     """
@@ -38,7 +38,7 @@ class AgentServiceStub:
                 _registered_method=True)
 
 
-class AgentServiceServicer:
+class AgentServiceServicer(object):
     """AgentService is the service exposed by the Agent plugin.
     Core calls this to dispatch, cancel, and inspect tasks.
     """
@@ -103,7 +103,7 @@ def add_AgentServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class AgentService:
+class AgentService(object):
     """AgentService is the service exposed by the Agent plugin.
     Core calls this to dispatch, cancel, and inspect tasks.
     """

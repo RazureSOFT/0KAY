@@ -5,7 +5,7 @@ import grpc
 from mocr.v1 import mocr_pb2 as mocr_dot_v1_dot_mocr__pb2
 
 
-class MocrServiceStub:
+class MocrServiceStub(object):
     """MocrService is the model selection and generation service.
     """
 
@@ -27,7 +27,7 @@ class MocrServiceStub:
                 _registered_method=True)
 
 
-class MocrServiceServicer:
+class MocrServiceServicer(object):
     """MocrService is the model selection and generation service.
     """
 
@@ -66,7 +66,7 @@ def add_MocrServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class MocrService:
+class MocrService(object):
     """MocrService is the model selection and generation service.
     """
 

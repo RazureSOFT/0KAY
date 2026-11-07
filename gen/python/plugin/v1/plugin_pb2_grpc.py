@@ -5,7 +5,7 @@ import grpc
 from plugin.v1 import plugin_pb2 as plugin_dot_v1_dot_plugin__pb2
 
 
-class ToolServiceStub:
+class ToolServiceStub(object):
     """ToolService is implemented by plugins that contribute tools.
     """
 
@@ -22,7 +22,7 @@ class ToolServiceStub:
                 _registered_method=True)
 
 
-class ToolServiceServicer:
+class ToolServiceServicer(object):
     """ToolService is implemented by plugins that contribute tools.
     """
 
@@ -49,7 +49,7 @@ def add_ToolServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class ToolService:
+class ToolService(object):
     """ToolService is implemented by plugins that contribute tools.
     """
 
@@ -81,7 +81,7 @@ class ToolService:
             _registered_method=True)
 
 
-class MessageServiceStub:
+class MessageServiceStub(object):
     """MessageService is implemented by plugins that drive a chat adapter. Core
     routes an outbound send to the adapter's owning plugin here — the plugin that
     claimed the adapter via CoreService.PublishInboundMessage or advertised it
@@ -117,7 +117,7 @@ class MessageServiceStub:
                 _registered_method=True)
 
 
-class MessageServiceServicer:
+class MessageServiceServicer(object):
     """MessageService is implemented by plugins that drive a chat adapter. Core
     routes an outbound send to the adapter's owning plugin here — the plugin that
     claimed the adapter via CoreService.PublishInboundMessage or advertised it
@@ -187,7 +187,7 @@ def add_MessageServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class MessageService:
+class MessageService(object):
     """MessageService is implemented by plugins that drive a chat adapter. Core
     routes an outbound send to the adapter's owning plugin here — the plugin that
     claimed the adapter via CoreService.PublishInboundMessage or advertised it

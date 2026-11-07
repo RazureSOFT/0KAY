@@ -1,4 +1,6 @@
 FROM node:22-alpine AS ui
+# The build script is bash; the alpine node image ships only /bin/sh.
+RUN apk add --no-cache bash
 WORKDIR /src
 COPY webui/ ./webui/
 COPY plugin-web/ ./plugin-web/

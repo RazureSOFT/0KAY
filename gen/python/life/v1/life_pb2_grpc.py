@@ -5,7 +5,7 @@ import grpc
 from life.v1 import life_pb2 as life_dot_v1_dot_life__pb2
 
 
-class LifeServiceStub:
+class LifeServiceStub(object):
     """LifeService is the service that the L.I.F.E plugin exposes to Core.
     """
 
@@ -67,7 +67,7 @@ class LifeServiceStub:
                 _registered_method=True)
 
 
-class LifeServiceServicer:
+class LifeServiceServicer(object):
     """LifeService is the service that the L.I.F.E plugin exposes to Core.
     """
 
@@ -201,7 +201,7 @@ def add_LifeServiceServicer_to_server(servicer, server):
 
 
  # This class is part of an EXPERIMENTAL API.
-class LifeService:
+class LifeService(object):
     """LifeService is the service that the L.I.F.E plugin exposes to Core.
     """
 
