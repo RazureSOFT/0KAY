@@ -743,3 +743,8 @@ body > :not(#app):not(script):not(style):not(link)
 }
 #app .plugins-page .btn:disabled,
 #app .usage-page .btn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* Which build is this? A release shows its tag quietly; a local build shows its
+   commit in a muted colour so nobody mistakes it for a version someone shipped. */
+.build-badge{margin-left:8px;padding:2px 8px;border-radius:999px;font-family:var(--code-font,ui-monospace,monospace);font-size:11px;font-weight:600;letter-spacing:.02em;color:var(--md-on-surface-variant);background:var(--md-surface-container-high);vertical-align:middle;white-space:nowrap}
+.build-badge.commit{color:var(--md-primary);background:color-mix(in srgb,var(--md-primary) 12%,transparent)}

@@ -170,3 +170,6 @@ life/life-review-report.md
 
 # The VSCodium-based editor is its own repo, like agent/ and 0kay-ide/.
 /0kay-code/
+
+# Core mints its own device token on first start; it is a credential.
+/core/data/device-token

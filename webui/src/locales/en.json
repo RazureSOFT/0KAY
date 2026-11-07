@@ -744,7 +744,9 @@
     "searchEngine": "Search engine",
     "time": "Time",
     "timezone": "Timezone",
-    "title": "Character Status"
+    "title": "Character Status",
+    "localBuild": "Local build — not a release",
+    "releaseBuild": "Release build"
   },
   "thinking": {
     "adjust": "Adjust thinking effort",

@@ -231,7 +231,7 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 	}
 	if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{
 		Name:        "webui",
-		Version:     version.Version,
+		Version:     version.String(),
 		Description: "0kay WebUI - Vue3 frontend adapter",
 		Author:      "0kay",
 		PluginType:  pluginv1.PluginType_PLUGIN_TYPE_ADAPTER,
@@ -241,7 +241,7 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 
 	if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{
 		Name:        "pm",
-		Version:     version.Version,
+		Version:     version.String(),
 		Description: "0kay-pm - package manager (install/update/uninstall plugins)",
 		Author:      "0kay",
 		PluginType:  pluginv1.PluginType_PLUGIN_TYPE_SERVICE,
@@ -263,7 +263,7 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 
 	if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{
 		Name:        "context",
-		Version:     version.Version,
+		Version:     version.String(),
 		Description: "Core-native session context tools (compressed history search / decompress)",
 		Author:      "0kay",
 		PluginType:  pluginv1.PluginType_PLUGIN_TYPE_TOOL,
@@ -290,7 +290,7 @@ func registerBuiltins(reg *registry.Registry, setStore *settings.Store) {
 	if gateway.HasUIPatch("fluentui.patch") {
 		if _, err := reg.RegisterBuiltin(&pluginv1.PluginInfo{
 			Name:        "fluentui",
-			Version:     version.Version,
+			Version:     version.String(),
 			Description: "Fluent Design theme for the WebUI (patch-only)",
 			Author:      "0kay",
 			PluginType:  pluginv1.PluginType_PLUGIN_TYPE_ADAPTER,

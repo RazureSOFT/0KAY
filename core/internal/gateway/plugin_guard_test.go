@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"0kay/core/internal/authctx"
 	"0kay/core/internal/registry"
 	pluginv1 "0kay/gen/plugin/v1"
 )
@@ -92,12 +93,27 @@ func TestPluginGuardRequiresIdentityForDeclaredAPI(t *testing.T) {
 	}
 }
 
-func TestPluginGuardAllowsBrowser(t *testing.T) {
+// An Origin/Referer header is a claim the client makes about itself, so it must
+// not be enough on its own. This used to pass: any process could add a header
+// and skip apiRequiresIdentity, which made the plugin permission model optional.
+func TestPluginGuardRejectsUnverifiedBrowser(t *testing.T) {
 	g := guardTestGateway(t)
 	req := httptest.NewRequest(http.MethodGet, "/api/models", nil)
 	req.Header.Set("Referer", "http://127.0.0.1:3000/")
+	if rec := doGuarded(g, req); rec.Code != http.StatusForbidden {
+		t.Fatalf("browser header with no verified session: got %d, want 403", rec.Code)
+	}
+}
+
+// The UI still works: the pairing layer runs first and marks the request when
+// it has established the caller.
+func TestPluginGuardAllowsAuthenticatedBrowser(t *testing.T) {
+	g := guardTestGateway(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/models", nil)
+	req.Header.Set("Referer", "http://127.0.0.1:3000/")
+	req = req.WithContext(authctx.WithSession(req.Context(), "cookie"))
 	if rec := doGuarded(g, req); rec.Code != http.StatusOK {
-		t.Fatalf("browser call: got %d, want 200", rec.Code)
+		t.Fatalf("authenticated browser: got %d, want 200", rec.Code)
 	}
 }
 

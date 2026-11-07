@@ -70,6 +70,32 @@ if (typeof window !== 'undefined') {
 const router = useRouter()
 const lang = computed(() => getLanguage())
 
+// Which build is this window talking to?
+//
+// A release says its tag. A local build says its commit, because "0.1.4" on a
+// tree with uncommitted work is a claim that cannot be checked and is usually
+// wrong. The label comes from Core rather than the bundle, so the number on
+// screen always describes the process that is serving it.
+const build = ref<{ version: string; source: string } | null>(null)
+onMounted(() => {
+  void fetch('/api/health', { signal: AbortSignal.timeout(4000) })
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => {
+      if (data?.version) build.value = { version: String(data.version), source: String(data.version_source || '') }
+    })
+    .catch(() => { })
+})
+const buildLabel = computed(() => {
+  if (!build.value) return ''
+  return build.value.source === 'tag' ? build.value.version : build.value.version
+})
+const buildHint = computed(() => {
+  if (!build.value) return ''
+  if (build.value.source === 'tag') return t('status.releaseBuild')
+  if (build.value.source === 'commit') return t('status.localBuild')
+  return ''
+})
+
 const pageTitle = computed(() => {
   const key = route.meta.titleKey as string | undefined
   if (key) return t(key)
@@ -386,6 +412,7 @@ async function onSetupSubmit() {
       <div class="brand">
         <span class="brand-mark" role="img" aria-label="0kay"></span>
         <span class="page-title">{{ pageTitle }}</span>
+        <span v-if="buildLabel" class="build-badge" :class="build?.source" :title="buildHint">{{ buildLabel }}</span>
       </div>
 
       <div class="header-actions">

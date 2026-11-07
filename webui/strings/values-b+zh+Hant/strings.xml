@@ -774,4 +774,6 @@
   <string name="ide.noSession">沒能建立工作階段</string>
   <string name="auth.loginLanHint">這台 Core 開在區域網上，所以需要憑據。貼上 Core 裡顯示的存取權杖，或你設定的 PIN。</string>
   <string name="auth.loginDisabled">目前未開啟登入校驗；本機存取不需要這個頁面，開 LAN 後才會用到。</string>
+  <string name="status.localBuild">本機建置（非發佈版）</string>
+  <string name="status.releaseBuild">發佈版</string>
 </resources>

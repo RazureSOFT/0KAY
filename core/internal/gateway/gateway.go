@@ -434,8 +434,9 @@ func (g *Gateway) handleHealth(w http.ResponseWriter, r *http.Request) {
 		// The version rides the health probe so a client that is already
 		// polling this endpoint can show what it is talking to, and notice a
 		// restart onto a new build without a second request.
-		"version": version.Version,
-		"name":    "0KAY",
+		"version":        version.String(),
+		"version_source": version.Source(),
+		"name":           "0KAY",
 	})
 }
 

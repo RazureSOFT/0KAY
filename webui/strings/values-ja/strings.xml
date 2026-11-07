@@ -774,4 +774,6 @@
   <string name="ide.noSession">セッションを作成できませんでした</string>
   <string name="auth.loginLanHint">この Core はネットワークに公開されているため認証情報が必要です。Core に表示されたアクセストークン、または設定した PIN を入力してください。</string>
   <string name="auth.loginDisabled">現在サインインは無効です。LAN を有効にするまでこのページは不要です。</string>
+  <string name="status.localBuild">ローカルビルド（リリースではありません）</string>
+  <string name="status.releaseBuild">リリースビルド</string>
 </resources>

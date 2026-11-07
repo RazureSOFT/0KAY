@@ -86,7 +86,7 @@ func (g *Gateway) handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	owner, repo := update.PlatformRepository()
-	result := updateCheck{Current: version.Version, SourceAvailable: update.SourceAvailable()}
+	result := updateCheck{Current: version.Semver(), SourceAvailable: update.SourceAvailable()}
 	ctx, cancel := context.WithTimeout(r.Context(), updateFetchTimeout)
 	defer cancel()
 	release, err := latestCached(ctx, owner, repo)
@@ -96,7 +96,7 @@ func (g *Gateway) handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 	}
 	if release != nil {
 		result.Latest = update.Normalize(release.TagName)
-		result.HasUpdate = update.Newer(release.TagName, version.Version)
+		result.HasUpdate = update.Newer(release.TagName, version.Semver())
 		result.URL = release.HTMLURL
 		result.Name = release.Name
 		result.Notes = release.Body

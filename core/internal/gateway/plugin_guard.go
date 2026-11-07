@@ -1,6 +1,7 @@
 package gateway
 
 import (
+	"0kay/core/internal/authctx"
 	"net/http"
 	"strings"
 )
@@ -109,15 +110,35 @@ func (g *Gateway) pluginGuard(next http.Handler) http.Handler {
 			next.ServeHTTP(w, r)
 			return
 		}
-		if looksLikePluginBrowser(r) {
-			next.ServeHTTP(w, r)
-			return
-		}
-		if g.apiRequiresIdentity(r.Method, r.URL.Path) {
+		// Order matters here, and it used to be wrong.
+		//
+		// The browser branch ran before the identity check, so any client that
+		// set an Origin header — a header the client chooses — skipped
+		// apiRequiresIdentity entirely. The plugin permission model was
+		// therefore optional: "declare what you need or you get a 403" became
+		// "declare it, or just add Origin and get everything".
+		//
+		// Identity is now decided first, and a browser-shaped request no longer
+		// bypasses the check. The one thing a browser does get is the benefit of
+		// the auth middleware that already ran in front of this handler: a
+		// request that reached here without a plugin header has been
+		// authenticated by pairing (loopback, token, or session cookie), so it is
+		// the user's own UI and not an anonymous caller.
+		if g.apiRequiresIdentity(r.Method, r.URL.Path) && !g.requestAuthenticated(r) {
 			writeErr(w, http.StatusForbidden, pluginIDRequired,
 				"this API requires a plugin identity")
 			return
 		}
 		next.ServeHTTP(w, r)
 	})
+}
+
+// requestAuthenticated reports whether the auth layer in front of this guard
+// has already established a caller.
+//
+// The flag is set by the pairing middleware: it runs first and records its
+// verdict on the request. Reading the flag keeps this file from re-deriving
+// identity from headers, which is exactly the mistake the old branch made.
+func (g *Gateway) requestAuthenticated(r *http.Request) bool {
+	return authctx.Authenticated(r.Context())
 }

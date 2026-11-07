@@ -744,7 +744,9 @@
     "searchEngine": "検索エンジン",
     "time": "時間",
     "timezone": "タイムゾーン",
-    "title": "キャラクター状態"
+    "title": "キャラクター状態",
+    "localBuild": "ローカルビルド（リリースではありません）",
+    "releaseBuild": "リリースビルド"
   },
   "thinking": {
     "adjust": "思考の強度を調整",

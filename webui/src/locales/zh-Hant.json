@@ -744,7 +744,9 @@
     "searchEngine": "搜尋引擎",
     "time": "時間",
     "timezone": "時區",
-    "title": "角色狀態"
+    "title": "角色狀態",
+    "localBuild": "本機建置（非發佈版）",
+    "releaseBuild": "發佈版"
   },
   "thinking": {
     "adjust": "調整思考強度",

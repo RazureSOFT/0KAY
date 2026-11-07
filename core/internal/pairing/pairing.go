@@ -1,6 +1,7 @@
 package pairing
 
 import (
+	"0kay/core/internal/authctx"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
@@ -542,7 +543,8 @@ func (s *Store) HTTP(next http.Handler) http.Handler {
 			s.handlePIN(w, r)
 			return
 		}
-		if ok, _ := s.authorized(r); !ok {
+		ok, method := s.authorized(r)
+		if !ok {
 			w.Header().Set("WWW-Authenticate", `Bearer realm="0kay"`)
 			writeErr(w, http.StatusUnauthorized, "unauthenticated", "paired device or API token required")
 			return
@@ -554,7 +556,10 @@ func (s *Store) HTTP(next http.Handler) http.Handler {
 			writeErr(w, http.StatusForbidden, "pin_required", "PIN required for this action")
 			return
 		}
-		next.ServeHTTP(w, r)
+		// Record the verdict for the layers behind this one. The plugin guard
+		// needs to know the caller was already established, and it cannot ask
+		// this store without importing it.
+		next.ServeHTTP(w, r.WithContext(authctx.WithSession(r.Context(), method)))
 	})
 }
 func (s *Store) handle(w http.ResponseWriter, r *http.Request) {
