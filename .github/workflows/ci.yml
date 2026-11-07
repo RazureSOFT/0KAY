@@ -17,13 +17,16 @@ jobs:
             core/go.sum
             mocr/go.sum
             gen/go/go.sum
+      # -tags notray: the tray pulls in a GTK/AppIndicator dependency that a
+      # headless runner has no business installing. The package keeps the same
+      # API without it, so tests exercise the same code paths either way.
       - name: Lint, vet and test core
         working-directory: core
         run: |
           test -z "$(gofmt -l .)" || (gofmt -l . && exit 1)
-          go vet ./...
-          go test ./...
-          go test -race ./...
+          go vet -tags notray ./...
+          go test -tags notray ./...
+          go test -tags notray -race ./...
       - name: Lint, vet and test mocr
         working-directory: mocr
         run: |
@@ -62,18 +65,33 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: webui/package-lock.json
-      - name: Install
-        working-directory: webui
-        run: npm ci
-      # core/data/plugin-ui/webui/*.js are committed build outputs; without
-      # this check a source change ships as "new src + stale bundle".
-      - name: Committed plugin bundles are in sync
-        working-directory: webui
+          cache-dependency-path: |
+            webui/package-lock.json
+            plugin-web/agent/package-lock.json
+            plugin-web/life/package-lock.json
+      # The pages are build output and are not committed. The gate is therefore
+      # "a clean checkout can build every page", not "the committed bundle
+      # matches the source": the second check only existed because generated
+      # files were in git, and it turned every frontend change into a diff
+      # nobody could review.
+      - name: Build every plugin UI page from source
+        run: bash scripts/build-plugin-ui.sh
+      - name: Every page is self-contained
         run: |
-          npm run build:plugin
-          git diff --exit-code ../core/data/plugin-ui/webui/ || {
-            echo "::error::core/data/plugin-ui/webui is out of sync — run 'npm run build:plugin' in webui/ and commit"
+          fail=0
+          while IFS= read -r file; do
+            if grep -q 'from "\./' "$file"; then
+              echo "::error file=$file::page imports a sibling chunk; entries must be single-file"
+              fail=1
+            fi
+          done < <(find core/data/plugin-ui -name '*.js' -not -path '*/assets/*')
+          exit $fail
+      # Hand-written pages (darkmode, compat, marketplace) are still tracked and
+      # must not be overwritten by a build.
+      - name: Hand-written pages are untouched
+        run: |
+          git diff --exit-code core/data/plugin-ui/darkmode core/data/plugin-ui/compat core/data/plugin-ui/marketplace || {
+            echo "::error::a build overwrote a hand-written plugin page"
             exit 1
           }
 

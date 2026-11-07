@@ -173,3 +173,29 @@ life/life-review-report.md
 
 # Core mints its own device token on first start; it is a credential.
 /core/data/device-token
+
+# Plugin UI pages are build output, not source.
+#
+# These twelve files are what `npm run build:plugin` (webui) and each
+# plugin-web/*/build produce. They were tracked, which meant every frontend
+# change added a diff nobody can review — the agent page alone is 82k lines on
+# one line — and CI had to diff the bundle to notice it was stale.
+#
+# They are built during install and in CI instead. The source lives in webui/src
+# and plugin-web/*/src.
+#
+# Not everything in this directory is generated: darkmode/, compat/ and
+# marketplace/ ship hand-written JavaScript that is loaded as-is, so those stay
+# tracked. Ignoring "*.js" wholesale would have deleted real code.
+/core/data/plugin-ui/agent/index.js
+/core/data/plugin-ui/webui/chat.js
+/core/data/plugin-ui/webui/settings.js
+/core/data/plugin-ui/webui/plugins.js
+/core/data/plugin-ui/webui/console.js
+/core/data/plugin-ui/webui/usage.js
+/core/data/plugin-ui/life/companion.js
+/core/data/plugin-ui/life/memory.js
+/core/data/plugin-ui/life/social.js
+/core/data/plugin-ui/life/adapters.js
+/core/data/plugin-ui/minecraft/index.js
+/core/data/plugin-ui/skillsguishow/index.js

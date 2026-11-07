@@ -70,6 +70,17 @@ class RegistrationFuse(unittest.TestCase):
         self.assertFalse(client.registration_blocked)
         self.assertEqual(client.registration_failures, 1)
 
+    def test_a_zero_timestamp_means_no_block(self):
+        # The backoff comparison used to read 0.0 as a real monotonic instant, so
+        # on a freshly booted machine (low uptime) the client refused to retry a
+        # block whose window had logically expired. A sentinel is not a time.
+        client = self._client()
+        client._mark_registration_blocked(_AUTH_ERROR)
+        client._register_blocked_at = 0.0
+        client._plugin_stub = _OkStub()
+        with mock.patch("life.identity.set_identity"):
+            self.assertTrue(client.register())
+
     def test_success_clears_the_block(self):
         client = self._client()
         client._mark_registration_blocked(_AUTH_ERROR)

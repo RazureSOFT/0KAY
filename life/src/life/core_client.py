@@ -183,7 +183,13 @@ class CoreClient:
 
     def register(self) -> bool:
         if self.registration_blocked:
-            if time.monotonic() - self._register_blocked_at < self.REGISTER_AUTH_BACKOFF_SECONDS:
+            # 0.0 means "no block timestamp recorded". Treating it as a real
+            # instant makes the comparison depend on how long the process has been
+            # up: on a machine that booted a second ago, monotonic() is under the
+            # 300s backoff and the client refuses to retry a block it is not in.
+            if self._register_blocked_at > 0.0 and (
+                time.monotonic() - self._register_blocked_at < self.REGISTER_AUTH_BACKOFF_SECONDS
+            ):
                 return False
         if not self._connected and not self.connect():
             return False

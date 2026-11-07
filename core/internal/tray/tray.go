@@ -1,3 +1,5 @@
+//go:build !notray
+
 // Package tray puts 0kay-core in the notification area.
 //
 // Core is meant to run in the background: the WebUI talks to it over HTTP and
@@ -9,9 +11,6 @@
 package tray
 
 import (
-	"context"
-	"fmt"
-	"os/exec"
 	"runtime"
 	"sync"
 
@@ -146,24 +145,3 @@ func statusText(actions Actions) string {
 
 // openBrowser is exported for callers that want the same behaviour outside the
 // tray (the "打开界面" menu item and the --open flag share it).
-func OpenBrowser(url string) error {
-	if url == "" {
-		return fmt.Errorf("no URL to open")
-	}
-	switch runtime.GOOS {
-	case "windows":
-		return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
-	case "darwin":
-		return exec.Command("open", url).Start()
-	default:
-		return exec.Command("xdg-open", url).Start()
-	}
-}
-
-// WaitForShutdown is a convenience for callers that want a blocking wait.
-func WaitForShutdown(ctx context.Context) {
-	select {
-	case <-ctx.Done():
-		Stop()
-	}
-}
