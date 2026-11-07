@@ -1316,6 +1316,10 @@ const isEmptyChat = computed(() =>
   !showingTask.value
   && !activeSub.value
   && !turnsLoading.value
+  // A message that has been sent but not yet echoed back as a turn is not
+  // "nothing said": without this the header and the transcript swap in and out
+  // while the first reply is arriving.
+  && !busy.value
   && turns.value.length === 0
   && !contextSummary.value
   && !currentPlan.value
@@ -2446,8 +2450,17 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
       </div>
       </template>
       <div v-else class="session-list task-tab">
-        <!-- The detail lives in the right pane now. Keeping the list here
-             means switching tasks does not require going back first. -->
+        <!-- The detail lives in the right pane now, so this column is the
+             task list in both states: with nothing selected it is the full
+             list, and with a task open it is the same list with a marker. -->
+        <form v-if="taskShowNew" class="recon-taskform task-new-form" @submit.prevent="createTask">
+          <label>{{ t('agent.page.taskObjective') }}<textarea v-model="newTaskObjective" rows="2"></textarea></label>
+          <label>{{ t('agent.page.taskTargets') }}<textarea v-model="newTaskTargets" rows="3" placeholder="https://a.example&#10;10.0.0.0/24"></textarea></label>
+          <label>{{ t('agent.page.taskCoverageGate') }}<input v-model="newTaskCoverage" type="number" min="0" max="100" /></label>
+          <label>{{ t('agent.page.taskModel') }}<AppSelect v-model="newTaskModel" :options="[{ value: '', label: t('agent.page.taskModelAuto') }, ...modelSelectOptions]" /></label>
+          <button type="submit" :disabled="taskCreating || !selectedId || !newTaskObjective.trim() || !newTaskTargets.trim()">{{ t('agent.page.taskCreate') }}</button>
+        </form>
+        <button type="button" class="recon-newtask-btn task-new-btn" @click="taskShowNew = !taskShowNew">{{ taskShowNew ? '✕' : '＋' }} {{ t('agent.page.taskNew') }}</button>
         <ul class="recon-items task-picklist">
           <li v-for="row in assessmentRowsFiltered" :key="row.id" class="recon-taskrow" :class="{ picked: row.id === taskSelectedId }" @click="openTask(row.id)">
             <div class="recon-taskrow-top">
@@ -2695,43 +2708,8 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             </template>
           </template>
         </div>
-        <!-- 任务列表 -->
-        <template v-else>
-          <form v-if="taskShowNew" class="recon-taskform" style="margin-bottom:10px" @submit.prevent="createTask">
-            <label>{{ t('agent.page.taskObjective') }}<textarea v-model="newTaskObjective" rows="2"></textarea></label>
-            <label>{{ t('agent.page.taskTargets') }}<textarea v-model="newTaskTargets" rows="3" placeholder="https://a.example&#10;10.0.0.0/24"></textarea></label>
-            <label>{{ t('agent.page.taskCoverageGate') }}<input v-model="newTaskCoverage" type="number" min="0" max="100" /></label>
-            <label>{{ t('agent.page.taskModel') }}<AppSelect v-model="newTaskModel" :options="[{ value: '', label: t('agent.page.taskModelAuto') }, ...modelSelectOptions]" /></label>
-            <button type="submit" :disabled="taskCreating || !selectedId || !newTaskObjective.trim() || !newTaskTargets.trim()">{{ t('agent.page.taskCreate') }}</button>
-          </form>
-          <div class="recon-task-search" style="margin-bottom:8px">
-            <input v-model="taskSearch" :placeholder="t('agent.page.taskSearchPlaceholder')" />
-            <select v-model="taskStatusFilter" :aria-label="t('agent.page.taskFilterAll')">
-              <option value="">{{ t('agent.page.taskFilterAll') }}</option>
-              <option value="running">{{ t('agent.page.taskStatus_running') }}</option>
-              <option value="paused">{{ t('agent.page.taskStatus_paused') }}</option>
-              <option value="done">{{ t('agent.page.taskStatus_done') }}</option>
-              <option value="cancelled">{{ t('agent.page.taskStatus_cancelled') }}</option>
-              <option value="failed">{{ t('agent.page.taskStatus_failed') }}</option>
-            </select>
-          </div>
-          <button type="button" class="recon-newtask-btn" style="width:100%;justify-content:center;margin-bottom:8px" @click="taskShowNew = !taskShowNew">{{ taskShowNew ? '✕' : '＋' }} {{ t('agent.page.taskNew') }}</button>
-          <p v-if="!assessmentRows.length" class="tree-msg">{{ t('agent.page.reconNoTasks') }}</p>
-          <ul v-else class="recon-items">
-            <li v-for="row in assessmentRowsFiltered" :key="row.id" class="recon-taskrow" @click="openTask(row.id)">
-              <div class="recon-taskrow-top">
-                <span class="recon-badge" :class="row.status"><i class="recon-pillardot"></i>{{ t('agent.page.taskStatus_' + row.status) }}</span>
-              </div>
-              <p>{{ row.objective }}</p>
-              <div class="recon-taskrow-meta">
-                <small v-if="row.goalProgress">{{ t('agent.page.taskGoalProgress') }} <b>{{ row.goalProgress.met }}/{{ row.goalProgress.total }}</b></small>
-                <small>{{ row.createdAt.slice(5, 16).replace('T', ' ') }}</small>
-              </div>
-            </li>
-          </ul>
-        </template>
       </div>
-      <header v-if="!showingTask" class="conversation-header">
+      <header v-if="!showingTask && !isEmptyChat" class="conversation-header">
         <div class="conversation-heading"><h2>{{ session?.prompt || t('agent.page.conversationTitle') }}</h2><p>{{ session && isLife(session) ? t('agent.page.lifeSessionSubtitle') : t('agent.page.ongoingSubtitle') }}</p></div>
         <div class="conversation-actions">
           <span class="browser-status" :class="{on:browserStatus?.running,off:browserStatus&&!browserStatus.enabled}" :title="browserTooltip"><i aria-hidden="true" />{{ browserLabel }}</span>

@@ -16,7 +16,9 @@ const bundle = fs.readFileSync(path.join(repo, 'core/data/plugin-ui/agent/index.
 // Pull the empty-state rules out of the built bundle: that is what actually
 // ships, so a rule that failed to compile cannot pass this test.
 const rules = []
-const re = /(#[^{}]*conversation\.is-empty[^{}]*|\.conversation\.is-empty[^{}]*)\{([^}]*)\}/g
+// Two sets: the empty-state rules, and the banner mark (which lives outside the
+// empty-state block because the greeting also appears mid-conversation).
+const re = /((?:#[^{}]*)?\.conversation\.is-empty[^{}]*|\.welcome[^{}]*:before[^{}]*)\{([^}]*)\}/g
 let match
 while ((match = re.exec(bundle))) {
   rules.push(`${match[1].replace(/\[data-v-[0-9a-f]+\]/g, '')}{${match[2]}}`)
@@ -37,7 +39,7 @@ const html = `<!doctype html>
   .conversation{flex:1;display:flex;flex-direction:column;height:900px;padding:18px 20px 22px;box-sizing:border-box}
   .transcript{flex:1;min-height:0;overflow-y:auto}
   .welcome{text-align:center;color:#5f5f6a}
-  .welcome::before{content:'';display:block;margin-left:auto;margin-right:auto;background:#ddd8f0}
+  .welcome::before{content:'';display:block}
   .welcome h2{color:#1b1b1f}
   .composer{border:1px solid #ccc;border-radius:28px;background:#fff;padding:14px}
   .composer-input textarea{border:0;width:100%;resize:none;font:inherit}
@@ -95,6 +97,8 @@ const expr = `
   var welcome = conv.querySelector('.welcome');
   var composer = conv.querySelector('.composer');
   var third = conv.querySelectorAll('.welcome p')[2];
+  var markStyle = getComputedStyle(welcome, '::before');
+  var mark = (markStyle.backgroundImage || '') + ' ' + (markStyle.content || '');
   var c = conv.getBoundingClientRect();
   var w = welcome.getBoundingClientRect();
   var m = composer.getBoundingClientRect();
@@ -106,6 +110,7 @@ const expr = `
     widthDelta: Math.round(Math.abs(w.width - m.width)),
     composerWidth: Math.round(m.width),
     thirdLineHidden: third ? getComputedStyle(third).display : 'missing',
+    mark: mark.indexOf('okay-logo.svg') >= 0 ? 'logo' : mark.slice(0, 80),
   });
 })()
 `
@@ -125,6 +130,7 @@ if (Math.abs(result.centringDelta) > 60) problems.push(`group is not centred (de
 // badly at 720px, a textarea does not. Only a wildly different width is a bug.
 if (result.widthDelta > 180) problems.push(`banner and input differ in width by ${result.widthDelta}px`)
 if (result.thirdLineHidden !== 'none') problems.push('the guidance line is still visible')
+if (result.mark !== 'logo') problems.push(`the banner is not the product mark: ${result.mark}`)
 if (result.spaceBelow > 700) problems.push('input is still pinned to the bottom')
 
 console.log(problems.length ? 'FAIL:\n  ' + problems.join('\n  ') : 'PASS: banner sits directly above the input, group is centred')

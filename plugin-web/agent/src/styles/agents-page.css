@@ -403,7 +403,7 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .context-summary-head strong{font-size:12px;font-weight:700;letter-spacing:.02em;color:var(--md-primary)}
 .context-summary-head time{font-size:12px;opacity:.75}
 .welcome{max-width:660px;margin:70px auto 0;text-align:center;color:var(--md-on-surface-variant);line-height:1.8}
-.welcome::before{content:'';display:block;width:64px;height:64px;margin:0 auto 20px;border-radius:20px;background:var(--md-primary-container);background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='30' height='30' viewBox='0 0 24 24' fill='none' stroke='%234d5d91' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:center}
+.welcome::before{content:'';display:block;width:64px;height:64px;margin:0 auto 20px;background:url('/okay-logo.svg') center/contain no-repeat;filter:drop-shadow(0 6px 16px color-mix(in srgb,var(--md-primary) 24%,transparent))}
 .welcome h2{color:var(--md-on-surface);font-size:24px;font-weight:650;margin:0 0 8px;letter-spacing:-.01em}
 .welcome p{margin:6px 0;font-size:14px}
 
@@ -737,11 +737,13 @@ button.subagent-card-head>strong{font-weight:700}
 #app .workspace .running{color:#B88412;background:color-mix(in srgb,#B88412 14%,transparent);padding:4px 11px;border-radius:999px;font-weight:700}
 #app .workspace .transcript{padding:28px 30px}
 #app .workspace .welcome{margin:64px auto 0}
+/* The mark is the product logo now, so this only sizes it: a coloured tile
+   behind a logo that already has its own shape reads as a sticker. */
 #app .workspace .welcome::before{
-  width:76px;height:76px;border-radius:26px 26px 26px 10px;
-  background-color:var(--md-primary-container);
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='34' viewBox='0 0 24 24' fill='none' stroke='%235944c6' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z'/%3E%3Cpath d='M18.5 15l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z'/%3E%3C/svg%3E");
-  background-size:34px 34px;
+  width:76px;height:76px;border-radius:0;
+  background-color:transparent;
+  background-image:url('/okay-logo.svg');
+  background-size:contain;
 }
 #app .workspace .welcome h2{font-size:26px;font-weight:800;letter-spacing:-.02em}
 #app .workspace .turn{gap:12px;margin-bottom:32px}
@@ -1075,3 +1077,14 @@ body.resizing-sidebar *{cursor:col-resize!important}
   #app .workspace .conversation.is-empty .welcome h2{font-size:19px}
   #app .workspace .conversation.is-empty .welcome{margin-bottom:14px}
 }
+
+/* ---- task list column ------------------------------------------------------
+   The list now stays visible with a task open (the detail is in the right
+   pane), so the create action belongs at the top of it — it was inside the
+   list branch and vanished the moment a task was selected. */
+#app .workspace .task-tab .task-new-btn{margin:0 0 8px;width:100%;justify-content:center}
+#app .workspace .task-tab .task-new-form{margin:0 0 8px;padding:10px 12px;border-radius:14px;background:var(--md-surface-container-low)}
+#app .workspace .task-tab .task-new-form label{display:block;margin-bottom:8px;font-size:12px}
+#app .workspace .task-tab .task-new-form textarea,
+#app .workspace .task-tab .task-new-form input{width:100%;margin-top:4px}
+#app .workspace .task-tab .task-new-form button{width:100%;justify-content:center}
