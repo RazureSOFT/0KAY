@@ -426,4 +426,22 @@
   <string name="tool.windows">windows</string>
   <string name="tool.write">Write</string>
   <string name="page.jumpLatest">Back to bottom</string>
+  <string name="page.thinkingNow">Thinking {n}s</string>
+  <string name="page.thoughtFor">Thought for {n}s</string>
+  <string name="page.intentTitle">Intent</string>
+  <string name="page.intentApproach">Plan:</string>
+  <string name="page.intentPassed">Review passed</string>
+  <string name="page.intentRejected">Review rejected</string>
+  <string name="page.intentFeedback">What the reviewer asked for</string>
+  <string name="page.intentFromReviewer">added by review</string>
+  <string name="page.intentStatus.pending">pending</string>
+  <string name="page.intentStatus.in_progress">in progress</string>
+  <string name="page.intentStatus.done">done</string>
+  <string name="page.intentStatus.blocked">blocked</string>
+  <string name="page.steerPlaceholder">Say something while it works — it applies after the current step</string>
+  <string name="page.steerSend">Send</string>
+  <string name="page.steerQueued">Queued; the agent will pick this up after its current step.</string>
+  <string name="page.sidebarWidth">Sidebar width</string>
+  <string name="page.sidebarResetWidth">Reset</string>
+  <string name="page.openInNewTab">Open in a new tab</string>
 </resources>

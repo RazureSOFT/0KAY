@@ -144,7 +144,7 @@ func TestNodeFetchIsNotABrowser(t *testing.T) {
 
 	call := func(header, value string) int {
 		req := httptest.NewRequest(http.MethodGet, "/api/providers/credentials", nil)
-		req.RemoteAddr = "127.0.0.1:50000"
+		req.RemoteAddr = "192.168.1.40:50000"
 		if header != "" {
 			req.Header.Set(header, value)
 		}
@@ -153,8 +153,11 @@ func TestNodeFetchIsNotABrowser(t *testing.T) {
 		return w.Code
 	}
 
-	if code := call("Sec-Fetch-Mode", "cors"); code != http.StatusOK {
-		t.Fatalf("undici-style loopback request = %d, want 200", code)
+	// A LAN peer is not trusted however it shapes its headers: with no credential
+	// it is rejected, which is the point of the gate. Loopback is the trusted case
+	// and has its own test.
+	if code := call("Sec-Fetch-Mode", "cors"); code != http.StatusUnauthorized {
+		t.Fatalf("LAN client without a credential = %d, want 401", code)
 	}
 	for _, header := range []string{"Sec-Fetch-Site", "Origin", "Referer"} {
 		if code := call(header, "http://localhost:3000/"); code != http.StatusUnauthorized {
@@ -176,7 +179,7 @@ func TestPINSwitchAndPageScope(t *testing.T) {
 	handler := s.HTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
 
 	login := httptest.NewRequest(http.MethodPost, "/api/auth/session", strings.NewReader(`{"pin":"424242"}`))
-	login.RemoteAddr = "127.0.0.1:50000"
+	login.RemoteAddr = "192.168.1.40:50000"
 	login.Header.Set("Referer", "http://localhost:3000/")
 	lw := httptest.NewRecorder()
 	handler.ServeHTTP(lw, login)
@@ -190,7 +193,7 @@ func TestPINSwitchAndPageScope(t *testing.T) {
 
 	call := func(page string) int {
 		req := httptest.NewRequest(http.MethodPost, "/api/providers", strings.NewReader("{}"))
-		req.RemoteAddr = "127.0.0.1:50000"
+		req.RemoteAddr = "192.168.1.40:50000"
 		req.Header.Set("Referer", "http://localhost:3000/")
 		for _, c := range cookies {
 			req.AddCookie(c)
@@ -257,7 +260,7 @@ func TestForgedPageHeaderCannotBypassPin(t *testing.T) {
 	handler := s.HTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
 
 	login := httptest.NewRequest(http.MethodPost, "/api/auth/session", strings.NewReader(`{"pin":"424242"}`))
-	login.RemoteAddr = "127.0.0.1:50000"
+	login.RemoteAddr = "192.168.1.40:50000"
 	login.Header.Set("Referer", "http://localhost:3000/")
 	lw := httptest.NewRecorder()
 	handler.ServeHTTP(lw, login)
@@ -268,7 +271,7 @@ func TestForgedPageHeaderCannotBypassPin(t *testing.T) {
 
 	call := func(page, pin string) int {
 		req := httptest.NewRequest(http.MethodPost, "/api/providers", strings.NewReader("{}"))
-		req.RemoteAddr = "127.0.0.1:50000"
+		req.RemoteAddr = "192.168.1.40:50000"
 		req.Header.Set("Referer", "http://localhost:3000/")
 		for _, c := range cookies {
 			req.AddCookie(c)
@@ -307,7 +310,7 @@ func TestBrowserNeedsSessionWhenPINSet(t *testing.T) {
 
 	browser := func(cookie *http.Cookie, browserHeaders bool) int {
 		req := httptest.NewRequest(http.MethodGet, "/api/state", nil)
-		req.RemoteAddr = "127.0.0.1:50000"
+		req.RemoteAddr = "192.168.1.40:50000"
 		if browserHeaders {
 			req.Header.Set("Referer", "http://localhost:3000/")
 		}
@@ -324,7 +327,7 @@ func TestBrowserNeedsSessionWhenPINSet(t *testing.T) {
 	}
 
 	login := httptest.NewRequest(http.MethodPost, "/api/auth/session", strings.NewReader(`{"pin":"424242"}`))
-	login.RemoteAddr = "127.0.0.1:50000"
+	login.RemoteAddr = "192.168.1.40:50000"
 	lw := httptest.NewRecorder()
 	handler.ServeHTTP(lw, login)
 	if lw.Code != http.StatusOK {
@@ -338,14 +341,19 @@ func TestBrowserNeedsSessionWhenPINSet(t *testing.T) {
 		t.Fatalf("browser with a session = %d, want 200", code)
 	}
 
-	if code := browser(nil, false); code != http.StatusOK {
-		t.Fatalf("machine client = %d, want 200", code)
+	// A LAN peer is the governed client here: with no credential it is rejected
+	// whether or not it looks like a browser. The browser-shaped case is the one
+	// above (401), so this covers the same rule for a plain client.
+	if code := browser(nil, false); code != http.StatusUnauthorized {
+		t.Fatalf("LAN client without a credential = %d, want 401", code)
 	}
 	if err := s.SetSecurityPrefs(boolPtr(false), nil, nil); err != nil {
 		t.Fatal(err)
 	}
-	if code := browser(nil, true); code != http.StatusOK {
-		t.Fatalf("PIN off = %d, want 200", code)
+	// Turning the PIN off drops the PIN requirement, not the sign-in one: a LAN
+	// peer still needs a credential, it just no longer needs a second one.
+	if code := browser(cookies[0], true); code != http.StatusOK {
+		t.Fatalf("PIN off with a session = %d, want 200", code)
 	}
 }
 
@@ -685,5 +693,87 @@ func TestPINHeaderBruteForceLockout(t *testing.T) {
 	}
 	if code := call("424242"); code != http.StatusTooManyRequests {
 		t.Fatalf("correct header PIN after lockout = %d, want 429", code)
+	}
+}
+
+// The desktop app is a loopback browser, and that is not an accident to be
+// guarded against: it is how the product works. This locks the rule in, because
+// the failure mode is a first-run window that says "paired device or API token
+// required" and offers nowhere to type one.
+func TestLoopbackBrowserIsTrustedWithPINSet(t *testing.T) {
+	s, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPIN("424242"); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetSecurityPrefs(boolPtr(true), nil, &[]string{"/settings"}); err != nil {
+		t.Fatal(err)
+	}
+	handler := s.HTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+
+	for _, addr := range []string{"127.0.0.1:50000", "[::1]:50000"} {
+		for _, header := range []string{"Origin", "Referer", "Sec-Fetch-Site"} {
+			req := httptest.NewRequest(http.MethodPost, "/api/providers", strings.NewReader("{}"))
+			req.RemoteAddr = addr
+			req.Header.Set(header, "http://127.0.0.1:8080/")
+			w := httptest.NewRecorder()
+			handler.ServeHTTP(w, req)
+			if w.Code != http.StatusOK {
+				t.Fatalf("loopback browser %s via %s = %d, want 200", addr, header, w.Code)
+			}
+		}
+	}
+}
+
+// The same request from another machine is still governed. Trusting loopback
+// must not quietly become trusting the network.
+func TestLANPeerStillNeedsCredentials(t *testing.T) {
+	s, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPIN("424242"); err != nil {
+		t.Fatal(err)
+	}
+	handler := s.HTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+	req := httptest.NewRequest(http.MethodGet, "/api/providers/credentials", nil)
+	req.RemoteAddr = "192.168.1.40:50000"
+	req.Header.Set("Origin", "http://192.168.1.15:8080")
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusUnauthorized {
+		t.Fatalf("LAN browser without a credential = %d, want 401", w.Code)
+	}
+}
+
+// An installed app never receives CORE_API_TOKEN, so Core mints its own and
+// accepts it through the same path a paired device's token takes.
+func TestDeviceTokenIsCreatedAndAccepted(t *testing.T) {
+	dir := t.TempDir()
+	token, err := LoadDeviceToken(dir)
+	if err != nil || token == "" {
+		t.Fatalf("device token: %q %v", token, err)
+	}
+	again, err := LoadDeviceToken(dir)
+	if err != nil || again != token {
+		t.Fatalf("device token is not stable: %q vs %q (%v)", token, again, err)
+	}
+	s, err := New(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPIN("424242"); err != nil {
+		t.Fatal(err)
+	}
+	handler := s.HTTP(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+	req := httptest.NewRequest(http.MethodGet, "/api/providers/credentials", nil)
+	req.RemoteAddr = "192.168.1.40:50000"
+	req.Header.Set("Authorization", "Bearer "+token)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+	if w.Code != http.StatusOK {
+		t.Fatalf("device token on a LAN peer = %d, want 200", w.Code)
 	}
 }

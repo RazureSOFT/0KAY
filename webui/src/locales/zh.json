@@ -71,7 +71,9 @@
     "title": "连接到 Core",
     "token": "访问 PIN 或令牌",
     "usePin": "使用 PIN",
-    "useToken": "使用令牌"
+    "useToken": "使用令牌",
+    "loginLanHint": "这台 Core 开在局域网上，所以需要凭据。粘贴 Core 里显示的访问令牌，或你设置的 PIN。",
+    "loginDisabled": "当前未开启登录校验；本机访问不需要这个页面，开 LAN 后才会用到。"
   },
   "chat": {
     "attachFile": "上传文件",

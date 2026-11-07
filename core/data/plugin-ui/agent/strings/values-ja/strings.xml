@@ -426,4 +426,22 @@
   <string name="tool.windows">個のウィンドウ</string>
   <string name="tool.write">書き込み</string>
   <string name="page.jumpLatest">一番下へ</string>
+  <string name="page.thinkingNow">思考中 {n}s</string>
+  <string name="page.thoughtFor">{n}秒考えました</string>
+  <string name="page.intentTitle">意図</string>
+  <string name="page.intentApproach">進め方：</string>
+  <string name="page.intentPassed">レビュー通過</string>
+  <string name="page.intentRejected">レビュー差し戻し</string>
+  <string name="page.intentFeedback">レビューが求めた修正</string>
+  <string name="page.intentFromReviewer">レビューが追加</string>
+  <string name="page.intentStatus.pending">未着手</string>
+  <string name="page.intentStatus.in_progress">進行中</string>
+  <string name="page.intentStatus.done">完了</string>
+  <string name="page.intentStatus.blocked">停止中</string>
+  <string name="page.steerPlaceholder">作業中でも追加指示を送れます（現在のステップ完了後に反映）</string>
+  <string name="page.steerSend">送信</string>
+  <string name="page.steerQueued">受け付けました。現在のステップ完了後に反映します。</string>
+  <string name="page.sidebarWidth">サイドバー幅</string>
+  <string name="page.sidebarResetWidth">リセット</string>
+  <string name="page.openInNewTab">新しいタブで開く</string>
 </resources>

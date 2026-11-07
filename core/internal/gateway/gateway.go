@@ -358,6 +358,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/skills", g.handleSkills)
 	mux.HandleFunc("/api/skills/{name...}", g.handleSkills)
 	mux.HandleFunc("/api/tasks/cancel", g.handleTaskCancel)
+	mux.HandleFunc("POST /api/tasks/{task_id}/steer", g.handleTaskSteer)
 	mux.HandleFunc("/api/tasks/{task_id}/cancel", g.handleTaskCancelPath)
 	mux.HandleFunc("/api/chat", g.handleChat)
 	mux.HandleFunc("POST /api/tts", g.handleTTS)

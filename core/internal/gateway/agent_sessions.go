@@ -1,7 +1,11 @@
 package gateway
 
 import (
+	"0kay/core/internal/pairing"
+	agentv1 "0kay/gen/agent/v1"
 	corev1 "0kay/gen/core/v1"
+	"context"
+	"encoding/json"
 	"fmt"
 	"math"
 	"net/http"
@@ -316,6 +320,68 @@ func (g *Gateway) cancelTask(w http.ResponseWriter, r *http.Request, taskID stri
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]interface{}{"success": response.Success, "message": response.Message})
+}
+
+// handleTaskSteer queues a user instruction for a task that is already running.
+//
+// The task is not interrupted. The agent drains the queue after its current tool
+// call returns, which is the only point where the previous result is known and
+// the next step has not been chosen yet. That is why this returns 202 with a
+// queue depth instead of pretending the agent has already reacted.
+func (g *Gateway) handleTaskSteer(w http.ResponseWriter, r *http.Request) {
+	taskID := r.PathValue("task_id")
+	if taskID == "" {
+		badRequest(w, "task_id required")
+		return
+	}
+	var body struct {
+		Text       string `json:"text"`
+		SessionID  string `json:"session_id"`
+		ExecutorID string `json:"executor_id"`
+	}
+	if !decodeBody(w, r, &body, maxSmallBody) {
+		return
+	}
+	if strings.TrimSpace(body.Text) == "" {
+		badRequest(w, "text required")
+		return
+	}
+	for _, agent := range g.registry.GetAgents(true) {
+		if body.ExecutorID != "" && agent.PluginID != body.ExecutorID {
+			continue
+		}
+		conn, err := g.dial(agent.Address)
+		if err != nil {
+			continue
+		}
+		payload, _ := json.Marshal(map[string]any{
+			"task_id":    taskID,
+			"session_id": body.SessionID,
+			"text":       body.Text,
+		})
+		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+		result, err := agentv1.NewAgentServiceClient(conn).RunDirect(
+			pairing.CallbackContext(ctx, agent.Address),
+			&agentv1.RunDirectRequest{Tool: "task_steer", Args: string(payload)},
+		)
+		cancel()
+		if err != nil {
+			continue
+		}
+		if !result.Success {
+			// The task is not running on this executor: say so rather than
+			// queue text that would never be read.
+			writeErr(w, http.StatusConflict, "conflict", result.Error)
+			return
+		}
+		var queued struct {
+			Queued int `json:"queued"`
+		}
+		_ = json.Unmarshal([]byte(result.Result), &queued)
+		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "queued": queued.Queued, "executor_id": agent.PluginID})
+		return
+	}
+	writeErr(w, http.StatusServiceUnavailable, "unavailable", "no healthy executor to deliver the message")
 }
 
 func (g *Gateway) handleAgentSessionsFork(w http.ResponseWriter, r *http.Request) {

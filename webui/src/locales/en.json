@@ -71,7 +71,9 @@
     "title": "Connect to Core",
     "token": "Access PIN or token",
     "usePin": "Use PIN",
-    "useToken": "Use a token"
+    "useToken": "Use a token",
+    "loginLanHint": "This Core is reachable on the network, so it needs a credential. Paste the access token shown in Core, or the PIN you set.",
+    "loginDisabled": "Sign-in is currently turned off; this page will not be needed until LAN access is enabled."
   },
   "chat": {
     "attachFile": "Attach file",

@@ -43,6 +43,10 @@ export interface TaskRow {
   note?: string
   /** JSON: {title, markdown, steps, demo_html} submitted by the plan tool. */
   plan?: string
+  /** JSON: {intents, completionRate, approach} — the agent's intent ledger. */
+  intent?: string
+  /** JSON: the last gate verdict (pass/reject) as returned to the agent. */
+  review?: string
   attachments?: Array<{ name: string; url: string; mime?: string; size?: number }>
 }
 
@@ -261,6 +265,28 @@ function createStore() {
       throw new Error(message)
     }
   }
+  /**
+   * Say something to a task that is already running.
+   *
+   * The agent applies it at its next tool boundary, so this resolves as soon as
+   * the text is queued. A 409 means the task finished in the meantime, which is
+   * a fact the caller should show rather than hide.
+   */
+  async function steerTask(task_id: string, text: string, session_id = ''): Promise<{ queued: number }> {
+    const response = await fetch(`/api/tasks/${encodeURIComponent(task_id)}/steer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task_id, text, session_id }),
+    })
+    const body = await response.text()
+    if (!response.ok) {
+      let message = body
+      try { message = JSON.parse(body).message || body } catch { }
+      throw new Error(message)
+    }
+    try { return JSON.parse(body) } catch { return { queued: 0 } }
+  }
+
   async function cancelTask(task_id: string) {
     const response = await fetch('/api/tasks/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task_id }) })
     if (!response.ok) throw new Error(await response.text())
@@ -278,6 +304,7 @@ function createStore() {
     manageSession,
     sendTask,
     cancelTask,
+    steerTask,
     ensureSessionTurns,
     olderSessionTurns,
     hasOlderTurns,

@@ -71,7 +71,9 @@
     "title": "Core に接続",
     "token": "アクセス PIN またはトークン",
     "usePin": "PIN を使用",
-    "useToken": "トークンを使用"
+    "useToken": "トークンを使用",
+    "loginLanHint": "この Core はネットワークに公開されているため認証情報が必要です。Core に表示されたアクセストークン、または設定した PIN を入力してください。",
+    "loginDisabled": "現在サインインは無効です。LAN を有効にするまでこのページは不要です。"
   },
   "chat": {
     "attachFile": "ファイルを添付",

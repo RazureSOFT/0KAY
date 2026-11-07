@@ -8,6 +8,7 @@ import FileViewer from './FileViewer.vue'
 import ModelThinkingPicker from './ModelThinkingPicker.vue'
 import GitPanel from './GitPanel.vue'
 import ThinkChain from './ThinkChain.vue'
+import IntentStrip from './IntentStrip.vue'
 import { AppSelect, useConfirm, i18n } from '@0kay/host'
 import { locale, syncLocale } from './locale'
 const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {})
@@ -1288,6 +1289,45 @@ const taskSearch = ref('')
 const taskStatusFilter = ref('')
 const sidebarTab = ref<'sessions' | 'tasks'>('sessions')
 
+// Sidebar width, dragged and remembered. The bounds are what the layout can
+// actually take: below 220 the session cards lose their titles, above 520 the
+// conversation looks like a side panel.
+const SIDEBAR_KEY = 'agent.sidebarWidth'
+const SIDEBAR_MIN = 220
+const SIDEBAR_MAX = 520
+const sidebarWidth = ref(284)
+const sidebarResizing = ref(false)
+try {
+  const saved = Number(window.localStorage.getItem(SIDEBAR_KEY))
+  if (Number.isFinite(saved) && saved >= SIDEBAR_MIN && saved <= SIDEBAR_MAX) sidebarWidth.value = Math.round(saved)
+} catch { }
+function resetSidebarWidth(): void {
+  sidebarWidth.value = 284
+  try { window.localStorage.setItem(SIDEBAR_KEY, '284') } catch { }
+}
+function startSidebarResize(event: PointerEvent): void {
+  event.preventDefault()
+  sidebarResizing.value = true
+  const startX = event.clientX
+  const startWidth = sidebarWidth.value
+  const move = (moveEvent: PointerEvent) => {
+    const next = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, startWidth + (moveEvent.clientX - startX)))
+    sidebarWidth.value = Math.round(next)
+  }
+  const up = () => {
+    sidebarResizing.value = false
+    try { window.localStorage.setItem(SIDEBAR_KEY, String(sidebarWidth.value)) } catch { }
+    window.removeEventListener('pointermove', move)
+    window.removeEventListener('pointerup', up)
+    document.body.classList.remove('resizing-sidebar')
+  }
+  document.body.classList.add('resizing-sidebar')
+  window.addEventListener('pointermove', move)
+  window.addEventListener('pointerup', up)
+}
+// Double-click the handle snaps back: the discoverable way to undo a drag.
+function onSidebarHandleDblClick(): void { resetSidebarWidth() }
+
 // Poll while the 任务 tab is open — a scan is the one time this view matters,
 // and a graph you have to refresh by hand is a report, not a view. Failures
 // keep the last read.
@@ -1890,6 +1930,72 @@ const stateName = (value: string) => ({ pending: t('agent.page.statePending'), r
 const time = (value?: string) => value ? new Date(value).toLocaleString() : ''
 
 const turnFinished = (turn: TaskRow) => ['done', 'failed', 'cancelled'].includes(turn.state)
+
+/**
+ * The intent ledger the agent wrote on this turn, as the gate will read it.
+ *
+ * Two sources, newest wins: the turn row's own `intent` column (what the agent
+ * recorded), and any `intent` tool step the agent ran (what it said out loud).
+ * Reading both means the strip is still right for turns recorded before the
+ * column existed.
+ */
+function turnIntents(turn: TaskRow): { intents: any[]; rate: number; approach: string; review: any } {
+  const fromRow = parseStepJson(turn.intent)
+  if (fromRow && Array.isArray(fromRow.intents)) {
+    return {
+      intents: fromRow.intents,
+      rate: Number(fromRow.completionRate) || 0,
+      approach: String(fromRow.approach || ''),
+      review: parseStepJson(turn.review) || null,
+    }
+  }
+  let latest: any = null
+  for (const step of steps(turn)) {
+    if ((step.prompt || '').trim() !== 'intent') continue
+    const parsed = parseStepJson(step.args) || parseStepJson(step.result)
+    if (parsed && Array.isArray(parsed.intents)) latest = parsed
+  }
+  if (!latest) return { intents: [], rate: 0, approach: '', review: parseStepJson(turn.review) || null }
+  const intents = latest.intents
+  const score = intents.reduce((sum: number, row: any) => sum + (row.status === 'done' ? 1 : row.status === 'in_progress' ? 0.5 : 0), 0)
+  return {
+    intents,
+    rate: intents.length ? Math.round((score / intents.length) * 100) : 0,
+    approach: String(latest.approach || ''),
+    review: parseStepJson(turn.review) || null,
+  }
+}
+
+/** The turn a steer message belongs to: the running one, or the last one. */
+const steerTarget = computed<TaskRow | null>(() => {
+  const rows = store.tasks.filter(item => item.session_id === selectedId.value && (item.kind === 'agent' || item.kind === 'agent_session'))
+  if (!rows.length) return null
+  const running = rows.find(item => item.state === 'running' || item.state === 'pending')
+  if (running) return running
+  return [...rows].sort((a, b) => (b.started_at || '').localeCompare(a.started_at || ''))[0] || null
+})
+
+const steerText = ref('')
+const steerBusy = ref(false)
+const steerNotice = ref('')
+
+async function sendSteer(): Promise<void> {
+  const target = steerTarget.value
+  const text = steerText.value.trim()
+  if (!target || !text) return
+  steerBusy.value = true
+  steerNotice.value = ''
+  try {
+    await store.steerTask(target.task_id, text, target.session_id || '')
+    steerText.value = ''
+    steerNotice.value = t('agent.page.steerQueued')
+    window.setTimeout(() => { steerNotice.value = '' }, 4000)
+  } catch (error: any) {
+    steerNotice.value = error?.message || String(error)
+  } finally {
+    steerBusy.value = false
+  }
+}
 const turnStateIcon = (state: string) => ({ done: '✓', cancelled: '⊘', failed: '✕' } as Record<string, string>)[state] || '•'
 function turnDuration(turn: TaskRow): string {
   const start = Date.parse(turn.started_at || '')
@@ -2218,7 +2324,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
 
 <template>
   <main class="workspace">
-    <aside class="sessions">
+    <aside class="sessions" :style="{ width: sidebarWidth + 'px' }">
       <header><h1>Agent</h1><button @click="create" :disabled="busy" :title="t('agent.page.newSession')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> {{ t('agent.page.newChat') }}</button></header>
       <div class="connection"><i :class="{online:store.onlineCount>0}" />{{ store.onlineCount }} {{ t('agent.page.executorsOnline') }} <button @click="store.fetchAgents()" :title="t('agent.page.refresh')" aria-label="refresh"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
       <p v-if="doneBanner" class="run-banner" role="status" @click="doneBanner = ''">{{ doneBanner }}</p>
@@ -2558,6 +2664,16 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
           </ul>
         </template>
       </div>
+      <div
+        class="sidebar-resizer"
+        :class="{ active: sidebarResizing }"
+        role="separator"
+        aria-orientation="vertical"
+        :aria-label="t('agent.page.sidebarWidth')"
+        :title="t('agent.page.sidebarWidth') + ' — ' + t('agent.page.sidebarResetWidth')"
+        @pointerdown="startSidebarResize"
+        @dblclick="onSidebarHandleDblClick"
+      />
     </aside>
 
     <section class="conversation">
@@ -2587,7 +2703,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
           <div class="sub-view-body">
             <div class="bubble user"><div class="message-head"><b>{{ t('agent.page.parentAgent') }}</b><time>{{ time(activeSub.started_at) }}</time></div><div class="message-text">{{ activeSub.prompt }}</div></div>
             <template v-for="step in childSteps(activeSub)" :key="step.task_id">
-              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="modelAnnotation(step)" class="muted model-annotation" :class="{fallback: modelInfo(step).fellBack}" :title="modelReason(step)">{{ modelAnnotation(step) }}</small><ThinkChain v-if="step.reasoning" :reasoning="step.reasoning" :open="step.state === 'running' && !step.result" :label="t('agent.page.reasoning')" /><template v-if="step.result"><MarkdownContent :content="step.result" @open="openPath" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">{{ t('agent.page.subagentDrafting') }}</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
+              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="modelAnnotation(step)" class="muted model-annotation" :class="{fallback: modelInfo(step).fellBack}" :title="modelReason(step)">{{ modelAnnotation(step) }}</small><ThinkChain v-if="step.reasoning" :reasoning="step.reasoning" :open="step.state === 'running' && !step.result" :running="step.state === 'running' && !step.result" :started-at="step.started_at" :label="t('agent.page.reasoning')" /><template v-if="step.result"><MarkdownContent :content="step.result" @open="openPath" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">{{ t('agent.page.subagentDrafting') }}</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
               <div v-else-if="step.kind === 'subagent'" class="subagent-card nested">
                 <button type="button" class="subagent-card-head" @click="openSub(step)"><span :class="step.state">●</span><strong>{{ t('agent.page.subagent') }}</strong><span class="subagent-prompt">{{ step.prompt }}</span><small>{{ stateName(step.state) }}</small><span class="subagent-chevron" aria-hidden="true">▸</span></button>
               </div>
@@ -2648,6 +2764,13 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             </button>
           </div>
           <div class="bubble agent"><div class="message-head"><b>Agent</b><span :class="turn.state">{{ stateName(turn.state) }}</span></div>
+            <IntentStrip
+              v-if="turnIntents(turn).intents.length || turnIntents(turn).review"
+              :intents="turnIntents(turn).intents"
+              :rate="turnIntents(turn).rate"
+              :approach="turnIntents(turn).approach"
+              :review="turnIntents(turn).review"
+            />
             <details v-if="workSteps(turn).length" class="turn-collapse" :open="!turnFinished(turn)">
               <summary>
                 <span class="turn-collapse-icon" :class="turn.state" aria-hidden="true">{{ turnStateIcon(turn.state) }}</span>
@@ -2656,7 +2779,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
                 <span class="turn-collapse-count">{{ workSteps(turn).length }} {{ t('agent.page.steps') }}</span>
               </summary>
             <div class="steps"><template v-for="step in workSteps(turn)" :key="step.task_id">
-              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="modelAnnotation(step)" class="muted model-annotation" :class="{fallback: modelInfo(step).fellBack}" :title="modelReason(step)">{{ modelAnnotation(step) }}</small><ThinkChain v-if="step.reasoning" :reasoning="step.reasoning" :open="step.state === 'running' && !step.result" :label="t('agent.page.reasoning')" /><template v-if="step.result"><MarkdownContent :content="step.result" @open="openPath" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">{{ t('agent.page.agentDrafting') }}</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
+              <div v-if="step.kind === 'think' && (step.result || step.reasoning || step.state === 'running' || step.error)" class="agent-speech"><small v-if="modelAnnotation(step)" class="muted model-annotation" :class="{fallback: modelInfo(step).fellBack}" :title="modelReason(step)">{{ modelAnnotation(step) }}</small><ThinkChain v-if="step.reasoning" :reasoning="step.reasoning" :open="step.state === 'running' && !step.result" :running="step.state === 'running' && !step.result" :started-at="step.started_at" :label="t('agent.page.reasoning')" /><template v-if="step.result"><MarkdownContent :content="step.result" @open="openPath" /><span v-if="step.state === 'running'" class="running"> ▍</span></template><small v-else-if="step.state === 'running'" class="muted">{{ t('agent.page.agentDrafting') }}</small><p v-if="step.error" class="error">{{ friendlyError(step.error) }}</p></div>
               <div v-else-if="step.kind === 'subagent'" class="subagent-card">
                 <button type="button" class="subagent-card-head" @click="openSub(step)">
                   <span :class="step.state">●</span>
@@ -2781,6 +2904,18 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
               <button type="button" :aria-label="t('agent.page.removeAttachment')" :title="t('agent.page.remove')" @click="removeAttachment(index)">×</button>
             </span>
             <span v-if="attachError" class="attach-error">{{ attachError }}</span>
+          </div>
+          <div v-if="steerNotice" class="steer-notice" role="status">{{ steerNotice }}</div>
+          <div v-if="active?.kind === 'agent'" class="steer-row">
+            <input
+              v-model="steerText"
+              class="steer-input"
+              :placeholder="t('agent.page.steerPlaceholder')"
+              :aria-label="t('agent.page.steerPlaceholder')"
+              maxlength="4000"
+              @keydown.enter.exact.prevent="sendSteer"
+            />
+            <button type="button" class="steer-send" :disabled="steerBusy || !steerText.trim()" @click="sendSteer">{{ t('agent.page.steerSend') }}</button>
           </div>
           <textarea ref="composerArea" v-model="draft" :disabled="busy || session?.state === 'archived'" :placeholder="session?.state === 'archived' ? t('agent.page.restoreToChat') : t('agent.page.composerPlaceholder')" :aria-label="t('agent.page.composerAria')" @keydown="onComposerKey" @paste="onPaste" />
           <div class="composer-actions">

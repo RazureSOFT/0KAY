@@ -982,3 +982,22 @@ button.subagent-card-head>strong{font-weight:700}
 .plan-review input{margin-top:2px;flex:none;accent-color:var(--md-primary)}
 .plan-step-n{flex:none;min-width:16px;font-weight:700;color:var(--md-primary)}
 .plan-review li.rejected{opacity:.55;text-decoration:line-through}
+
+/* ---- sidebar resize handle -------------------------------------------------
+   A 10px grab strip hangs off the sidebar's right edge, but only 2px of it is
+   painted. A 10px visible bar is furniture; a hairline that lights up on hover
+   is an affordance you find once and then stop noticing. */
+#app .workspace .sessions{position:relative}
+.sidebar-resizer{position:absolute;top:0;right:-5px;bottom:0;width:10px;cursor:col-resize;z-index:5;background:transparent;touch-action:none}
+.sidebar-resizer::after{content:'';position:absolute;top:0;bottom:0;left:50%;width:2px;transform:translateX(-50%);background:transparent;transition:background-color 140ms}
+.sidebar-resizer:hover::after,.sidebar-resizer.active::after{background:var(--md-primary)}
+body.resizing-sidebar{cursor:col-resize;user-select:none}
+body.resizing-sidebar *{cursor:col-resize!important}
+
+/* ---- steer: talking to a task that is already running ---------------------- */
+.steer-row{display:flex;align-items:center;gap:8px;margin:0 0 6px;padding:4px 4px 4px 10px;border-radius:12px;background:color-mix(in srgb,var(--md-primary) 7%,var(--md-surface-container-low));border:1px dashed color-mix(in srgb,var(--md-primary) 34%,transparent)}
+.steer-input{flex:1;min-width:0;border:0;background:transparent;padding:6px 2px;font-size:13px;color:var(--md-on-surface)}
+.steer-input:focus{outline:none;box-shadow:none}
+.steer-send{flex:none;height:28px;padding:0 12px;border:0;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary);font-size:12.5px;font-weight:650}
+.steer-send:disabled{opacity:.42}
+.steer-notice{margin:0 0 6px;padding:6px 10px;border-radius:10px;font-size:12px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant)}

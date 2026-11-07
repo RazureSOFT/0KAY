@@ -772,4 +772,6 @@
   <string name="ide.askAnything">就这个仓库问 agent…</string>
   <string name="ide.send">发送</string>
   <string name="ide.noSession">没能创建会话</string>
+  <string name="auth.loginLanHint">这台 Core 开在局域网上，所以需要凭据。粘贴 Core 里显示的访问令牌，或你设置的 PIN。</string>
+  <string name="auth.loginDisabled">当前未开启登录校验；本机访问不需要这个页面，开 LAN 后才会用到。</string>
 </resources>

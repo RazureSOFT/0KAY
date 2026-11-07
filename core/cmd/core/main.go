@@ -67,6 +67,14 @@ func main() {
 		log.Fatalf("pairing state: %v", err)
 	}
 	pairing.Default = pairs
+	// A token this installation owns, created on first start. Without it the
+	// installed app and the local agent have to be launched with CORE_API_TOKEN
+	// set by hand, and a first run is a locked-out first run.
+	if token, err := pairing.LoadDeviceToken(dataDir); err != nil {
+		log.Printf("device token: %v (continuing; local clients will need CORE_API_TOKEN)", err)
+	} else if token != "" {
+		log.Printf("device token ready (%d chars) in %s", len(token), dataDir)
+	}
 	grpcServer := grpc.NewServer(
 		grpc.UnaryInterceptor(pairs.Unary),
 		grpc.StreamInterceptor(pairs.Stream),

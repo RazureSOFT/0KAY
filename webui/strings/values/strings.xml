@@ -772,4 +772,6 @@
   <string name="ide.askAnything">Ask the agent about this repo…</string>
   <string name="ide.send">Send</string>
   <string name="ide.noSession">No session could be created</string>
+  <string name="auth.loginLanHint">This Core is reachable on the network, so it needs a credential. Paste the access token shown in Core, or the PIN you set.</string>
+  <string name="auth.loginDisabled">Sign-in is currently turned off; this page will not be needed until LAN access is enabled.</string>
 </resources>

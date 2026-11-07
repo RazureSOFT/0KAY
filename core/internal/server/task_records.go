@@ -29,6 +29,13 @@ type TaskEvent struct {
 	Phase    string `json:"phase,omitempty"`
 	Note     string `json:"note,omitempty"`
 	Plan     string `json:"plan,omitempty"`
+	// Intent is the agent's intent ledger as JSON: the list of things the user
+	// asked for with their status. Core stores it so the UI can show the
+	// completion rate as a derived number rather than a typed-in one.
+	Intent string `json:"intent,omitempty"`
+	// Review is the last gate verdict as JSON. It is a tool result, not a chat
+	// message: the UI renders it beside the turn, not as the agent speaking.
+	Review string `json:"review,omitempty"`
 }
 
 func (s *CoreServiceServer) RecordTask(event TaskEvent) error {
@@ -111,6 +118,15 @@ func (s *CoreServiceServer) recordTaskLocked(event TaskEvent) error {
 	}
 	if event.Plan != "" {
 		task.Plan = event.Plan
+	}
+	if event.Intent != "" {
+		if task.Intent != event.Intent {
+			task.IntentRevision++
+		}
+		task.Intent = event.Intent
+	}
+	if event.Review != "" {
+		task.Review = event.Review
 	}
 	if isTerminalTaskState(event.State) {
 		task.EndedAt = time.Now()

@@ -205,10 +205,9 @@ func (s *Store) valid(token string) bool {
 	}
 	return false
 }
-func apiToken(token string) bool {
-	expected := os.Getenv("CORE_API_TOKEN")
-	return expected != "" && token != "" && subtle.ConstantTimeCompare([]byte(token), []byte(expected)) == 1
-}
+
+// apiToken lives in device_token.go: it accepts CORE_API_TOKEN when the process
+// was launched with one, and Core's own persisted device token otherwise.
 
 // webSession is a server-side login session. The browser cookie carries only
 // the random session id; the underlying login token is kept as a hash so a
@@ -295,12 +294,27 @@ func bearerToken(header string) string {
 	return ""
 }
 
+// localBrowser is the one exemption in this file, so it is spelled out once.
+//
+// The desktop app renders the WebUI in an Electron window. Every request from
+// that window carries an Origin, which makes it look like a remote browser, but
+// it is running on this machine and reading this machine's Core. Demanding a
+// paired device or a session cookie from it only ever produces a dead window on
+// first launch — the security boundary that matters is the network, and a
+// loopback peer is already inside it.
+//
+// LAN peers are unaffected: they still have to sign in, and that is the gate the
+// PIN and the login page exist for.
+func (s *Store) localBrowser(r *http.Request) bool {
+	return local(r.RemoteAddr)
+}
+
 func (s *Store) authorized(r *http.Request) (bool, string) {
 	if !s.LoginEnabled() {
 		return true, "open"
 	}
 	if s.trustedPeer(r.RemoteAddr) {
-		if s.HasPIN() && s.PinEnabled() && looksLikeBrowser(r) {
+		if s.HasPIN() && s.PinEnabled() && looksLikeBrowser(r) && !s.localBrowser(r) {
 			return s.browserSession(r)
 		}
 		return true, "trusted"
@@ -419,7 +433,7 @@ func (s *Store) handleSession(w http.ResponseWriter, r *http.Request) {
 		if !s.LoginEnabled() {
 			requires = false
 		}
-		if s.HasPIN() && s.PinEnabled() && looksLikeBrowser(r) {
+		if s.HasPIN() && s.PinEnabled() && looksLikeBrowser(r) && !s.localBrowser(r) {
 			requires = true
 			if _, err := r.Cookie(SessionCookie); err != nil {
 				ok, method = false, ""

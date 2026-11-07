@@ -454,7 +454,9 @@ func (s *Store) pinSatisfied(r *http.Request) bool {
 	if !s.HasPIN() || !s.PinEnabled() {
 		return true
 	}
-	if s.trustedPeer(r.RemoteAddr) && !looksLikeBrowser(r) {
+	// A peer on this machine is already past the network boundary; asking it for
+	// a PIN protects nothing and locks the desktop app out of its own settings.
+	if s.trustedPeer(r.RemoteAddr) {
 		return true
 	}
 	if token := bearerToken(r.Header.Get("Authorization")); token != "" && (s.valid(token) || apiToken(token)) {

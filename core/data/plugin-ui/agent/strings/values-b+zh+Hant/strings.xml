@@ -426,4 +426,22 @@
   <string name="tool.windows">個視窗</string>
   <string name="tool.write">寫入</string>
   <string name="page.jumpLatest">回到最底</string>
+  <string name="page.thinkingNow">思考中 {n}s</string>
+  <string name="page.thoughtFor">已思考 {n}s</string>
+  <string name="page.intentTitle">意圖</string>
+  <string name="page.intentApproach">打算這樣做：</string>
+  <string name="page.intentPassed">審查通過</string>
+  <string name="page.intentRejected">審查退回</string>
+  <string name="page.intentFeedback">審查要求補的東西</string>
+  <string name="page.intentFromReviewer">審查補充</string>
+  <string name="page.intentStatus.pending">未開始</string>
+  <string name="page.intentStatus.in_progress">進行中</string>
+  <string name="page.intentStatus.done">已完成</string>
+  <string name="page.intentStatus.blocked">受阻</string>
+  <string name="page.steerPlaceholder">它幹活時可以隨時插話——當前這一步做完就會處理</string>
+  <string name="page.steerSend">傳送</string>
+  <string name="page.steerQueued">已排隊，當前這一步結束後處理。</string>
+  <string name="page.sidebarWidth">側欄寬度</string>
+  <string name="page.sidebarResetWidth">重設</string>
+  <string name="page.openInNewTab">在新分頁開啟</string>
 </resources>

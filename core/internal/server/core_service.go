@@ -120,6 +120,12 @@ type TaskInfo struct {
 	Phase    string
 	Note     string
 	Plan     string
+	// Intent is the agent's intent ledger (JSON) and Review is the last gate
+	// verdict (JSON). Both are agent-authored state the UI reads; Core never
+	// interprets them.
+	Intent         string
+	Review         string
+	IntentRevision int
 }
 
 type persistedTask struct {
@@ -142,6 +148,8 @@ type persistedTask struct {
 	Phase       string    `json:"phase,omitempty"`
 	Note        string    `json:"note,omitempty"`
 	Plan        string    `json:"plan,omitempty"`
+	Intent      string    `json:"intent,omitempty"`
+	Review      string    `json:"review,omitempty"`
 }
 
 type UsageRecord struct {
@@ -351,6 +359,8 @@ func NewCoreServiceServer(reg *registry.Registry, dataDir ...string) *CoreServic
 				tasks[item.TaskID].Phase = copy.Phase
 				tasks[item.TaskID].Note = copy.Note
 				tasks[item.TaskID].Plan = copy.Plan
+				tasks[item.TaskID].Intent = copy.Intent
+				tasks[item.TaskID].Review = copy.Review
 				if copy.State == "running" || copy.State == "pending" {
 					tasks[item.TaskID].State = "failed"
 					tasks[item.TaskID].Error = "Core restarted before execution was acknowledged"
@@ -449,6 +459,8 @@ func persistedFrom(t *TaskInfo) persistedTask {
 		Phase:       t.Phase,
 		Note:        clipField(t.Note, 300),
 		Plan:        clipField(t.Plan, 24000),
+		Intent:      clipField(t.Intent, 24000),
+		Review:      clipField(t.Review, 4000),
 	}
 }
 
@@ -1851,6 +1863,12 @@ func (s *CoreServiceServer) taskRowLocked(t *TaskInfo) map[string]interface{} {
 	}
 	if t.Plan != "" {
 		item["plan"] = t.Plan
+	}
+	if t.Intent != "" {
+		item["intent"] = t.Intent
+	}
+	if t.Review != "" {
+		item["review"] = t.Review
 	}
 	return item
 }

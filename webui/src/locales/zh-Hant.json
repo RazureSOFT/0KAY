@@ -71,7 +71,9 @@
     "title": "連線到 Core",
     "token": "存取 PIN 或金鑰",
     "usePin": "使用 PIN",
-    "useToken": "使用金鑰"
+    "useToken": "使用金鑰",
+    "loginLanHint": "這台 Core 開在區域網上，所以需要憑據。貼上 Core 裡顯示的存取權杖，或你設定的 PIN。",
+    "loginDisabled": "目前未開啟登入校驗；本機存取不需要這個頁面，開 LAN 後才會用到。"
   },
   "chat": {
     "attachFile": "上傳檔案",
