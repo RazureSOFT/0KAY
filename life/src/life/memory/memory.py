@@ -14,7 +14,7 @@ from functools import wraps, lru_cache
 from collections import deque
 from contextlib import contextmanager
 from ..logging_setup import get_logger
-from ..timeutil import now_utc, parse_utc, to_local_naive
+from ..timeutil import as_utc_iso, now_utc, parse_utc, to_local_naive
 
 logger = get_logger("memory")
 
@@ -41,6 +41,21 @@ def _tantivy_schema():
     return schema_builder.build()
 
 
+def _seconds_since(stamp: object) -> float | None:
+    """Age of an instant in seconds, or None when there is no usable stamp.
+
+    Records written by older builds hold a naive local datetime; anything built
+    since is UTC-aware. Comparing two datetimes from different eras raises
+    TypeError, so every age calculation goes through here instead of subtracting
+    directly. None means "no timestamp", which callers treat as "very old" rather
+    than as a crash.
+    """
+    parsed = parse_utc(stamp)
+    if parsed is None:
+        return None
+    return (now_utc() - parsed).total_seconds()
+
+
 @dataclass
 class Memory:
     id: str
@@ -54,12 +69,15 @@ class Memory:
     metadata: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
+        # Stored as UTC ISO-8601 with an offset. The previous format was a naive
+        # local timestamp: a memory written in one timezone and read in another
+        # changed age, and a DST shift made "this decayed two days ago" wrong.
         return {
             "id": self.id,
             "content": self.content,
             "importance": self.importance,
-            "created_at": self.created_at.isoformat(),
-            "last_recalled": self.last_recalled.isoformat(),
+            "created_at": as_utc_iso(self.created_at),
+            "last_recalled": as_utc_iso(self.last_recalled),
             "recall_count": self.recall_count,
             "strength": self.strength,
             "tags": self.tags,
@@ -68,12 +86,17 @@ class Memory:
 
     @classmethod
     def from_dict(cls, data: dict) -> "Memory":
+        # Instants stay UTC-aware; anything that needs local wall-clock time
+        # converts at the edge (to_local_naive). Records written by older builds
+        # carry a naive local string, which parse_utc reads as "this machine's
+        # local time" — the best available interpretation, and correct for the
+        # machine that wrote it.
         return cls(
             id=data["id"],
             content=data["content"],
             importance=data["importance"],
-            created_at=to_local_naive(datetime.fromisoformat(data["created_at"])),
-            last_recalled=to_local_naive(datetime.fromisoformat(data["last_recalled"])),
+            created_at=parse_utc(data["created_at"]) or now_utc(),
+            last_recalled=parse_utc(data["last_recalled"]) or now_utc(),
             recall_count=data.get("recall_count", 0),
             strength=data.get("strength", 1.0),
             tags=data.get("tags", []),
@@ -86,13 +109,13 @@ class WorkingMemory:
     def __init__(self, max_turns: int = 20):
         self.max_turns = max_turns
         self.messages: list[dict] = []
-        self.session_start = datetime.now()
+        self.session_start = now_utc()
 
     def add(self, role: str, content: str) -> None:
         self.messages.append({
             "role": role,
             "content": content,
-            "timestamp": datetime.now().isoformat(),
+            "timestamp": now_utc().isoformat(),
         })
         if len(self.messages) > self.max_turns:
             self.messages = self.messages[-self.max_turns:]
@@ -105,7 +128,7 @@ class WorkingMemory:
 
     def clear(self) -> None:
         self.messages.clear()
-        self.session_start = datetime.now()
+        self.session_start = now_utc()
 
     def to_dict(self) -> dict:
         return {
@@ -159,7 +182,7 @@ class ShortTermMemory:
             self._save()
 
     def store(self, content: str, importance: float = 0.5, tags: list[str] = None, metadata: dict = None) -> Memory:
-        now = datetime.now()
+        now = now_utc()
         memory = Memory(
             id=f"stm_{now.strftime('%Y%m%d_%H%M%S_%f')}",
             content=content,
@@ -201,7 +224,7 @@ class ShortTermMemory:
         results = []
         for _, m in scored[:top_k]:
             m.recall_count += 1
-            m.last_recalled = datetime.now()
+            m.last_recalled = now_utc()
             m.strength = self._calculate_strength(m)
             results.append(m)
 
@@ -211,7 +234,8 @@ class ShortTermMemory:
         return results
 
     def _calculate_strength(self, memory: Memory) -> float:
-        days = (datetime.now() - memory.created_at).total_seconds() / 86400
+        age = _seconds_since(memory.created_at)
+        days = (age if age is not None else 0.0) / 86400
         effective_lambda = 0.1
         strength = memory.importance * math.exp(-effective_lambda * days)
         strength *= (1 + memory.recall_count * 0.2)
@@ -324,8 +348,17 @@ class LongTermMemory:
         results = []
         for _, m in scored[:top_k]:
             m.recall_count += 1
-            m.last_recalled = datetime.now()
+            m.last_recalled = now_utc()
             results.append(m)
+        if results:
+            # Recalling is a write. Without this the counters and the "last
+            # recalled" timestamp were updated in memory and thrown away at the
+            # next restart, so decay and review scheduling always saw a memory
+            # that had never been touched. The throttle in _save keeps this from
+            # turning every read into a disk write.
+            self._dirty = True
+            if time.monotonic() - self._last_save >= 60.0:
+                self._save()
         return results
 
     def add_relation(self, id1: str, relation: str, id2: str) -> None:
@@ -441,6 +474,17 @@ class MemorySystem:
 
     @contextmanager
     def _connect(self):
+        # One caller at a time, deliberately.
+        #
+        # SQLite would allow concurrent readers, but this database is opened by
+        # several subsystems in one process and lives on filesystems (Windows,
+        # bind-mounted volumes) where a second connection to a file another thread
+        # is writing produces sharing violations rather than contention. The
+        # process-wide lock is the cheap way to keep that from happening, and a
+        # test asserts it stays that way.
+        #
+        # What each caller gets is its own connection, closed on the way out —
+        # that part was leaking and is what the Windows permission errors were.
         with self._lock:
             conn = sqlite3.connect(self.db_path, timeout=30.0)
             conn.row_factory = sqlite3.Row
@@ -453,18 +497,23 @@ class MemorySystem:
                 conn.close()
 
     def close(self, release_index: bool = False) -> None:
+        # Fold the journal back into the database, then leave the files alone.
+        #
+        # This used to delete the -wal and -shm sidecars after setting
+        # journal_mode=PERSIST. Two things were wrong with that: PERSIST keeps a
+        # journal file by design, so deleting sidecars cannot be "cleaning up"
+        # anything it created; and if a second process had the database open,
+        # unlinking the sidecars underneath it could lose committed data. A
+        # checkpoint is the supported way to leave the database tidy, and it is
+        # safe to call while other readers exist.
         try:
             conn = sqlite3.connect(self.db_path, timeout=30.0)
             try:
-                conn.execute("PRAGMA journal_mode=PERSIST")
+                conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
             finally:
                 conn.close()
         except sqlite3.Error as error:  # pragma: no cover - best effort
-            logger.warning("journal cleanup failed: %s", error)
-        for suffix in ("-wal", "-shm"):
-            sidecar = Path(str(self.db_path) + suffix)
-            if sidecar.exists():
-                sidecar.unlink(missing_ok=True)
+            logger.warning("memory journal checkpoint failed: %s", error)
         if release_index:
             self._release_tantivy_dir()
 
@@ -528,7 +577,7 @@ class MemorySystem:
     def _sync_fact(self, memory: Memory, tier: str) -> None:
         with self._connect() as db:
             self._upsert_fact_tx(db,memory,tier)
-            db.execute("INSERT INTO memory_audit VALUES(?,?,?,?,?)",(f"audit_{uuid.uuid4().hex}",memory.id,"upsert",tier,datetime.now().isoformat()))
+            db.execute("INSERT INTO memory_audit VALUES(?,?,?,?,?)",(f"audit_{uuid.uuid4().hex}",memory.id,"upsert",tier,now_utc().isoformat()))
         self._audit_writes += 1
         if self._audit_writes % 200 == 0:
             try:
@@ -581,7 +630,7 @@ class MemorySystem:
             db.executemany("DELETE FROM memory_tags WHERE fact_id=?", [(i,) for i in ids])
         for fact_id in ids:
             self._index_remove_doc(fact_id)
-        self._index["updated_at"] = datetime.now().isoformat()
+        self._index["updated_at"] = now_utc().isoformat()
         self._persist_index()
         self._persist_projection_state({"available": tantivy is not None, "note": "incremental remove"})
         return len(ids)
@@ -593,7 +642,7 @@ class MemorySystem:
     @synchronized
     def store(self, content: str, importance: float = 0.5, tags: list[str] = None, metadata: dict = None,
               strength: float = 1.0) -> Memory:
-        now = datetime.now()
+        now = now_utc()
         memory = Memory(id=f"stm_{__import__('uuid').uuid4().hex}", content=content, importance=importance,
                         created_at=now, last_recalled=now, tags=tags or [], metadata=metadata or {},
                         strength=_clamp01(strength))
@@ -613,11 +662,12 @@ class MemorySystem:
 
     @synchronized
     def apply_forgetting(self, lam: float = 0.05) -> int:
-        now = datetime.now()
+        now = now_utc()
         changed = 0
         with self._connect() as db:
             for memory in self.short_term.memories + self.long_term.memories:
-                days = max(0.0, (now - memory.created_at).total_seconds() / 86400.0)
+                age = _seconds_since(memory.created_at)
+                days = max(0.0, (age if age is not None else 0.0) / 86400.0)
                 decayed = float(memory.importance) * math.exp(-float(lam) * days) * (1 + memory.recall_count * 0.2)
                 new_strength = _clamp01(decayed)
                 if abs(new_strength - float(memory.strength)) > 1e-4:
@@ -643,11 +693,11 @@ class MemorySystem:
 
     @synchronized
     def rem_stabilize(self, window_hours: float = 24.0, boost: float = 0.1) -> int:
-        now = datetime.now()
+        now = now_utc()
         stabilized = 0
         with self._connect() as db:
             for memory in self.short_term.memories + self.long_term.memories:
-                age = (now - memory.last_recalled).total_seconds() / 3600.0
+                age = (_seconds_since(memory.last_recalled) or 0.0) / 3600.0
                 if memory.recall_count > 0 and age <= float(window_hours):
                     memory.strength = _clamp01(float(memory.strength) + float(boost))
                     self._upsert_fact_tx(db, memory, self._tier_of(memory))
@@ -723,7 +773,7 @@ class MemorySystem:
         for m in candidates:
             m.strength = min(1.0, m.strength + 0.15)
             m.recall_count += 1
-            m.last_recalled = datetime.now()
+            m.last_recalled = now_utc()
             if any(x.id == m.id for x in self.short_term.memories):
                 self._sync_fact(m, "short_term")
             elif any(x.id == m.id for x in self.long_term.memories):
@@ -760,13 +810,13 @@ class MemorySystem:
             duplicate.strength = min(1.0, max(duplicate.strength, float(strength)) + 0.05)
             duplicate.importance = max(duplicate.importance, min(1.0, float(strength)))
             duplicate.recall_count += 1
-            duplicate.last_recalled = datetime.now()
+            duplicate.last_recalled = now_utc()
             for tag in normalized_tags:
                 if tag not in duplicate.tags:
                     duplicate.tags.append(tag)
             self._sync_fact(duplicate, self._tier_of(duplicate))
             self._index_upsert_doc(duplicate)
-            self._index["updated_at"] = datetime.now().isoformat()
+            self._index["updated_at"] = now_utc().isoformat()
             self._persist_index()
             self._persist_projection_state({"available": tantivy is not None, "note": "incremental upsert"})
             return duplicate
@@ -822,7 +872,7 @@ class MemorySystem:
         if not wanted:
             return []
         _pe, _n, _medium, _severe, decay = self._thresholds()
-        now = datetime.now()
+        now = now_utc()
         ranked: list[tuple[float, Memory]] = []
         for memory in self.short_term.memories + self.long_term.memories:
             if memory.metadata.get("memory_type") != "episode":
@@ -832,7 +882,7 @@ class MemorySystem:
             overlap = len(wanted & set(self._tokens(memory.content)))
             if not overlap:
                 continue
-            age = max(0.0, (now - memory.created_at).total_seconds())
+            age = max(0.0, _seconds_since(memory.created_at) or 0.0)
             recency = math.exp(-max(0.0, decay) * age)
             ranked.append((overlap * max(0.0, float(memory.strength)) * recency, memory))
         ranked.sort(key=lambda pair: pair[0], reverse=True)
@@ -856,7 +906,7 @@ class MemorySystem:
         memory = self._find_memory(memory_id)
         if memory is None:
             return {"branch": "missing", "id": memory_id}
-        now = datetime.now()
+        now = now_utc()
         memory.metadata["last_reactivated"] = now.isoformat()
         memory.recall_count += 1
         memory.last_recalled = now
@@ -900,7 +950,7 @@ class MemorySystem:
             revised = self.store(memory.content, importance=_clamp01(reward_new), tags=list(memory.tags),
                                  metadata={**memory.metadata, "supersedes_id": memory.id,
                                            "prediction_error": float(surprise),
-                                           "reconsolidated_at": datetime.now().isoformat()})
+                                           "reconsolidated_at": now_utc().isoformat()})
             revised.strength = 1.0
             self._sync_fact(revised, "short_term")
             memory.metadata["superseded_by"] = revised.id
@@ -974,7 +1024,7 @@ class MemorySystem:
                                             "shared_terms": sorted(shared),
                                             "schema_matched": schema_matched,
                                             "derived_from": [m.id for m in members],
-                                            "extracted_at": datetime.now().isoformat()})
+                                            "extracted_at": now_utc().isoformat()})
             semantic.strength = _clamp01(importance + (0.2 if schema_matched else 0.0))
             self.short_term.memories = [m for m in self.short_term.memories if m.id != semantic.id]
             self.long_term.memories.append(semantic)
@@ -997,7 +1047,7 @@ class MemorySystem:
         note_id = path.stem
         chunks = self._chunk_note(content)
         with self._connect() as db:
-            db.execute("INSERT OR REPLACE INTO note_files VALUES(?,?,?,?,?,?,?)",(note_id,str(path),title,hashlib.sha256(content.encode("utf-8")).hexdigest(),"active",datetime.now().isoformat(),datetime.now().isoformat()))
+            db.execute("INSERT OR REPLACE INTO note_files VALUES(?,?,?,?,?,?,?)",(note_id,str(path),title,hashlib.sha256(content.encode("utf-8")).hexdigest(),"active",now_utc().isoformat(),now_utc().isoformat()))
             db.execute("DELETE FROM note_chunks WHERE note_id=?",(note_id,))
             db.executemany("INSERT INTO note_chunks VALUES(?,?,?,?,?,?,?)",[(f"{note_id}:{index}",note_id,index,start,end,text,max(1,len(text)//4)) for index,start,end,text in chunks])
             db.execute("INSERT INTO note_scopes(note_id,scope) VALUES(?,?)",(note_id,scope))
@@ -1023,12 +1073,12 @@ class MemorySystem:
             db.execute("UPDATE memory_facts SET status='retracted', content=?, metadata_json='{}' WHERE id=?",
                        (RETRACTED_TOMBSTONE, fact_id))
             db.execute("DELETE FROM memory_tags WHERE fact_id=?", (fact_id,))
-            db.execute("INSERT INTO memory_audit VALUES(?,?,?,?,?)",(f"audit_{uuid.uuid4().hex}",fact_id,"retract",reason,datetime.now().isoformat()))
+            db.execute("INSERT INTO memory_audit VALUES(?,?,?,?,?)",(f"audit_{uuid.uuid4().hex}",fact_id,"retract",reason,now_utc().isoformat()))
         self.short_term.memories=[m for m in self.short_term.memories if m.id != fact_id]; self.long_term.memories=[m for m in self.long_term.memories if m.id != fact_id]
         self.short_term._save(); self.long_term._save()
         self._scrub_backups(fact_id)
         self._index_remove_doc(fact_id)
-        self._index["updated_at"] = datetime.now().isoformat()
+        self._index["updated_at"] = now_utc().isoformat()
         self._persist_index()
         self._persist_projection_state({"available": tantivy is not None, "note": "incremental remove"})
         return True
@@ -1082,7 +1132,7 @@ class MemorySystem:
             }
             for table in ("memory_tags", "memory_facts", "note_chunks", "note_files", "note_scopes", "reflection_queue", "memory_audit", "memory_projection_state"):
                 db.execute(f"DELETE FROM {table}")
-            db.execute("INSERT INTO memory_audit VALUES(?,?,?,?,?)", (f"audit_{uuid.uuid4().hex}", None, "clear_all", "dashboard_full_clear", datetime.now().isoformat()))
+            db.execute("INSERT INTO memory_audit VALUES(?,?,?,?,?)", (f"audit_{uuid.uuid4().hex}", None, "clear_all", "dashboard_full_clear", now_utc().isoformat()))
         self.working.clear()
         self.short_term.memories = []; self.long_term.memories = []
         self.short_term._save(); self.long_term._save()
@@ -1096,7 +1146,7 @@ class MemorySystem:
                 writer = index.writer(); writer.delete_all_documents(); writer.commit(); writer.wait_merging_threads()
         except Exception as error:
             logger.warning("Tantivy index clear failed: %s", error)
-        self._index = {"documents": {}, "avgdl": 0.0, "df": {}, "updated_at": datetime.now().isoformat()}
+        self._index = {"documents": {}, "avgdl": 0.0, "df": {}, "updated_at": now_utc().isoformat()}
         self._persist_index()
         return counts
 
@@ -1105,11 +1155,11 @@ class MemorySystem:
         with self._connect() as db:
             db.execute("INSERT INTO reflection_queue(id,session_id,user_text,assistant_text,status,proposal_json,created_at,processed_at,scope) VALUES(?,?,?,?,?,?,?,?,?)",
                        (f"reflection_{uuid.uuid4().hex}", session_id, user_text[:4000], assistant_text[:4000],
-                        "pending", None, datetime.now().isoformat(), None, scope))
+                        "pending", None, now_utc().isoformat(), None, scope))
 
     def _prune_reflections(self, cap: int = 2000, retention_days: float = 7.0,
                            pending_cap: int = 500) -> int:
-        cutoff = (datetime.now() - timedelta(days=float(retention_days))).isoformat()
+        cutoff = (now_utc() - timedelta(days=float(retention_days))).isoformat()
         removed = 0
         with self._connect() as db:
             cursor = db.execute("DELETE FROM reflection_queue WHERE status IN ('applied','rejected') AND created_at < ?", (cutoff,))
@@ -1137,7 +1187,7 @@ class MemorySystem:
                 proposal={"kind":"memory_proposal","source":row["id"],"statement":"","risk":"low"}
                 match=re.search(r"(?:我喜欢|我不喜欢|我的名字是|我叫)\s*([^，。！？!?]{1,80})",text)
                 if match: proposal["statement"] = match.group(0).strip()[:160]
-                db.execute("UPDATE reflection_queue SET status=?,proposal_json=?,processed_at=? WHERE id=?",("proposed",json.dumps(proposal,ensure_ascii=False),datetime.now().isoformat(),row["id"]))
+                db.execute("UPDATE reflection_queue SET status=?,proposal_json=?,processed_at=? WHERE id=?",("proposed",json.dumps(proposal,ensure_ascii=False),now_utc().isoformat(),row["id"]))
                 count+=1
         self._prune_reflections()
         return count
@@ -1248,7 +1298,7 @@ class MemorySystem:
             for token in tf:
                 df[token] = df.get(token, 0) + 1
             documents[memory.id] = {"tokens": tf, "length": len(tokens) or 1, "vector": self._vector(memory.content), "tier": "long_term" if memory.id in long_term_ids else "short_term"}
-        self._index = {"documents": documents, "avgdl": sum(doc["length"] for doc in documents.values()) / max(1, len(documents)), "df": df, "updated_at": datetime.now().isoformat()}
+        self._index = {"documents": documents, "avgdl": sum(doc["length"] for doc in documents.values()) / max(1, len(documents)), "df": df, "updated_at": now_utc().isoformat()}
         self._persist_index(force=True)
         tantivy_detail = self._rebuild_tantivy_projection()
         self._index_dirty = False
@@ -1425,7 +1475,7 @@ class MemorySystem:
                 if not memory: continue
                 overlap = len(qset & self._memory_tokens(memory))
                 tag_boost = sum(1 for tag in memory.tags if tag.lower() in query.lower())
-                freshness = max(0.0, 1 - (datetime.now() - memory.last_recalled).total_seconds() / half_life)
+                freshness = max(0.0, 1 - (_seconds_since(memory.last_recalled) or 0.0) / half_life)
                 reranked.append((memory_id, score + overlap * .03 + tag_boost * .05 + memory.importance * .04 + freshness * .01))
             ranked = sorted(reranked, key=lambda item: item[1], reverse=True)
         result = []
@@ -1433,7 +1483,7 @@ class MemorySystem:
             memory = lookup.get(memory_id)
             if not memory: continue
             memory.recall_count += 1
-            memory.last_recalled = datetime.now()
+            memory.last_recalled = now_utc()
             memory.strength = min(1.0, memory.strength + .03)
             tier = (docs.get(memory_id) or {}).get("tier") or self._tier_of(memory)
             self._sync_fact(memory, tier)
@@ -1477,7 +1527,7 @@ class MemorySystem:
         today = datetime.now().strftime("%Y%m%d")
         target = self.backup_dir / f"memory-{today}.json"
         if not target.exists():
-            payload = {"created_at": datetime.now().isoformat(), "short_term": [self._redact_for_backup(m) for m in self.short_term.memories], "long_term": [self._redact_for_backup(m) for m in self.long_term.memories], "index": self._index}
+            payload = {"created_at": now_utc().isoformat(), "short_term": [self._redact_for_backup(m) for m in self.short_term.memories], "long_term": [self._redact_for_backup(m) for m in self.long_term.memories], "index": self._index}
             target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         for stale in sorted(self.backup_dir.glob("memory-*.json"))[:-7]: stale.unlink(missing_ok=True)
         return str(target)
@@ -1494,10 +1544,11 @@ class MemorySystem:
 
     def recalculate_strengths(self) -> int:
         from datetime import timedelta
-        now = datetime.now()
+        now = now_utc()
         changed = 0
         for memory in self.short_term.memories + self.long_term.memories:
-            days = (now - memory.created_at).total_seconds() / 86400
+            age = _seconds_since(memory.created_at)
+            days = (age if age is not None else 0.0) / 86400
             effective_lambda = 0.1
             strength = memory.importance * math.exp(-effective_lambda * max(0.0, days))
             strength *= (1 + memory.recall_count * 0.2)
@@ -1578,7 +1629,7 @@ class MemorySystem:
         for memory in targets:
             memory.strength = min(1.0, memory.strength + 0.15)
             memory.recall_count += 1
-            memory.last_recalled = datetime.now()
+            memory.last_recalled = now_utc()
             self._sync_fact(memory, self._tier_of(memory))
         return [self._fact_dict(m) for m in targets]
 
@@ -1610,7 +1661,7 @@ class MemorySystem:
                 scope_row = db.execute("SELECT scope FROM note_scopes WHERE note_id=?", (item["id"],)).fetchone()
                 item["scope"] = scope_row[0] if scope_row else "public"
                 notes.append(item)
-        return {"version": 1, "exported_at": datetime.now().isoformat(), "facts": facts, "tags": tags, "notes": notes}
+        return {"version": 1, "exported_at": now_utc().isoformat(), "facts": facts, "tags": tags, "notes": notes}
 
     @synchronized
     def import_snapshot(self, snapshot: dict) -> dict:
@@ -1629,8 +1680,8 @@ class MemorySystem:
                     (fact_id, str(row.get("content") or ""), _default_num(row.get("importance"), 0.5),
                      _default_num(row.get("strength"), 0.5),
                      str(row.get("tier") or "short_term"), "active", str(row.get("scope") or "public"),
-                     str(row.get("metadata_json") or "{}"), str(row.get("created_at") or datetime.now().isoformat()),
-                     str(row.get("last_recalled") or datetime.now().isoformat()), int(row.get("recall_count") or 0),
+                     str(row.get("metadata_json") or "{}"), str(row.get("created_at") or now_utc().isoformat()),
+                     str(row.get("last_recalled") or now_utc().isoformat()), int(row.get("recall_count") or 0),
                      str(row.get("source_kind") or "conversation"), row.get("source_ref"), row.get("supersedes_id")))
                 imported += 1
             for tag in snapshot.get("tags") or []:
@@ -1652,8 +1703,8 @@ class MemorySystem:
                 db.execute("INSERT OR REPLACE INTO note_files(id,path,title,content_hash,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?)",
                            (note_id, str(note.get("path") or note_path), str(note.get("title") or note_id),
                             hashlib.sha256(content.encode("utf-8")).hexdigest(), "active",
-                            str(note.get("created_at") or datetime.now().isoformat()),
-                            str(note.get("updated_at") or datetime.now().isoformat())))
+                            str(note.get("created_at") or now_utc().isoformat()),
+                            str(note.get("updated_at") or now_utc().isoformat())))
                 db.execute("DELETE FROM note_chunks WHERE note_id=?", (note_id,))
                 db.executemany("INSERT INTO note_chunks VALUES(?,?,?,?,?,?,?)",
                                [(f"{note_id}:{index}", note_id, index, start, end, text, max(1, len(text) // 4))
@@ -1675,7 +1726,7 @@ class MemorySystem:
                 return False
             db.execute("DELETE FROM note_chunks WHERE note_id=?", (safe,))
             db.execute("DELETE FROM note_scopes WHERE note_id=?", (safe,))
-            db.execute("UPDATE note_files SET status='deleted', updated_at=? WHERE id=?", (datetime.now().isoformat(), safe))
+            db.execute("UPDATE note_files SET status='deleted', updated_at=? WHERE id=?", (now_utc().isoformat(), safe))
             escaped = safe.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
             db.execute("UPDATE memory_facts SET status='retracted' WHERE content LIKE ? ESCAPE '\\'", (f"Note {escaped}:%",))
         path.unlink(missing_ok=True)
@@ -1685,7 +1736,7 @@ class MemorySystem:
         self.long_term.memories = [m for m in self.long_term.memories if not m.content.startswith(f"Note {safe}:")]
         for fact_id in removed_ids:
             self._index_remove_doc(fact_id)
-        self._index["updated_at"] = datetime.now().isoformat()
+        self._index["updated_at"] = now_utc().isoformat()
         self._persist_index()
         self._persist_projection_state({"available": tantivy is not None, "note": "incremental remove"})
         return True
@@ -1735,12 +1786,12 @@ class MemorySystem:
                     proposal = {}
             if not accept:
                 db.execute("UPDATE reflection_queue SET status='rejected', processed_at=? WHERE id=?",
-                           (datetime.now().isoformat(), reflection_id))
+                           (now_utc().isoformat(), reflection_id))
                 return {"id": reflection_id, "status": "rejected"}
             statement = (proposal.get("statement") or row["user_text"] or "").strip()
             origin_scope = str(row["scope"] or "public")
             db.execute("UPDATE reflection_queue SET status='applied', processed_at=? WHERE id=?",
-                       (datetime.now().isoformat(), reflection_id))
+                       (now_utc().isoformat(), reflection_id))
         memory = None
         if statement:
             memory = self.remember(statement[:400], tags=["reflection"], strength=0.7,
