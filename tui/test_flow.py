@@ -70,7 +70,7 @@ class Steering(unittest.TestCase):
             attempts.append(prompt)
             if len(attempts) < 3:
                 raise CoreError("HTTP 409 from /api/agent/messages: "
-                                "session already has an active task")
+                                "session already has an active task", 409)
             app.client.sent.append(prompt)
             return {"accepted": True, "task_id": "agent-task:2"}
 

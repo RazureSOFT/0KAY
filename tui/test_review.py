@@ -225,6 +225,116 @@ class EmptyAnswer(unittest.TestCase):
         self.assertTrue(assistant[0]["meta"].get("pending"))
 
 
+class Recall(unittest.TestCase):
+    """History is a convenience with a bound, not an ever-growing log."""
+
+    def test_a_pasted_page_does_not_go_in_whole(self):
+        app, _ = make_app()
+        page = "日志第一行\n" + "\n".join(f"第 {i} 行输出" for i in range(400))
+        app._remember(page)
+        self.assertEqual(len(app.history), 1)
+        self.assertLessEqual(len(app.history[0]), app_module.HISTORY_ENTRY_MAX + 1)
+        self.assertTrue(app.history[0].endswith("…"), "it is cut, and says so")
+
+    def test_the_list_has_an_end(self):
+        app, _ = make_app()
+        for i in range(app_module.HISTORY_MAX + 50):
+            app._remember(f"prompt {i}")
+        self.assertEqual(len(app.history), app_module.HISTORY_MAX)
+        self.assertEqual(app.history[-1], f"prompt {app_module.HISTORY_MAX + 49}",
+                         "the newest is kept")
+
+    def test_the_same_prompt_twice_is_one_entry(self):
+        app, _ = make_app()
+        app._remember("再看一遍")
+        app._remember("再看一遍")
+        self.assertEqual(app.history, ["再看一遍"])
+
+    def test_ctrl_r_finds_the_prompt_not_the_page(self):
+        app, _ = make_app()
+        app._remember("旧的一个问题")
+        app._remember("另一段很长的粘贴\n" + "x" * 5000)
+        app.buffer = list("旧")
+        app._history_search()
+        self.assertEqual("".join(app.buffer), "旧的一个问题")
+
+
+class Reconnect(unittest.TestCase):
+    """A cursor the gateway forgot must be dropped, not retried for ever."""
+
+    def test_a_rejected_cursor_is_recognised(self):
+        from kit.client import CoreError
+        self.assertTrue(app_module._cursor_rejected(
+            CoreError("HTTP 400 from /api/tasks/events: bad cursor", 400)))
+        self.assertTrue(app_module._cursor_rejected(
+            CoreError("HTTP 404 from /api/tasks/events: gone", 404)))
+
+    def test_a_broken_gateway_is_not_a_rejected_cursor(self):
+        from kit.client import CoreError
+        self.assertFalse(app_module._cursor_rejected(
+            CoreError("HTTP 500 from /api/tasks/events: boom", 500)))
+        self.assertFalse(app_module._cursor_rejected(
+            CoreError("cannot reach http://127.0.0.1:8080: refused")))
+
+    def test_the_message_alone_does_not_count(self):
+        # The old check read the status back out of the message, which broke
+        # the moment anybody reworded it.
+        from kit.client import CoreError
+        self.assertFalse(app_module._cursor_rejected(
+            CoreError("HTTP 400 from /api/tasks/events: bad cursor")))
+
+
+class PictureCache(unittest.TestCase):
+    """More pictures than the cache holds must not re-decode all of them."""
+
+    def test_the_oldest_entry_goes_not_the_whole_cache(self):
+        from kit import graphics
+        saved = graphics._PIXEL_CACHE.copy()
+        graphics._PIXEL_CACHE.clear()
+        try:
+            with tempfile.TemporaryDirectory() as folder:
+                paths = []
+                for i in range(graphics._CACHE_LIMIT + 3):
+                    path = os.path.join(folder, f"{i}.png")
+                    png(path, 4, 2, colour=(i * 20 % 256, 40, 90))
+                    paths.append(path)
+                    graphics.pixels(path)
+            kept = len(graphics._PIXEL_CACHE)
+            self.assertEqual(kept, graphics._CACHE_LIMIT)
+            newest = [k for k in graphics._PIXEL_CACHE if paths[-1] in k]
+            self.assertTrue(newest, "the newest picture is still cached")
+            oldest = [k for k in graphics._PIXEL_CACHE if paths[0] in k]
+            self.assertFalse(oldest, "the oldest was the one evicted")
+        finally:
+            graphics._PIXEL_CACHE.clear()
+            graphics._PIXEL_CACHE.update(saved)
+
+    def test_a_hit_moves_the_entry_to_the_end(self):
+        from kit import graphics
+        saved = graphics._PIXEL_CACHE.copy()
+        graphics._PIXEL_CACHE.clear()
+        try:
+            with tempfile.TemporaryDirectory() as folder:
+                first = os.path.join(folder, "a.png")
+                png(first, 4, 2)
+                graphics.pixels(first)
+                for i in range(graphics._CACHE_LIMIT - 1):
+                    graphics.pixels(_spare_png(folder, i))
+                graphics.pixels(first)          # touch the oldest
+                graphics.pixels(_spare_png(folder, 999))   # force one eviction
+            self.assertTrue([k for k in graphics._PIXEL_CACHE if first in k],
+                            "a picture still on screen must not be evicted")
+        finally:
+            graphics._PIXEL_CACHE.clear()
+            graphics._PIXEL_CACHE.update(saved)
+
+
+def _spare_png(folder, index):
+    path = os.path.join(folder, f"spare-{index}.png")
+    png(path, 4, 2, colour=(index % 256, 10, 10))
+    return path
+
+
 def make_theme():
     from kit.theme import build
     return build("dark")

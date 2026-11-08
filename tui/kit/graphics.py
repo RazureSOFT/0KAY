@@ -22,6 +22,7 @@ import shutil
 import struct
 import subprocess
 import zlib
+from collections import OrderedDict
 
 # The Kitty protocol and the sixel introducer are both escapes the renderer
 # writes outside the text grid.
@@ -153,8 +154,8 @@ def kitty_place(image_id: int, cols: int, rows: int) -> str:
 
 # -- sixel -----------------------------------------------------------------
 
-_PIXEL_CACHE: dict[str, tuple[int, int, bytes]] = {}
-_CACHE_LIMIT = 6
+_PIXEL_CACHE: "OrderedDict[str, tuple[int, int, bytes]]" = OrderedDict()
+_CACHE_LIMIT = 12
 
 
 def _ffmpeg_png(path: str) -> bytes | None:
@@ -192,6 +193,7 @@ def pixels(path: str) -> tuple[int, int, bytes] | None:
     key = f"{path}|{info.st_mtime_ns}|{info.st_size}"
     cached = _PIXEL_CACHE.get(key)
     if cached is not None:
+        _PIXEL_CACHE.move_to_end(key)
         return cached
     decoded = _png_bytes(path)
     if decoded is None:
@@ -201,9 +203,12 @@ def pixels(path: str) -> tuple[int, int, bytes] | None:
     if decoded is None:
         return None
     result = (decoded[0], decoded[1], decoded[2])
-    if len(_PIXEL_CACHE) >= _CACHE_LIMIT:
-        _PIXEL_CACHE.clear()
     _PIXEL_CACHE[key] = result
+    # Evict the least recently used entry, not the whole cache: a transcript
+    # with more pictures than the limit would otherwise re-decode all of them
+    # on every keystroke.
+    while len(_PIXEL_CACHE) > _CACHE_LIMIT:
+        _PIXEL_CACHE.popitem(last=False)
     return result
 
 

@@ -1290,6 +1290,30 @@ class App:
         self.cursor = 0
         self.palette_index = 0
 
+    def _remember(self, text: str) -> None:
+        """Add a prompt to the recall list, without letting it grow forever.
+
+        A pasted paragraph is a prompt, so it lands here too. Keeping the whole
+        thing would make ctrl+r drag a page of someone else's log into the
+        draft, and the list itself has no natural end in a session that runs
+        all day.
+        """
+        text = text.strip()
+        if not text:
+            return
+        if len(text) > HISTORY_ENTRY_MAX:
+            # The first line is what a person recognises it by.
+            head = text.split("\n", 1)[0][:HISTORY_ENTRY_MAX - 1]
+            text = head + "…"
+        if self.history and self.history[-1] == text:
+            # Asking the same thing twice is one entry, not two.
+            self.history_index = len(self.history)
+            return
+        self.history.append(text)
+        if len(self.history) > HISTORY_MAX:
+            del self.history[:len(self.history) - HISTORY_MAX]
+        self.history_index = len(self.history)
+
     def _history_search(self) -> None:
         """ctrl+r: the newest history entry containing what is typed.
 
@@ -1483,8 +1507,7 @@ class App:
             return
         if text.startswith("/"):
             chosen = self._palette_choice(text)
-            self.history.append(text)
-            self.history_index = len(self.history)
+            self._remember(text)
             if chosen is not None and chosen.argument and " " not in text:
                 # The command is highlighted but still needs an argument:
                 # complete it rather than run it and print a usage line.
@@ -1495,8 +1518,7 @@ class App:
             self._clear_input()
             self._run_command("/" + chosen.name if chosen and " " not in text else text)
             return
-        self.history.append(text)
-        self.history_index = len(self.history)
+        self._remember(text)
         self._clear_input()
         if self.busy:
             # Typing while the agent works means "do this instead": the turn is
@@ -1547,8 +1569,7 @@ class App:
         if not text:
             return
         self.queued.append(text)
-        self.history.append(text)
-        self.history_index = len(self.history)
+        self._remember(text)
         self._clear_input()
         self.notice(f"queued · {len(self.queued)} waiting · sent when this turn ends")
         self._sync_view()
@@ -1591,7 +1612,9 @@ class App:
                     )
                     break
                 except Exception as error:  # noqa: BLE001 - inspected below
-                    busy = "active task" in str(error)
+                    # 409 is the gateway's "a turn is running in this session".
+                    # Anything else is a real failure and must be reported.
+                    busy = getattr(error, "status", 0) == 409
                     if steer and busy and attempts < 24:
                         attempts += 1
                         time.sleep(0.25)
@@ -2126,14 +2149,27 @@ class App:
 
         One stream for all sessions: the rows carry their session id, and
         filtering here keeps reconnects simple -- the cursor is the only state.
+
+        A reconnect is not free: the gateway logs it, and a gateway that keeps
+        refusing the same request would be hammered several times a minute.
+        So failures back off, and a cursor the gateway no longer recognises is
+        dropped rather than sent again -- that is what happens after a restart,
+        and retrying it forever would never succeed.
         """
+        backoff = 1.5
         while self.running:
             try:
                 for delta in self.client.task_events(self.task_cursor):
                     self.task_cursor = str(delta.get("cursor") or self.task_cursor)
                     self.queue.put(("tasks", delta, None))
-            except Exception:  # noqa: BLE001 - a dropped stream just reconnects
-                pass
+                backoff = 1.5
+            except Exception as error:  # noqa: BLE001 - a dropped stream reconnects
+                if _cursor_rejected(error):
+                    self.task_cursor = ""
+                    backoff = 1.5
+                    continue
+                time.sleep(backoff)
+                backoff = min(30.0, backoff * 2)
             if not self.running:
                 return
             time.sleep(1.5)
@@ -3640,6 +3676,12 @@ PASTE_TIGHT = 0.02
 # bracketed paste sends the Enter of a copied paragraph as an ordinary key.
 PASTE_KEYS = ("enter", "ctrl+j", "tab")
 
+# Recall is a convenience, not a log: enough to get back a prompt from earlier
+# today, bounded so a long session cannot make ctrl+r slow or drag a pasted
+# page into the draft.
+HISTORY_MAX = 200
+HISTORY_ENTRY_MAX = 2000
+
 
 def _takes_osc_notifications() -> bool:
     """Whether this terminal turns OSC 9 into a desktop notification.
@@ -3653,6 +3695,15 @@ def _takes_osc_notifications() -> bool:
         return True
     return bool(os.environ.get("WT_SESSION") or os.environ.get("KITTY_WINDOW_ID"))
 
+
+def _cursor_rejected(error: Exception) -> bool:
+    """Whether the gateway refused the cursor rather than dropping the stream.
+
+    A restart forgets cursors, and the stream then answers 400 for ever. That
+    is not a connection problem to retry; it means the history has to be
+    re-read from the beginning.
+    """
+    return getattr(error, "status", 0) in (400, 404, 410, 422)
 
 def _looks_like_paste(keys: list[str]) -> bool:
     """A read that produced a wall of characters, or a newline inside one.

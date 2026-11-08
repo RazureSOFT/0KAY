@@ -16,7 +16,16 @@ import uuid
 
 
 class CoreError(Exception):
-    """A failure the user should see as one line, not a traceback."""
+    """A failure the user should see as one line, not a traceback.
+
+    `status` keeps the HTTP code, because callers have to tell "the gateway is
+    busy" from "the gateway is broken" and reading that back out of a message
+    string breaks the day somebody rewrites the message.
+    """
+
+    def __init__(self, message: str, status: int = 0):
+        super().__init__(message)
+        self.status = status
 
 
 # The gateway caps an upload at 64MB; refusing here first gives a message
@@ -98,7 +107,7 @@ class Client:
             response = urllib.request.urlopen(request, timeout=self.timeout)
         except urllib.error.HTTPError as error:
             detail = error.read().decode("utf-8", "replace")[:300]
-            raise CoreError(f"HTTP {error.code} from {path}: {detail}") from None
+            raise CoreError(f"HTTP {error.code} from {path}: {detail}", error.code) from None
         except urllib.error.URLError as error:
             raise CoreError(f"cannot reach {self.base_url}: {error.reason}") from None
         if stream:
@@ -119,7 +128,7 @@ class Client:
                 raw = response.read().decode("utf-8", "replace")
         except urllib.error.HTTPError as error:
             detail = error.read().decode("utf-8", "replace")[:300]
-            raise CoreError(f"HTTP {error.code} from {path}: {detail}") from None
+            raise CoreError(f"HTTP {error.code} from {path}: {detail}", error.code) from None
         except urllib.error.URLError as error:
             raise CoreError(f"cannot reach {self.base_url}: {error.reason}") from None
         if not raw.strip():
@@ -324,7 +333,7 @@ class Client:
                 payload = json.loads(response.read().decode("utf-8", "replace"))
         except urllib.error.HTTPError as error:
             detail = error.read().decode("utf-8", "replace")[:200]
-            raise CoreError(f"upload failed: HTTP {error.code} {detail}") from None
+            raise CoreError(f"upload failed: HTTP {error.code} {detail}", error.code) from None
         except urllib.error.URLError as error:
             raise CoreError(f"cannot reach {self.base_url}: {error.reason}") from None
         except ValueError:
