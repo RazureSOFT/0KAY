@@ -657,7 +657,15 @@ function initPixi() {
 }
 
 async function loadModel() {
-  try { await live2dRuntimeReady } catch (error: any) {loadState.value='error';errorMsg.value=`Live2D runtime: ${error.message}`;return}
+  // `null` means the runtime could not start — a browser context whose CSP forbids
+  // eval, which Pixi 6 needs to build its shaders. It says so in the stage instead
+  // of throwing at the top level on every load.
+  const runtime = await live2dRuntimeReady.catch((error: any) => error)
+  if (!runtime || runtime instanceof Error) {
+    loadState.value = 'error'
+    errorMsg.value = `Live2D runtime: ${runtime instanceof Error ? runtime.message : 'unavailable in this context'}`
+    return
+  }
   const token = ++loadToken
   disposeModel()
 

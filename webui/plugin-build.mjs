@@ -45,6 +45,23 @@ for (const name of ENTRIES) {
   console.log(`inlined ${sheets.length} stylesheet(s) into ${name}.js`)
 }
 
+/**
+ * Copy the page's string resources next to the bundles.
+ *
+ * Core serves them from CORE_DATA_DIR/plugin-ui/webui/strings and the WebUI
+ * fetches them from /api/plugins/webui/strings. Without this directory the first
+ * boot request for the platform's own strings 404s, and the app never mounts:
+ * every route renders an empty #app with nothing in the console but "Failed to
+ * load resource". `webui/strings` is the source and stays tracked.
+ */
+const stringsFrom = path.join(root, 'strings')
+const stringsTo = path.join(outDir, 'strings')
+if (fs.existsSync(stringsFrom)) {
+  fs.rmSync(stringsTo, { recursive: true, force: true })
+  fs.cpSync(stringsFrom, stringsTo, { recursive: true })
+  console.log('copied strings/')
+}
+
 // Chunks from an older multi-entry build are unreachable now; leaving them would
 // just be dead weight that makes `git status` noisy.
 const assets = path.join(outDir, 'assets')

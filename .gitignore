@@ -188,6 +188,9 @@ life/life-review-report.md
 # marketplace/ ship hand-written JavaScript that is loaded as-is, so those stay
 # tracked. Ignoring "*.js" wholesale would have deleted real code.
 /core/data/plugin-ui/agent/index.js
+# The platform pages ship one self-contained file each, plus the string
+# resources the build copies next to them. Both are build output.
+/core/data/plugin-ui/webui/
 /core/data/plugin-ui/webui/chat.js
 /core/data/plugin-ui/webui/settings.js
 /core/data/plugin-ui/webui/plugins.js

@@ -1,6 +1,34 @@
 // Stable for the lifetime of one page load; changes on every reload/boot.
 const SESSION_BOOT = Date.now().toString(36)
 
+/**
+ * Turn a message string into the function vue-i18n's runtime build expects.
+ *
+ * Plugin strings arrive from Core at runtime, so no build step can precompile
+ * them, and the runtime-only build compiles nothing itself — it would need
+ * `new Function`, which the CSP refuses. A message with a placeholder therefore
+ * has to arrive as a function.
+ *
+ * Emitting vue-i18n's own compiled source is not an option: evaluating it in the
+ * browser is the eval being removed. So this resolves the placeholders directly.
+ * `{name}` and `{0}` are the only forms these dictionaries use, and both are
+ * plain substitution. A message with anything more elaborate is deliberately
+ * left as plain text — it renders as written instead of throwing.
+ */
+function interpolateMessage(text: string): (ctx: { named: (k: string) => unknown; list: () => unknown[] }) => string {
+  return (ctx) =>
+    text.replace(/\{(\w+)\}/g, (_match, key: string) => {
+      const named = ctx.named(key)
+      if (named !== undefined) return String(named)
+      const asIndex = Number(key)
+      if (Number.isInteger(asIndex)) {
+        const list = ctx.list()
+        return asIndex < list.length ? String(list[asIndex]) : ''
+      }
+      return ''
+    })
+}
+
 export interface PluginStringsResponse {
   default?: string
   locales?: Record<string, Record<string, string>>
@@ -25,7 +53,7 @@ export function normalizeLocale(code: string): string {
   return trimmed
 }
 
-function nestKey(target: Record<string, unknown>, key: string, value: string): void {
+function nestKey(target: Record<string, unknown>, key: string, value: unknown): void {
   const parts = key.split('.')
   let node = target
   for (let i = 0; i < parts.length - 1; i++) {
@@ -49,7 +77,10 @@ export function buildLocaleBundles(
       const localised: Record<string, unknown> = {}
       for (const [key, value] of Object.entries(messages)) {
         if (typeof value !== 'string') continue
-        nestKey(localised, key.startsWith(prefix) ? key.slice(prefix.length) : key, value)
+        // A message without braces needs no compiling: the runtime returns it
+        // as its own text.
+        const message = value.includes('{') ? interpolateMessage(value) : value
+        nestKey(localised, key.startsWith(prefix) ? key.slice(prefix.length) : key, message)
       }
       if (!Object.keys(localised).length) continue
       const locale = normalizeLocale(rawLocale)

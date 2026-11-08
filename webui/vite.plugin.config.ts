@@ -2,6 +2,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { precompileI18nMessages } from './precompile-i18n.ts'
 
 // Builds the *platform plugin* ESM pages (chat/plugins/settings/usage/console)
 // that the WebUI shell now only hosts.  The page sources still live in webui/src
@@ -137,7 +138,7 @@ export default defineConfig({
   // One id per page on purpose: a shared id made the second page's injection a
   // no-op ("already present"), so only the first page ever got its CSS and the
   // rest rendered with no styles at all.
-  plugins: [vue(), rewriteSharedToHost(), injectCss(`webui-plugin-style-${ENTRY}`)],
+  plugins: [vue(), precompileI18nMessages(), rewriteSharedToHost(), injectCss(`webui-plugin-style-${ENTRY}`)],
   resolve: {
     alias: { '@webui': src },
   },

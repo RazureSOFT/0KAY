@@ -3,6 +3,7 @@ import vue from '@vitejs/plugin-vue'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { precompileI18nMessages } from './precompile-i18n.ts'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
@@ -117,7 +118,19 @@ const sameOrigin = (proxy: any) => {
 }
 
 export default defineConfig({
-  plugins: [vue(), live2dGlobals(), pluginUiFromDisk()],
+  plugins: [vue(), precompileI18nMessages(), live2dGlobals(), pluginUiFromDisk()],
+  resolve: {
+    alias: {
+      // The CSP Core serves has no `unsafe-eval`, so vue-i18n's runtime message
+      // compiler (which uses `new Function`) kills the render the first time a
+      // translated string with a placeholder is looked up — the page mounts as an
+      // empty #app. The runtime-only build has no compiler at all: it expects
+      // messages that are already functions. `precompileI18nMessages` produces
+      // exactly that for the build-time locales, and `pluginStrings.ts` does the
+      // same for the ones fetched from Core at runtime.
+      'vue-i18n': 'vue-i18n/dist/vue-i18n.runtime.esm-bundler.js',
+    },
+  },
   test: {
     // Vitest stubs CSS modules by default, which makes `import css from
     // './x.css?raw'` yield an empty string. One test asserts that every `btn-*`

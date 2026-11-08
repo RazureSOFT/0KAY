@@ -32,6 +32,12 @@ describe('locale parity', () => {
       const offenders: string[] = []
       const walk = (value: any, prefix = '') => {
         if (value === null || typeof value !== 'object') {
+          // A message with placeholders is precompiled at build time into a
+          // function (see webui/precompile-i18n.ts), because vue-i18n's runtime
+          // compiler needs `new Function` and the CSP forbids it. A function is a
+          // filled-in message, not a missing one; its text is checked via
+          // `source` on the keys that have one.
+          if (typeof value === 'function') return
           if (typeof value !== 'string' || value.trim() === '') {
             offenders.push(prefix || '(root)')
           }
