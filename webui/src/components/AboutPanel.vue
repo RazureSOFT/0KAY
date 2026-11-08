@@ -2,9 +2,42 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiGet, apiPost, ApiError } from '../api'
+import { installTapTrigger, startWobble, WobbleTune, type Wobble } from '../wobble'
 
 const { t } = useI18n()
 const currentVersion = ref('0.1.3')
+
+/**
+ * The About page icon is a hidden switch.
+ *
+ * Ten taps in quick succession starts the wobble and its tune. Nothing on screen
+ * says so: a secret that announces itself is a feature, and the point is that
+ * someone finds it. Escape, or pressing it again, stops it.
+ */
+const iconRef = ref<HTMLImageElement | null>(null)
+const tune = new WobbleTune()
+let wobble: Wobble | null = null
+let disposeTaps: (() => void) | null = null
+
+function toggleWobble(): void {
+  if (wobble?.running) {
+    wobble.stop()
+    wobble = null
+    tune.stop()
+    return
+  }
+  wobble = startWobble(document)
+  tune.start()
+}
+
+onMounted(() => {
+  if (iconRef.value) disposeTaps = installTapTrigger(iconRef.value, toggleWobble)
+})
+onUnmounted(() => {
+  disposeTaps?.()
+  wobble?.stop()
+  tune.stop()
+})
 
 type Contributor = { login: string; avatar_url?: string; html_url?: string; contributions?: number }
 const contributors = ref<Contributor[]>([])
@@ -154,7 +187,7 @@ onUnmounted(stopPolling)
 <template>
   <div class="content-card about">
         <header class="identity">
-      <img class="app-icon" src="/okay-logo.svg" alt="" aria-hidden="true" />
+      <img ref="iconRef" class="app-icon secret-mark" src="/okay-logo.svg" alt="" aria-hidden="true" />
       <div class="app-id">
         <h2>0KAY <span class="ver-badge">v{{ currentVersion }}</span></h2>
         <p class="app-desc">{{ t('settings.about.description') }}</p>
@@ -273,6 +306,10 @@ onUnmounted(stopPolling)
   flex: none;
   width: 56px;
   height: 56px;
+  /* The icon is a tap target for the hidden effect, so its own position is the
+     anchor for the count hint. It does not look clickable on purpose. */
+  position: relative;
+  cursor: default;
   
   filter: drop-shadow(0 6px 16px color-mix(in srgb, var(--md-primary) 25%, transparent));
 }
@@ -401,4 +438,29 @@ onUnmounted(stopPolling)
 @keyframes us-spin { to { transform: rotate(360deg); } }
 
 .alert { color: var(--md-error); }
+</style>
+
+<!-- Not scoped: the effect scales <html>, which a scoped selector cannot reach,
+     and it has to live in this file so the settings bundle carries it. -->
+<style>
+/* ---- the wobble ------------------------------------------------------------
+   The two custom properties are written by a rAF loop (src/wobble.ts). With no
+   loop running they are undefined, so the transform falls back to none. */
+html.okay-wobble body {
+  transform-origin: 50% 50%;
+  transform: scale(var(--okay-wobble-x, 1), var(--okay-wobble-y, 1));
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  html.okay-wobble body { transform: none; }
+}
+[data-secret-hint]::after {
+  content: attr(data-secret-hint);
+  position: absolute; right: 2px; bottom: 0;
+  font: 700 10px/1 ui-monospace, monospace;
+  color: var(--md-primary);
+  background: var(--md-surface-container-lowest);
+  border-radius: 999px; padding: 2px 4px;
+  pointer-events: none;
+}
 </style>

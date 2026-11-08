@@ -1302,7 +1302,7 @@ const sidebarTab = ref<'sessions' | 'tasks'>('sessions')
  * the width. While one is open the chat header, transcript and composer step
  * aside rather than stacking above it.
  */
-const showingTask = computed(() => sidebarTab.value === 'tasks' && !!taskSelectedId.value)
+const showingTask = computed(() => !!taskSelectedId.value)
 
 /**
  * A session with nothing said in it yet.
@@ -2492,7 +2492,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
       <!-- 任务详情占满右栏。任务有层级（主 Agent → 子 Agent → 轮次 → 工具），
            284px 的侧栏放不下，只能横向滚动硬塞；而看任务时右栏本来就是空的。
            外层保留 task-tab 类，样式表里的 .task-tab .recon-* 规则继续生效。 -->
-      <div v-if="sidebarTab === 'tasks' && taskSelectedId" class="conversation-task task-tab">
+      <div v-if="showingTask" class="conversation-task task-tab">
         <!-- 任务详情：选中一个任务后列表就地换成详情（ARTEX 的任务详情页），← 返回列表。
              聊天列保持原样——看得见图，也看得见 agent 在干什么。 -->
         <div v-if="taskSelectedId" class="task-detail">
