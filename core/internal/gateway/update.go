@@ -60,7 +60,16 @@ func latestCached(ctx context.Context, owner, repo string) (*update.Release, err
 }
 
 type updateCheck struct {
-	Current         string `json:"current"`
+	// The release number this build belongs to. For a working tree that is the
+	// version it was branched from, not what is running — see Build below. It is
+	// here because it is what the release feed can be compared against; a commit
+	// has no place on that scale.
+	Current string `json:"current"`
+	// What is actually running: "v0.1.4" for a release, "ee4b527-dirty" for a
+	// build from a tree. Anything showing "the version" to a person should use
+	// this, so a bug report names the code that produced it.
+	Build           string `json:"build"`
+	BuildSource     string `json:"build_source"`
 	Latest          string `json:"latest,omitempty"`
 	HasUpdate       bool   `json:"has_update"`
 	URL             string `json:"url,omitempty"`
@@ -86,7 +95,12 @@ func (g *Gateway) handleUpdateCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	owner, repo := update.PlatformRepository()
-	result := updateCheck{Current: version.Semver(), SourceAvailable: update.SourceAvailable()}
+	result := updateCheck{
+		Current:         version.Semver(),
+		Build:           version.String(),
+		BuildSource:     version.Source(),
+		SourceAvailable: update.SourceAvailable(),
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), updateFetchTimeout)
 	defer cancel()
 	release, err := latestCached(ctx, owner, repo)

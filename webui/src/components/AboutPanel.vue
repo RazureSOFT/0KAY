@@ -59,7 +59,20 @@ const DEVELOPER = { login: 'razureink', url: 'https://github.com/razureink', ava
 const avatarOf = (login: string, size = 96) => `https://github.com/${login}.png?size=${size}`
 
 const aboutLoading = ref(false)
-type PlatformCheck = { current: string; latest?: string; has_update: boolean; url?: string; name?: string; notes?: string; published_at?: string; source_available?: boolean }
+type PlatformCheck = {
+  /** The release this build belongs to. What the feed can be compared against. */
+  current: string
+  /** What is actually running: a tag for a release, a commit for a working tree. */
+  build?: string
+  build_source?: string
+  latest?: string
+  has_update: boolean
+  url?: string
+  name?: string
+  notes?: string
+  published_at?: string
+  source_available?: boolean
+}
 const updateResult = ref<PlatformCheck | null>(null)
 const updateError = ref('')
 
@@ -122,6 +135,21 @@ const applyLabel = computed(() => {
   }
 })
 
+/**
+ * The build, written the way its source deserves.
+ *
+ * A tag keeps the `v` it was published with; a commit is shown bare, because
+ * "v ee4b527" would read as a version number and it is not one. Falls back to
+ * the release when /health has not answered yet.
+ */
+const runningBuild = computed(() => {
+  if (versionSource.value === 'tag') {
+    const tag = currentVersion.value
+    return tag.startsWith('v') ? tag : `v${tag}`
+  }
+  return currentVersion.value || (updateResult.value?.current ? `v${updateResult.value.current}` : '')
+})
+
 const statusKind = computed<'ok' | 'warn' | 'none'>(() => {
   if (!updateResult.value) return 'none'
   if (updateResult.value.has_update) return 'warn'
@@ -133,8 +161,18 @@ async function checkUpdates() {
   updateError.value = ''
   try {
     const result = await apiGet<PlatformCheck>('/api/plugins/pm/check')
+    // Deliberately does NOT touch currentVersion. This endpoint reports the
+    // release a bundle was cut from ("0.1.4"); the page's job is to say which
+    // build is running, which for a working tree is a commit. Letting this
+    // overwrite it is how the About page came to claim "v0.1.4" on a tree that
+    // had not been 0.1.4 for two releases.
     updateResult.value = result
-    if (result?.current) currentVersion.value = String(result.current)
+    // Only a fallback: /health is authoritative. This covers the case where
+    // health was slow and the page would otherwise stay blank.
+    if (!currentVersion.value && result?.build) {
+      currentVersion.value = String(result.build)
+      versionSource.value = String(result.build_source || '')
+    }
   } catch (error: unknown) {
     updateError.value = error instanceof ApiError && error.status === 404
       ? t('settings.about.unsupported')
@@ -249,8 +287,10 @@ onUnmounted(stopPolling)
         </div>
         <div class="us-hero-text">
           <b>{{ t(statusKind === 'warn' ? 'settings.about.available' : (statusKind === 'ok' ? 'settings.about.latest' : 'settings.about.noRelease')) }}</b>
-          <span v-if="updateResult?.latest">v{{ updateResult.current }} → <em>v{{ updateResult.latest }}</em></span>
-          <span v-else>0KAY v{{ updateResult?.current || currentVersion }}</span>
+          <span v-if="updateResult?.latest">
+            {{ runningBuild }} → <em>v{{ updateResult.latest }}</em>
+          </span>
+          <span v-else>0KAY {{ runningBuild }}</span>
         </div>
         <div class="us-hero-actions">
           <button v-if="updateResult?.has_update" class="btn btn-primary sm" :disabled="isUpdating('core')" @click="applyUpdate('core', updateResult.latest)">
