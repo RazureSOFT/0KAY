@@ -1803,23 +1803,113 @@ func redactTaskResult(raw string) string {
 	return string(encoded)
 }
 
-const taskListLimit = 500
+/*
+How many rows one poll may carry.
+
+The list used to have a single global budget for every non-session row, so one
+busy session could spend it on its own tool calls and evict another session's
+steps. Worse, the eviction was silent and newest-first, which meant the rows
+dropped were a long task's oldest — and a sub-agent's model steps are exactly
+that. The transcript a reader most wants to open was the one the payload cut.
+
+So the budget is per session, and a session's rows are kept as a whole tree
+rather than as an arbitrary newest-N slice: `parent_id` is what makes a
+sub-agent's session reachable at all, and a child whose parent was dropped is a
+child nobody can navigate to. Within a session the newest rows win, because the
+newest rows are the live ones.
+*/
+const (
+	// Per session, including its sub-agents. One long task cannot starve another.
+	taskSessionRowLimit = 400
+	// Sessions carried per poll. Sessions beyond this are older conversations the
+	// sidebar lists anyway; the cap keeps a long history from making every poll
+	// megabytes.
+	taskSessionCount = 60
+	// Absolute ceiling, so a pathological graph cannot make one poll enormous.
+	taskRowCeiling = 12000
+)
 
 func limitTaskRows(rows []map[string]interface{}) []map[string]interface{} {
-	kept := make([]map[string]interface{}, 0, len(rows))
-	others := 0
+	bySession := make(map[string][]map[string]interface{}, len(rows))
+	sessions := make([]map[string]interface{}, 0, taskSessionCount)
 	for _, row := range rows {
 		if row["kind"] == "agent_session" {
-			kept = append(kept, row)
+			sessions = append(sessions, row)
 			continue
 		}
-		if others < taskListLimit {
-			kept = append(kept, row)
-			others++
+		session, _ := row["session_id"].(string)
+		bySession[session] = append(bySession[session], row)
+	}
+
+	// Newest sessions first, so the count cap keeps the conversations a reader is
+	// most likely to open. sortTaskRows is newest-first, so the head is what to keep.
+	sortTaskRows(sessions)
+	if len(sessions) > taskSessionCount {
+		sessions = sessions[:taskSessionCount]
+	}
+	keptSessions := make(map[string]bool, len(sessions))
+	for _, row := range sessions {
+		if id, ok := row["task_id"].(string); ok {
+			keptSessions[id] = true
 		}
 	}
+	// A row with no session at all (a tool call recorded outside a conversation)
+	// still belongs in the list. Budgeting only the sessions that have a header
+	// row would have dropped those entirely — they are not part of any conversation
+	// that could be capped.
+	keptSessions[""] = true
+
+	kept := make([]map[string]interface{}, 0, len(rows))
+	kept = append(kept, sessions...)
+	for session := range keptSessions {
+		steps := bySession[session]
+		if len(steps) > taskSessionRowLimit {
+			sortTaskRows(steps)
+			steps = steps[:taskSessionRowLimit]
+			// Restore the parents this slice cut, so no kept row points at an id
+			// that is no longer in the list. The parent row is one line and its
+			// absence breaks navigation, not just display.
+			steps = restoreParents(steps, bySession[session])
+		}
+		kept = append(kept, steps...)
+	}
+
 	sortTaskRows(kept)
+	if len(kept) > taskRowCeiling {
+		kept = kept[:taskRowCeiling]
+	}
 	return kept
+}
+
+// restoreParents adds back any row that a kept row names as its parent and that
+// the row budget cut. Bounded by the chain length, so it cannot undo the budget.
+func restoreParents(kept []map[string]interface{}, all []map[string]interface{}) []map[string]interface{} {
+	have := make(map[string]bool, len(kept))
+	for _, row := range kept {
+		if id, ok := row["task_id"].(string); ok {
+			have[id] = true
+		}
+	}
+	byID := make(map[string]map[string]interface{}, len(all))
+	for _, row := range all {
+		if id, ok := row["task_id"].(string); ok {
+			byID[id] = row
+		}
+	}
+	extra := make([]map[string]interface{}, 0, 8)
+	for _, row := range kept {
+		parent, _ := row["parent_id"].(string)
+		for parent != "" && !have[parent] {
+			up, ok := byID[parent]
+			if !ok {
+				break
+			}
+			have[parent] = true
+			extra = append(extra, up)
+			parent, _ = up["parent_id"].(string)
+		}
+	}
+	return append(kept, extra...)
 }
 
 func (s *CoreServiceServer) taskRowLocked(t *TaskInfo) map[string]interface{} {
