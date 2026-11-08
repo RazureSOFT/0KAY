@@ -85,10 +85,9 @@ onMounted(() => {
     })
     .catch(() => { })
 })
-const buildLabel = computed(() => {
-  if (!build.value) return ''
-  return build.value.source === 'tag' ? build.value.version : build.value.version
-})
+// The commit is already the whole label; a tag keeps its leading v, which
+// version.String() puts there for a release and never for a commit.
+const buildLabel = computed(() => build.value?.version || '')
 const buildHint = computed(() => {
   if (!build.value) return ''
   if (build.value.source === 'tag') return t('status.releaseBuild')

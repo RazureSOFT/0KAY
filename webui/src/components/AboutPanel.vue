@@ -5,7 +5,17 @@ import { apiGet, apiPost, ApiError } from '../api'
 import { installTapTrigger, startWobble, WobbleTune, WOBBLE_TRACK, type Wobble } from '../wobble'
 
 const { t } = useI18n()
-const currentVersion = ref('0.1.3')
+/**
+ * What this build is.
+ *
+ * Empty until /health answers, so the page never shows a version it has not
+ * verified. A hard-coded default here is worse than a blank: it looks like a
+ * fact, it goes stale the first time the version changes, and it hides the one
+ * thing the field exists to tell you.
+ */
+const currentVersion = ref('')
+/** "tag" for a release, "commit" for a build from a working tree. */
+const versionSource = ref('')
 
 /**
  * The About page icon is a hidden switch.
@@ -170,7 +180,26 @@ async function fetchContributors() {
   }
 }
 
+/**
+ * Ask Core what it is running.
+ *
+ * The version belongs to the process serving the page, not to the bundle: a
+ * release reports its tag, a local build reports its commit, and either can
+ * change without the frontend being rebuilt. The About page is where someone
+ * looks to report a bug, so it has to say which build they are on.
+ */
+async function loadBuildIdentity(): Promise<void> {
+  try {
+    const health = await apiGet<{ version?: string; version_source?: string }>('/health')
+    if (health?.version) currentVersion.value = String(health.version)
+    if (health?.version_source) versionSource.value = String(health.version_source)
+  } catch {
+    // An unreachable Core leaves the field empty; checkUpdates may still fill it.
+  }
+}
+
 onMounted(() => {
+  void loadBuildIdentity()
   void checkUpdates()
   void fetchContributors()
   void apiGet<ApplyState>('/api/plugins/pm/status')
@@ -189,7 +218,13 @@ onUnmounted(stopPolling)
         <header class="identity">
       <img ref="iconRef" class="app-icon secret-mark" src="/okay-logo.svg" alt="" aria-hidden="true" />
       <div class="app-id">
-        <h2>0KAY <span class="ver-badge">v{{ currentVersion }}</span></h2>
+        <h2>
+          0KAY
+          <span v-if="currentVersion" class="ver-badge" :title="versionSource === 'tag' ? t('status.releaseBuild') : t('status.localBuild')">
+            <template v-if="versionSource === 'tag'">v{{ currentVersion }}</template>
+            <template v-else>{{ currentVersion }}</template>
+          </span>
+        </h2>
         <p class="app-desc">{{ t('settings.about.description') }}</p>
       </div>
       <div class="identity-actions">
