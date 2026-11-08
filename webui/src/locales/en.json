@@ -743,6 +743,26 @@
       "count": "{on} of {total} enabled.",
       "allOn": "No allow-list is set, so everything installed is on.",
       "dir": "Plugin directory: {dir}"
+    },
+    "library": {
+      "lead": "The rules between your message and the model. The library recognises a greeting (so it does not open a task), turns an explicit correction into a rule, and injects the rules that match this turn. Rules belong to a workspace, because they are advice about one codebase.",
+      "workspace": "Workspace",
+      "workspacePlaceholder": "Absolute path of the workspace, e.g. D:/projects/app",
+      "load": "Load",
+      "loading": "Loading…",
+      "needWorkspace": "Enter a workspace path to see its rules. Rules are stored per workspace, not globally.",
+      "empty": "No rules yet. They appear here after a correction, or you can add one below.",
+      "add": "Add",
+      "addLabel": "New rule text",
+      "addPlaceholder": "A rule the agent should follow in this workspace, e.g. run npm tests before claiming done",
+      "added": "Rule added.",
+      "removed": "Rule removed.",
+      "remove": "Remove this rule",
+      "manual": "Added by you",
+      "learned": "Learned",
+      "origin": "From:",
+      "hits": "Matched {n} times",
+      "hitOnce": "Matched once"
     }
   },
   "status": {

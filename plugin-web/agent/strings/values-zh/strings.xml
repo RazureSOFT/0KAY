@@ -432,8 +432,11 @@
   <string name="page.intentApproach">打算这样做：</string>
   <string name="page.intentPassed">审查通过</string>
   <string name="page.intentRejected">审查打回</string>
-  <string name="page.intentFeedback">审查要求补的东西</string>
+  <string name="page.intentBlocked">策略拦截</string>
+  <string name="page.intentFeedback">还缺什么</string>
   <string name="page.intentFromReviewer">审查补充</string>
+  <string name="page.intentFromPlugin">工作区策略</string>
+  <string name="page.intentFromLedger">意图清单</string>
   <string name="page.intentStatus.pending">未开始</string>
   <string name="page.intentStatus.in_progress">进行中</string>
   <string name="page.intentStatus.done">已完成</string>

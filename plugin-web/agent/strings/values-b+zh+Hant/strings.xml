@@ -432,8 +432,11 @@
   <string name="page.intentApproach">打算這樣做：</string>
   <string name="page.intentPassed">審查通過</string>
   <string name="page.intentRejected">審查退回</string>
-  <string name="page.intentFeedback">審查要求補的東西</string>
+  <string name="page.intentBlocked">策略攔截</string>
+  <string name="page.intentFeedback">還缺什麼</string>
   <string name="page.intentFromReviewer">審查補充</string>
+  <string name="page.intentFromPlugin">工作區策略</string>
+  <string name="page.intentFromLedger">意圖清單</string>
   <string name="page.intentStatus.pending">未開始</string>
   <string name="page.intentStatus.in_progress">進行中</string>
   <string name="page.intentStatus.done">已完成</string>

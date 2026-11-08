@@ -432,8 +432,11 @@
   <string name="page.intentApproach">進め方：</string>
   <string name="page.intentPassed">レビュー通過</string>
   <string name="page.intentRejected">レビュー差し戻し</string>
-  <string name="page.intentFeedback">レビューが求めた修正</string>
+  <string name="page.intentBlocked">ポリシーで拒否</string>
+  <string name="page.intentFeedback">まだ足りないもの</string>
   <string name="page.intentFromReviewer">レビューが追加</string>
+  <string name="page.intentFromPlugin">ワークスペースの方針</string>
+  <string name="page.intentFromLedger">インテント台帳</string>
   <string name="page.intentStatus.pending">未着手</string>
   <string name="page.intentStatus.in_progress">進行中</string>
   <string name="page.intentStatus.done">完了</string>

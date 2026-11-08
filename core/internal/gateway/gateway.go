@@ -354,6 +354,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("POST /api/agent/extensions/enable", g.handleExtensionsEnable)
 	mux.HandleFunc("POST /api/agent/extensions/install", g.handleExtensionsInstall)
 	mux.HandleFunc("POST /api/agent/extensions/remove", g.handleExtensionsRemove)
+	mux.HandleFunc("/api/agent/library", g.handleAgentLibrary)
 	mux.HandleFunc("GET /api/agent/computeruse/stream", g.handleAgentComputerUseStream)
 	mux.HandleFunc("/api/agent/git", g.handleAgentGit)
 	mux.HandleFunc("/api/agent/compact", g.handleAgentCompact)

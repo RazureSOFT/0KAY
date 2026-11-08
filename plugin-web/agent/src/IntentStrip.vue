@@ -36,6 +36,17 @@ const rateClass = computed(() => {
   return 'low'
 })
 const rejected = computed(() => props.review?.status === 'reject')
+/**
+ * Who turned the claim down. A plugin refusal is workspace policy and names
+ * itself; a reviewer rejection is another model's judgement. Showing both under
+ * one label would make a house rule look like an opinion.
+ */
+const rejectSource = computed(() => {
+  const source = String(props.review?.source || '')
+  if (source === 'plugin') return t('agent.page.intentFromPlugin')
+  if (source === 'intent_rules') return t('agent.page.intentFromLedger')
+  return t('agent.page.intentFromReviewer')
+})
 </script>
 
 <template>
@@ -53,7 +64,7 @@ const rejected = computed(() => props.review?.status === 'reject')
         class="intent-verdict"
         :class="rejected ? 'reject' : 'pass'"
         :title="review.audit || ''"
-      >{{ rejected ? t('agent.page.intentRejected') : t('agent.page.intentPassed') }}</span>
+      >{{ rejected ? (review?.source === 'plugin' ? t('agent.page.intentBlocked') : t('agent.page.intentRejected')) : t('agent.page.intentPassed') }}</span>
     </header>
 
     <div v-if="open" class="intent-body">
@@ -70,7 +81,7 @@ const rejected = computed(() => props.review?.status === 'reject')
         </li>
       </ul>
       <div v-if="review && rejected" class="intent-feedback">
-        <strong>{{ t('agent.page.intentFeedback') }}</strong>
+        <strong>{{ t('agent.page.intentFeedback') }}<span class="intent-feedback-source">{{ rejectSource }}</span></strong>
         <p>{{ review.fix_feedback }}</p>
         <ul v-if="review.missing_intents?.length">
           <li v-for="item in review.missing_intents" :key="item">{{ item }}</li>
@@ -116,6 +127,7 @@ const rejected = computed(() => props.review?.status === 'reject')
 .intent-source{font-size:10px;font-weight:650;color:var(--md-primary)}
 .intent-feedback{margin-top:8px;padding:8px 10px;border-radius:10px;background:color-mix(in srgb,var(--md-error,#b3261e) 8%,transparent);font-size:12px;line-height:1.55}
 .intent-feedback strong{display:block;margin-bottom:3px;color:var(--md-error,#b3261e);font-size:11.5px;letter-spacing:.02em}
+.intent-feedback-source{margin-left:8px;padding:1px 7px;border-radius:999px;font-weight:600;font-size:10px;letter-spacing:0;background:color-mix(in srgb,var(--md-error,#b3261e) 14%,transparent);opacity:.85}
 .intent-feedback p{margin:0}
 .intent-feedback ul{margin:6px 0 0;padding-left:18px;color:var(--md-on-surface-variant)}
 </style>

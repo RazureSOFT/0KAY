@@ -432,8 +432,11 @@
   <string name="page.intentApproach">Plan:</string>
   <string name="page.intentPassed">Review passed</string>
   <string name="page.intentRejected">Review rejected</string>
-  <string name="page.intentFeedback">What the reviewer asked for</string>
+  <string name="page.intentBlocked">Policy blocked</string>
+  <string name="page.intentFeedback">What is still missing</string>
   <string name="page.intentFromReviewer">added by review</string>
+  <string name="page.intentFromPlugin">workspace policy</string>
+  <string name="page.intentFromLedger">intent ledger</string>
   <string name="page.intentStatus.pending">pending</string>
   <string name="page.intentStatus.in_progress">in progress</string>
   <string name="page.intentStatus.done">done</string>

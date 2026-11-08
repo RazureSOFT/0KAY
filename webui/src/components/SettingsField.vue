@@ -4,6 +4,7 @@ import AppSelect from './AppSelect.vue'
 import ModelsField from './ModelsField.vue'
 import MarkdownContent from './MarkdownContent.vue'
 import AgentExtensionsField from './AgentExtensionsField.vue'
+import AgentLibraryField from './AgentLibraryField.vue'
 
 const { t } = useI18n()
 
@@ -64,6 +65,13 @@ function onNativeInput(event: Event): void {
       <!-- No value of its own: the panel talks to Core directly, because a
            plugin is a directory and toggling one is an action, not a draft. -->
       <AgentExtensionsField />
+      <p v-if="help" class="helper-text">{{ help }}</p>
+    </template>
+
+    <template v-else-if="field.type === 'library'">
+      <!-- Same contract as the extensions panel: the list lives on disk with the
+           agent, so this reads and writes it directly instead of drafting it. -->
+      <AgentLibraryField />
       <p v-if="help" class="helper-text">{{ help }}</p>
     </template>
 
