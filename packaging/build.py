@@ -130,6 +130,62 @@ def build_webui(args) -> Path:
     return dist
 
 
+def build_plugin_pages(args) -> None:
+    """Build the plugin page bundles that Core serves from core/data/plugin-ui.
+
+    These used to be committed, so a checkout had them and packaging could just
+    copy the directory. They are build output now (see .gitignore): a fresh clone
+    has *no* page module at all — only the hand-written ones in compat/,
+    darkmode/ and marketplace/. Packaging without this step produced an installer
+    whose every plugin page renders blank, because Core finds an empty directory
+    and serves nothing.
+
+    Ordered so a missing prerequisite fails loudly rather than silently:
+    1. `webui build:plugin` — chat/settings/plugins/usage/console.
+    2. each `plugin-web/<name>` — agent, life, minecraft, skillsguishow.
+
+    `--skip-npm` skips the dependency install, not the build: the bundles are
+    required output, while `node_modules` may already be in place.
+    """
+    npm = npm_command(HOST_OS)
+
+    def needs_install(package_dir: Path) -> bool:
+        return not (package_dir / "node_modules").exists()
+
+    def build(package_dir: Path, script: str, artifacts) -> None:
+        label = package_dir.relative_to(REPO).as_posix()
+        if not args.skip_npm and needs_install(package_dir):
+            run([npm, "ci"], cwd=package_dir)
+        run([npm, "run", script], cwd=package_dir)
+        missing = [path for path in artifacts if not path.exists()]
+        if missing:
+            names = ", ".join(str(path.relative_to(REPO)) for path in missing)
+            raise RuntimeError(f"{label}: {script} did not produce {names}")
+
+    webui = REPO / "webui"
+    build(
+        webui,
+        "build:plugin",
+        [webui.parent / "core" / "data" / "plugin-ui" / "webui" / f"{name}.js"
+         for name in ("chat", "settings", "plugins", "usage", "console")],
+    )
+
+    for name in ("agent", "life", "minecraft", "skillsguishow"):
+        package_dir = REPO / "plugin-web" / name
+        if not (package_dir / "package.json").exists():
+            continue
+        # Each plugin decides its own output filenames; asserting the directory
+        # gained a file is what catches a build that ran but emitted nothing.
+        out_dir = REPO / "core" / "data" / "plugin-ui" / name
+        before = set(out_dir.glob("*.js")) if out_dir.exists() else set()
+        if not args.skip_npm and needs_install(package_dir):
+            run([npm, "ci"], cwd=package_dir)
+        run([npm, "run", "build"], cwd=package_dir)
+        after = set(out_dir.glob("*.js")) if out_dir.exists() else set()
+        if not after or (args.rebuild_webui and after == before):
+            raise RuntimeError(f"plugin-web/{name}: build produced no page module in {out_dir}")
+
+
 def build_go(base: Path, args) -> None:
     bin_dir = base / "bin"
     bin_dir.mkdir(parents=True, exist_ok=True)
@@ -175,7 +231,16 @@ def prepare_python_sources(work: Path) -> Path:
 
 def build_python(base: Path, work: Path, args) -> None:
     if args.skip_python:
-        log("skipping PyInstaller (--skip-python)")
+        # Not a silent skip: LIFE is the companion (chat + company) service, and
+        # without it the package starts with those pages missing. A bundle with no
+        # life looks exactly like a complete one from the outside — it installs,
+        # it starts, and only the navigation betrays the difference — so say it
+        # loudly enough that a release build is not cut from one by accident.
+        log("")
+        log("  !! --skip-python: LIFE is NOT packaged.")
+        log("  !! The result runs, but has no companion/chat service and its pages")
+        log("  !! will be missing. Never ship this artifact as a release.")
+        log("")
         return
     python = args.python or sys.executable
     if not args.skip_python_deps:
@@ -425,6 +490,9 @@ def assemble(args, work: Path) -> tuple[Path, Path]:
     clean(overlay)
 
     dist = build_webui(args)
+    # Before build_core_seed: that step copies core/data/plugin-ui into the
+    # installer's seed, so the page bundles have to exist by then.
+    build_plugin_pages(args)
     copy_tree(dist, base / "webui")
     build_go(base, args)
     build_python(base, work, args)
