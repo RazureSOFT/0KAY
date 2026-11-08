@@ -193,7 +193,12 @@ def _turn_body(rows, turn: dict, depth: int, out: list[dict]) -> None:
     """Append one turn's inside: reasoning, tools, sub-agents, answer."""
     parent = str(turn.get("task_id") or "")
     final = str(turn.get("result") or "")
-    running = is_running(turn) or not final
+    # `live` is the turn still working; `running` also covers a finished turn
+    # whose answer has not arrived in the same frame, which is why the tail of
+    # a stream is still treated as text. They differ once a turn ends with no
+    # answer at all: that is not a spinner, it is an empty reply.
+    live = is_running(turn)
+    running = live or not final
     streaming = ""
     reasoning = ""
 
@@ -219,8 +224,12 @@ def _turn_body(rows, turn: dict, depth: int, out: list[dict]) -> None:
     if answer:
         out.append({"kind": "assistant", "text": answer,
                     "meta": {"depth": depth} if depth else {}})
-    elif running and depth == 0:
+    elif live and depth == 0:
         out.append({"kind": "assistant", "text": "…", "meta": {"pending": True}})
+    elif depth == 0 and str(turn.get("state") or "") in ("done", ""):
+        # Finished, and there is nothing to show. A spinner here would never
+        # stop, so say what happened instead.
+        out.append({"kind": "system", "text": "(empty reply)", "meta": {}})
     if depth == 0 and str(turn.get("state") or "") in ("failed",):
         error = str(turn.get("note") or turn.get("result") or "the turn failed")
         out.append({"kind": "error", "text": error, "meta": {}})

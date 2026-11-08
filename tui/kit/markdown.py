@@ -578,6 +578,16 @@ def render(text: str, width: int, theme, images: list | None = None,
         paragraph.append(line)
 
     flush_paragraph()
+    # Trailing blank rows are trimmed so a document does not end in whitespace,
+    # but a row a picture is drawn into is not blank even though it looks it:
+    # trimming those would delete the space the terminal needs to draw into,
+    # and the image would be placed over whatever follows the answer.
+    painted = set()
+    for picture in (images or []):
+        start = int(picture.get("row") or 0)
+        painted.update(range(start, start + int(picture.get("rows") or 0)))
     while rows and not spans_to_text(rows[-1]).strip():
+        if len(rows) - 1 in painted:
+            break
         rows.pop()
     return rows or [[("", PLAIN)]]

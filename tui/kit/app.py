@@ -155,6 +155,8 @@ class App:
         self.palette_index = 0
         # While this is in the future, input is still arriving from a paste.
         self._paste_until = 0.0
+        # When the last read landed, to tell a paste from typing after one.
+        self._paste_last = 0.0
         self.entries: list[Entry] = []
         # Agent session: the server keeps the conversation, this keeps a map of
         # its task rows and re-derives the transcript from them.
@@ -381,9 +383,15 @@ class App:
                     self._view_dirty = True
                     threading.Thread(target=self._load_context, daemon=True).start()
                 elif kind == "error":
-                    self.busy = False
-                    self.activity = ""
-                    self.notice(str(payload), "error")
+                    # Cancelling a task and hearing "no" must not end the turn
+                    # that is running now: the notice is about `payload["task"]`,
+                    # only the busy flag belongs to whoever asked.
+                    failed = str(payload.get("task") or "") if isinstance(payload, dict) else ""
+                    text = str(payload.get("message") if isinstance(payload, dict) else payload)
+                    if not failed or not self.turn_task or failed == self.turn_task:
+                        self.busy = False
+                        self.activity = ""
+                    self.notice(text, "error")
                 elif kind == "panel":
                     self.panel = self._panel_from(payload)
                 elif kind == "pending":
@@ -903,8 +911,11 @@ class App:
             if key.isdigit():
                 options = self._question_options()
                 index = int(key) - 1
-                if 0 <= index < len(options) and self.questions:
-                    self._send_answer(self.questions[0], options[index])
+                target = self._answer_target()
+                # The digits belong to the question on screen, which is not
+                # always the first one waiting.
+                if 0 <= index < len(options) and target is not None:
+                    self._send_answer(target, options[index])
                 return
             if key == "enter":
                 # Hand the keyboard to the prompt, which is already showing the
@@ -1240,7 +1251,14 @@ class App:
             self._paste_until = 0.0
             return False
         text = _paste_chars(keys)
-        self._paste_until = now + PASTE_IDLE
+        # The window only extends while the stream keeps looking like a paste.
+        # Renewing it for any key at all meant fast typing became one endless
+        # paste, and Enter stopped sending for as long as somebody kept going.
+        # A lone character is ordinary typing; the sub-millisecond gaps of real
+        # pasted text are what this window is for.
+        if not continuing or len(keys) > 1 or now - self._paste_last <= PASTE_TIGHT:
+            self._paste_until = now + PASTE_IDLE
+        self._paste_last = now
         if not text:
             return True
         self._insert(text)
@@ -1591,9 +1609,12 @@ class App:
         try:
             result = self.client.cancel_task(task)
             if not result.get("success", True):
-                self.queue.put(("error", str(result.get("message") or "cancel failed"), None))
+                self.queue.put(("error", {
+                    "message": str(result.get("message") or "cancel failed"),
+                    "task": task,
+                }, None))
         except Exception as error:  # noqa: BLE001
-            self.queue.put(("error", str(error), None))
+            self.queue.put(("error", {"message": str(error), "task": task}, None))
 
     # -- settings ----------------------------------------------------------
     def _export(self, argument: str = "") -> None:
@@ -2490,7 +2511,7 @@ class App:
                             else "esc then type the answer · enter sends")
 
     def _question_options(self) -> list[str]:
-        item = self.questions[0] if self.questions else {}
+        item = self._answer_target() or {}
         return [str(option) for option in (item.get("options") or [])]
 
     def _send_answer(self, item: dict, answer: str) -> None:
@@ -2949,12 +2970,6 @@ class App:
                     body_rows = markdown.render(entry.text, width - gutter, theme,
                                                 images=body_images, base=self.workdir)
                     entry.cache = (key, body_rows, body_images)
-                for picture in body_images:
-                    self._image_slots.append({
-                        "line": len(out) + int(picture["row"]),
-                        "path": picture["path"], "cols": picture["cols"],
-                        "rows": picture["rows"], "alt": picture.get("alt", ""),
-                    })
                 depth = int(entry.meta.get("depth") or 0)
                 pad = " " * gutter + "  " * depth
                 folded = (len(body_rows) > MAX_ANSWER_ROWS
@@ -2970,6 +2985,22 @@ class App:
                 else:
                     for spans in body_rows:
                         out.append([(pad, PLAIN)] + list(spans))
+                # Pictures are placed against the rows actually written. A
+                # picture inside the fold keeps its relative row; one below it
+                # would be drawn past the end of the transcript, so it is
+                # dropped -- the elision line already says there is more to
+                # see, and ctrl+o brings the picture back with the rest.
+                written = len(shown) if folded else len(body_rows)
+                base_row = len(out) - written
+                for picture in body_images:
+                    row = int(picture["row"])
+                    if row >= written:
+                        continue
+                    self._image_slots.append({
+                        "line": base_row + row,
+                        "path": picture["path"], "cols": picture["cols"],
+                        "rows": picture["rows"], "alt": picture.get("alt", ""),
+                    })
                 out.append([("", PLAIN)])
             elif entry.kind == "reason":
                 # Only the tail: a long reasoning block would push the answer
@@ -3601,6 +3632,10 @@ PASTE_BURST = 8
 # A paste can reach us in pieces: after the first burst, the rest of the
 # stream is still text. Typing has gaps, so a short quiet spell ends it.
 PASTE_IDLE = 0.15
+# Real pasted text arrives with sub-millisecond gaps; a person does not. The
+# window is only extended while the stream still looks like a paste, because
+# renewing it for any key at all turned fast typing into one endless paste.
+PASTE_TIGHT = 0.02
 # Keys a paste can contain besides plain characters. A terminal without
 # bracketed paste sends the Enter of a copied paragraph as an ordinary key.
 PASTE_KEYS = ("enter", "ctrl+j", "tab")
