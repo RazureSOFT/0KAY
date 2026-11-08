@@ -317,6 +317,9 @@
   <string name="page.stopAllMessage">停止本会话中全部 {count} 个正在运行的任务？</string>
   <string name="page.streaming">写入中…</string>
   <string name="page.subagent">子 Agent</string>
+  <string name="page.agentsInTurn">本次任务里的 agent</string>
+  <string name="page.mainAgent">主 Agent</string>
+  <string name="page.agentsCount">{n} 个子 Agent</string>
   <string name="page.subagentDrafting">子 Agent 正在生成回复…</string>
   <string name="page.subagentRunning">子 Agent 正在执行…</string>
   <string name="page.switchedTo">已切换到 {target}</string>

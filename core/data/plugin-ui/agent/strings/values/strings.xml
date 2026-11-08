@@ -317,6 +317,9 @@
   <string name="page.stopAllMessage">Stop all {count} running tasks in this session?</string>
   <string name="page.streaming">Writing…</string>
   <string name="page.subagent">Subagent</string>
+  <string name="page.agentsInTurn">Agents in this task</string>
+  <string name="page.mainAgent">Main agent</string>
+  <string name="page.agentsCount">{n} sub-agents</string>
   <string name="page.subagentDrafting">Subagent is drafting a reply…</string>
   <string name="page.subagentRunning">Subagent is running…</string>
   <string name="page.switchedTo">Switched to {target}</string>

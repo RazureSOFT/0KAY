@@ -317,6 +317,9 @@
   <string name="page.stopAllMessage">このセッションで実行中の {count} 件のタスクをすべて停止しますか？</string>
   <string name="page.streaming">書き込み中…</string>
   <string name="page.subagent">サブエージェント</string>
+  <string name="page.agentsInTurn">このタスクのエージェント</string>
+  <string name="page.mainAgent">メインエージェント</string>
+  <string name="page.agentsCount">サブエージェント {n} 件</string>
   <string name="page.subagentDrafting">サブエージェントが返信を作成中…</string>
   <string name="page.subagentRunning">サブエージェントが実行中…</string>
   <string name="page.switchedTo">{target} に切り替えました</string>

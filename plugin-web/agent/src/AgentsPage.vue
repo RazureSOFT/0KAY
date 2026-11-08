@@ -9,6 +9,7 @@ import ModelThinkingPicker from './ModelThinkingPicker.vue'
 import GitPanel from './GitPanel.vue'
 import ThinkChain from './ThinkChain.vue'
 import IntentStrip from './IntentStrip.vue'
+import { agentTree, focusChain } from './agentTree'
 import { AppSelect, useConfirm, i18n } from '@0kay/host'
 import { locale, syncLocale } from './locale'
 const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {})
@@ -1105,7 +1106,7 @@ function reconFit() {
 }
 
 // ---- the task tab: ARTEX's task list, fed by the assessments tool -----------
-interface TaskRow {
+interface ReconTaskRow {
   id: string
   objective: string
   status: string
@@ -1118,7 +1119,7 @@ interface TaskRow {
   report?: { rounds: number; intents: number; facts: number; findings: number; proven: boolean; pct: number | null }
 }
 interface TaskDetail {
-  state: TaskRow & { activity: Array<{ at: string; round: number; kind: string; text: string }>; targets: string[]; coverageArg?: number; constraints: string[] }
+  state: ReconTaskRow & { activity: Array<{ at: string; round: number; kind: string; text: string }>; targets: string[]; coverageArg?: number; constraints: string[] }
   live?: {
     coverage: { total: number; tested: number; scope: { rows: number; denominator: number; pct: number | null } }
     goals: Array<{ id: string; text: string; status: string }>
@@ -1126,6 +1127,9 @@ interface TaskDetail {
     runningIntents: number
     findings: Array<{ id: string; text: string; status: string }>
     digests: number
+    /** The recon engine's own sessions: planner rounds, workers, system events. */
+    sessions: Array<{ id: string; kind: string; refId?: string; title?: string; text?: string; status?: string; round?: number }>
+    usage?: { inTokens?: number; outTokens?: number; llmCalls?: number }
   }
 }
 const taskDetail = ref<TaskDetail | null>(null)
@@ -2139,7 +2143,28 @@ function childSteps(parent: TaskRow | null) {
     item.parent_id === parent.task_id)
     .sort((a,b) => (a.started_at || '').localeCompare(b.started_at || '') || a.task_id.localeCompare(b.task_id))
 }
+// Every agent in this session, as a flat list with depth. The traversal lives in
+// agentTree.ts so it can be tested: this component cannot mount without a
+// running WebUI.
+const agentTreeRows = computed(() => agentTree(store.tasks.filter(item => item.session_id === selectedId.value)))
+const agentSessions = computed(() => agentTreeRows.value.filter(node => node.row.kind === 'subagent'))
 function openSub(step: TaskRow) { subStack.value = [...subStack.value, step] }
+/** Jump straight to any agent, without walking down from its parent. */
+function focusAgent(step: TaskRow) { subStack.value = focusChain(store.tasks, step) }
+/** Back to the main agent's transcript. */
+function focusMain() { subStack.value = [] }
+/**
+ * A sub-agent's prompt, cut to something a chip can hold.
+ *
+ * The full prompt stays in the title attribute and in the view header, so
+ * nothing is lost — but a strip of eight chips each showing a paragraph is not a
+ * navigation control, it is a wall of text.
+ */
+function shortLabel(prompt: string): string {
+  const clean = String(prompt || '').replace(/\s+/g, ' ').trim()
+  if (!clean) return t('agent.page.subagent')
+  return clean.length > 26 ? clean.slice(0, 26) + '…' : clean
+}
 function closeSub() { subStack.value = subStack.value.slice(0, -1) }
 function clearSubs() { subStack.value = [] }
 function subFinal(step: TaskRow | null): string {
@@ -2769,6 +2794,24 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
       </div>
       <header v-if="!showingTask && !isEmptyChat" class="conversation-header">
         <div class="conversation-heading"><h2>{{ session?.prompt || t('agent.page.conversationTitle') }}</h2><p>{{ session && isLife(session) ? t('agent.page.lifeSessionSubtitle') : t('agent.page.ongoingSubtitle') }}</p></div>
+        <!-- Live sub-agents, one click from the conversation. A child that is still
+             running is the thing a reader most wants to check, and it used to be
+             reachable only by scrolling to the card that spawned it. -->
+        <nav v-if="agentSessions.length" class="agent-chips" :aria-label="t('agent.page.agentsInTurn')">
+          <span class="agent-chips-label">{{ t('agent.page.agentsCount', { n: agentSessions.length }) }}</span>
+          <button
+            v-for="node in agentSessions"
+            :key="node.row.task_id"
+            type="button"
+            class="agent-chip"
+            :class="node.row.state"
+            :title="node.row.prompt"
+            @click="focusAgent(node.row)"
+          >
+            <span class="agent-chip-dot" aria-hidden="true" />
+            <span class="agent-chip-text">{{ shortLabel(node.row.prompt || '') }}</span>
+          </button>
+        </nav>
         <div class="conversation-actions">
           <span class="browser-status" :class="{on:browserStatus?.running,off:browserStatus&&!browserStatus.enabled}" :title="browserTooltip"><i aria-hidden="true" />{{ browserLabel }}</span>
           <span v-if="active" class="running">{{ t('agent.page.running') }}<template v-if="activeProgress"> · {{ activeProgress.percent }}%<template v-if="activeProgress.note"> — {{ activeProgress.note }}</template></template></span>
@@ -2790,6 +2833,23 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             </div>
             <span :class="activeSub.state">{{ stateName(activeSub.state) }}</span>
           </header>
+          <nav class="agent-switch" :aria-label="t('agent.page.agentsInTurn')">
+            <!-- This strip only renders while a sub-agent is open, so main is never
+                 the current one here; it is still listed because it is the way back. -->
+            <button type="button" class="agent-switch-item" @click="focusMain">{{ t('agent.page.mainAgent') }}</button>
+            <button
+              v-for="node in agentSessions"
+              :key="node.row.task_id"
+              type="button"
+              class="agent-switch-item"
+              :class="{ chosen: activeSub.task_id === node.row.task_id }"
+              :title="node.row.prompt"
+              @click="focusAgent(node.row)"
+            >
+              <span :class="node.row.state" aria-hidden="true">●</span>
+              <span class="agent-switch-label" :style="{ paddingLeft: (node.depth - 1) * 12 + 'px' }">{{ shortLabel(node.row.prompt || '') }}</span>
+            </button>
+          </nav>
           <div class="sub-view-body">
             <div class="bubble user"><div class="message-head"><b>{{ t('agent.page.parentAgent') }}</b><time>{{ time(activeSub.started_at) }}</time></div><div class="message-text">{{ activeSub.prompt }}</div></div>
             <template v-for="step in childSteps(activeSub)" :key="step.task_id">
