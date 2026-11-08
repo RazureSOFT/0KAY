@@ -2,7 +2,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiGet, apiPost, ApiError } from '../api'
-import { installTapTrigger, startWobble, WobbleTune, type Wobble } from '../wobble'
+import { installTapTrigger, startWobble, WobbleTune, WOBBLE_TRACK, type Wobble } from '../wobble'
 
 const { t } = useI18n()
 const currentVersion = ref('0.1.3')
@@ -15,7 +15,7 @@ const currentVersion = ref('0.1.3')
  * someone finds it. Escape, or pressing it again, stops it.
  */
 const iconRef = ref<HTMLImageElement | null>(null)
-const tune = new WobbleTune()
+const tune = new WobbleTune(WOBBLE_TRACK)
 let wobble: Wobble | null = null
 let disposeTaps: (() => void) | null = null
 

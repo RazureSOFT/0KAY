@@ -428,11 +428,15 @@ func (s *CoreServiceServer) shouldSyncJournalLocked(changes []persistedTask, rem
 }
 
 const (
-	persistedPromptLimit      = 8000
-	persistedResultLimit      = 16000
-	persistedErrorLimit       = 4000
-	persistedArgsLimit        = 8000
-	persistedReasoningLimit   = 8000
+	persistedPromptLimit = 8000
+	persistedResultLimit = 16000
+	persistedErrorLimit  = 4000
+	persistedArgsLimit   = 8000
+	// A chain of thought runs long, and it is the record of how a task was
+	// solved. 8k cut the tail off long reasoning; the limit exists to keep one
+	// runaway turn from filling the state file, so it sits above a normal task's
+	// reasoning and below an unbounded stream.
+	persistedReasoningLimit   = 64000
 	persistedSessionLimit     = 2000
 	persistedAttachmentsLimit = 8000
 	persistedNonSessionLimit  = 5000
@@ -1844,7 +1848,21 @@ func (s *CoreServiceServer) taskRowLocked(t *TaskInfo) map[string]interface{} {
 		item["result"] = redactTaskResult(t.Result)
 	}
 	if t.Reasoning != "" {
-		item["reasoning"] = clipField(t.Reasoning, 3000)
+		// The reasoning is shown in a collapsible block that the reader chooses
+		// to open. Cutting it at 3000 characters put "…[truncated]" in the middle
+		// of a thought, which reads as a bug in the agent rather than a display
+		// limit — and the chain of thought is exactly the part you open when you
+		// are trying to understand what it did. Redacted, never clipped: the
+		// blob scrubber still removes anything that looks like a key.
+		// Redacted, never clipped at 3000 — but a runaway turn still has to be
+		// bounded, or every poll ships a megabyte of text. The cap is high enough
+		// that no real chain of thought reaches it.
+		reasoning := taskBlobPattern.ReplaceAllString(t.Reasoning, `${1}[omitted]${2}`)
+		const reasoningCeiling = 60000
+		if len(reasoning) > reasoningCeiling {
+			reasoning = reasoning[:reasoningCeiling]
+		}
+		item["reasoning"] = reasoning
 	}
 	if t.Error != "" {
 		item["error"] = clipField(t.Error, 1500)

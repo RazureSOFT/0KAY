@@ -139,93 +139,63 @@ export function installTapTrigger(
 }
 
 /**
- * A short loop to go with the wobble.
+ * The music that plays with the wobble.
  *
- * Synthesised rather than shipped as a file: the soundtrack is a joke, it has to
- * be the same on every install, and a megabyte of audio in the bundle for a
- * hidden effect is a bad trade. Two voices, a walking bass and a bright arpeggio,
- * in the key the effect's bounce suggests.
+ * An `<audio>` element rather than the Web Audio synthesiser this started as:
+ * the track is a fixed file, and streaming it lets the browser handle buffering
+ * and range requests instead of loading seven megabytes into memory first.
+ *
+ * `okayWobbleTune` is set by whoever ships the sound; with it unset the effect
+ * still runs, silently, which is the right failure for a joke.
  */
 export class WobbleTune {
-  private context: AudioContext | null = null
-  private master: GainNode | null = null
-  private timer: number | undefined
-  private step = 0
-  private playing = false
+  private element: HTMLAudioElement | null = null
+  private failed = false
 
-  /** Semitone offsets, -1 for a rest. */
-  private readonly lead = [0, 4, 7, 12, 7, 4, 0, -1, 2, 5, 9, 14, 9, 5, 2, -1]
-  private readonly bass = [-12, -12, -5, -5, -8, -8, -10, -10]
-
-  private readonly stepMs = 150
-  private readonly root = 261.63 // C4
+  constructor(private readonly source: string) { }
 
   start(): void {
-    if (this.playing) return
-    const Ctor = (window.AudioContext || (window as any).webkitAudioContext) as typeof AudioContext | undefined
-    if (!Ctor) return
-    try {
-      this.context = this.context || new Ctor()
-      this.master = this.context.createGain()
-      this.master.gain.value = 0.16
-      this.master.connect(this.context.destination)
-      void this.context.resume()
-      this.playing = true
-      this.step = 0
-      this.tick()
-      this.timer = window.setInterval(() => this.tick(), this.stepMs)
-    } catch {
-      // A browser that refuses an AudioContext (no gesture, no device) simply
-      // gets no music; the wobble still works.
+    if (this.failed) return
+    if (!this.element) {
+      const audio = new Audio()
+      audio.loop = true
+      audio.preload = 'none'
+      // The volume is deliberately low: this is an easter egg, not a soundtrack.
+      audio.volume = 0.35
+      audio.addEventListener('error', () => {
+        // A blocked or unreachable URL must not take the effect down with it.
+        this.failed = true
+        this.element = null
+      }, { once: true })
+      audio.src = this.source
+      this.element = audio
     }
-  }
-
-  private frequency(semitone: number): number {
-    return this.root * Math.pow(2, semitone / 12)
-  }
-
-  private tick(): void {
-    if (!this.context || !this.master) return
-    const lead = this.lead[this.step % this.lead.length]
-    const bass = this.bass[this.step % this.bass.length]
-    if (lead >= 0) this.blip(this.frequency(lead + 12), 'triangle', 0.09)
-    if (this.step % 2 === 0) this.blip(this.frequency(bass), 'sine', 0.16)
-    this.step += 1
-  }
-
-  private blip(freq: number, type: OscillatorType, level: number): void {
-    const context = this.context!
-    const master = this.master!
-    const osc = context.createOscillator()
-    const gain = context.createGain()
-    const now = context.currentTime
-    osc.type = type
-    osc.frequency.value = freq
-    // A short pluck: quick attack, exponential decay. Anything with a sustained
-    // level turns a joke into a drone.
-    gain.gain.setValueAtTime(0.0001, now)
-    gain.gain.exponentialRampToValueAtTime(level, now + 0.012)
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22)
-    osc.connect(gain)
-    gain.connect(master)
-    osc.start(now)
-    osc.stop(now + 0.24)
+    // A rejected play() is the autoplay policy refusing a programmatic start;
+    // the tap that triggered this counts as a gesture, so it should not happen,
+    // but a promise rejection here would surface as an unhandled error.
+    void this.element.play().catch(() => { })
   }
 
   stop(): void {
-    this.playing = false
-    if (this.timer) window.clearInterval(this.timer)
-    this.timer = undefined
+    if (!this.element) return
     try {
-      this.master?.disconnect()
-      void this.context?.close()
+      this.element.pause()
+      this.element.currentTime = 0
     } catch {
     }
-    this.master = null
-    this.context = null
   }
 
   get running(): boolean {
-    return this.playing
+    return !!this.element && !this.element.paused
   }
 }
+
+/**
+ * The track, served from the app itself.
+ *
+ * Downloaded rather than hot-linked: the effect is a joke, and a joke that
+ * depends on a third-party host staying up (and on the Content-Security-Policy
+ * opening an exception for it) is a broken joke. It sits in `public/sfx`, so it
+ * is served from the same origin as everything else and works offline.
+ */
+export const WOBBLE_TRACK = '/sfx/wobble.mp3'

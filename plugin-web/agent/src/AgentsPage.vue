@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useAgentsStore, type TaskRow } from './store'
 import MarkdownContent from './MarkdownContent.vue'
 import ToolStepCard from './ToolStepCard.vue'
@@ -1863,7 +1863,65 @@ function toggleTurn(id: string) {
   if (next.has(id)) next.delete(id)
   else next.add(id)
   expandedTurns.value = next
+  // Re-measure after the clamp class changes: collapsing restores the overflow.
+  void nextTick(() => {
+    const el = document.querySelector(`[data-turn-id="${CSS.escape(id)}"]`)
+    measureBubble(el, id)
+  })
 }
+
+/**
+ * Which bubbles are actually cut off at four lines.
+ *
+ * The button used to appear above 420 characters, which is a guess at the
+ * rendered height and wrong in both directions: a wide bubble fits 420 in two
+ * lines and got a button that did nothing, a narrow one wrapped the same text
+ * into six lines with no way to open it. The element knows, so measure it.
+ */
+const clampedOverflow = ref<Set<string>>(new Set())
+let overflowObserver: ResizeObserver | null = null
+
+function measureBubble(el: Element | null, id: string): void {
+  if (!(el instanceof HTMLElement)) return
+  // An expanded bubble is unclamped, so it can never overflow: only measure the
+  // clamped state, or the button would vanish the moment you opened it.
+  if (expandedTurns.value.has(id)) return
+  const overflowing = el.scrollHeight - el.clientHeight > 1
+  const has = clampedOverflow.value.has(id)
+  if (overflowing === has) return
+  const next = new Set(clampedOverflow.value)
+  if (overflowing) next.add(id)
+  else next.delete(id)
+  clampedOverflow.value = next
+}
+
+/**
+ * Vue ref callback for the message body. Runs on mount and on re-render, which
+ * is what makes this survive a turn being replaced by the next one.
+ */
+function watchBubble(el: Element | ComponentPublicInstance | null, id: string): void {
+  if (!(el instanceof HTMLElement)) return
+  // The ref callback can fire before layout, when both heights are 0. Measure
+  // now and again after paint, so the button appears on the first render of a
+  // long message rather than only after something else re-renders.
+  measureBubble(el, id)
+  void nextTick(() => measureBubble(el, id))
+  if (typeof ResizeObserver === 'function' && !overflowObserver) {
+    overflowObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const target = entry.target as HTMLElement
+        const key = target.dataset.turnId
+        if (key) measureBubble(target, key)
+      }
+    })
+  }
+  overflowObserver?.observe(el)
+}
+
+onUnmounted(() => {
+  overflowObserver?.disconnect()
+  overflowObserver = null
+})
 
 const planSteps = computed<PlanStep[]>(() => {
   const markdown = currentPlan.value?.markdown || ''
@@ -2770,9 +2828,14 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
               </div>
             </template>
             <template v-else>
-              <div class="message-text" :class="{ clamped: !expandedTurns.has(turn.task_id) }">{{ turn.prompt?.replace(/^\[thinking_intensity=\w+\]\s*/, '') }}</div>
+              <div
+                :ref="(el) => watchBubble(el, turn.task_id)"
+                class="message-text"
+                :data-turn-id="turn.task_id"
+                :class="{ clamped: !expandedTurns.has(turn.task_id) }"
+              >{{ turn.prompt?.replace(/^\[thinking_intensity=\w+\]\s*/, '') }}</div>
               <button
-                v-if="(turn.prompt || '').length > 420"
+                v-if="clampedOverflow.has(turn.task_id) || expandedTurns.has(turn.task_id)"
                 type="button"
                 class="expand-toggle"
                 @click="toggleTurn(turn.task_id)"
