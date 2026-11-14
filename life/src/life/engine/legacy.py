@@ -2399,14 +2399,9 @@ class LifeEngine:
         tool_failure = think.tool_failure
         think_usage_info = think.usage
         memory_context = recall.memory_context
-        control = recall.control
         scope = recall.scope
-        self_statement = recall.self_statement
-        inner_thread = recall.inner_thread
         over_budget = recall.over_budget
-        budget = recall.budget
         custom_prompt = recall.custom_prompt
-
 
         guidance += "\nRelevant memory:\n" + memory_context + "\nTool results:\n" + "\n".join(summaries)
         intent = getattr(turn, "intent", "")
