@@ -9,6 +9,10 @@
     "start": "electron .",
     "check": "node --check main.js && node --check preload.js",
     "test": "node --test main.test.js",
+    "bundle": "node scripts/bundle.mjs",
+    "bundle:check": "node scripts/bundle.mjs --skip-build",
+    "prepack": "npm run bundle",
+    "predist": "npm run bundle",
     "pack": "electron-builder --dir",
     "dist": "electron-builder"
   },
