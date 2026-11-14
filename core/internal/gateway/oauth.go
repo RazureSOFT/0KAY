@@ -53,7 +53,13 @@ func (g *Gateway) githubOAuthConfig() (clientID, clientSecret, redirect string, 
 	clientID = strings.TrimSpace(os.Getenv("GITHUB_OAUTH_CLIENT_ID"))
 	clientSecret = strings.TrimSpace(os.Getenv("GITHUB_OAUTH_CLIENT_SECRET"))
 	if g.settingsStore != nil {
-		values := g.settingsStore.GetValues("agent")
+		// The credentials live in the experiments section (that is where the
+		// panel renders them); the agent section is kept as a fallback for
+		// values set before that section existed.
+		values := g.settingsStore.GetValues("experiments")
+		if len(values) == 0 {
+			values = g.settingsStore.GetValues("agent")
+		}
 		// A type assertion, not fmt.Sprint: a missing key formats as "<nil>",
 		// which is a non-empty string and would make "not configured" look
 		// configured.
