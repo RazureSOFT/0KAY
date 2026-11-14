@@ -85,6 +85,7 @@
     "compacting": "Compacting…",
     "connected": "Connected",
     "contextHint": "Context ~ {n} tokens",
+    "speedTitle": "Generation speed. A \"~\" marks a rate estimated while the answer is still streaming.",
     "defaultCharacter": "your character",
     "disconnected": "Disconnected",
     "download": "Download history",

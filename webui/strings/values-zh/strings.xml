@@ -73,6 +73,7 @@
   <string name="chat.compacting">整理中…</string>
   <string name="chat.connected">已连接</string>
   <string name="chat.contextHint">上下文约 {n} tokens</string>
+  <string name="chat.speedTitle">生成速度。带 “~” 表示这是回答还在流式输出时的估算值。</string>
   <string name="chat.defaultCharacter">角色</string>
   <string name="chat.disconnected">未连接</string>
   <string name="chat.download">下载聊天记录</string>

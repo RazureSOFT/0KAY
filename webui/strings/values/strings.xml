@@ -73,6 +73,7 @@
   <string name="chat.compacting">Compacting…</string>
   <string name="chat.connected">Connected</string>
   <string name="chat.contextHint">Context ~ {n} tokens</string>
+  <string name="chat.speedTitle">Generation speed. A "~" marks a rate estimated while the answer is still streaming.</string>
   <string name="chat.defaultCharacter">your character</string>
   <string name="chat.disconnected">Disconnected</string>
   <string name="chat.download">Download history</string>

@@ -85,6 +85,7 @@
     "compacting": "整理中…",
     "connected": "已连接",
     "contextHint": "上下文约 {n} tokens",
+    "speedTitle": "生成速度。带 “~” 表示这是回答还在流式输出时的估算值。",
     "defaultCharacter": "角色",
     "disconnected": "未连接",
     "download": "下载聊天记录",

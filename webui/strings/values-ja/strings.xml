@@ -73,6 +73,7 @@
   <string name="chat.compacting">整理中…</string>
   <string name="chat.connected">接続済み</string>
   <string name="chat.contextHint">コンテキスト約 {n} トークン</string>
+  <string name="chat.speedTitle">生成速度。「~」は回答のストリーミング中に推定した値です。</string>
   <string name="chat.defaultCharacter">キャラクター</string>
   <string name="chat.disconnected">未接続</string>
   <string name="chat.download">履歴をダウンロード</string>

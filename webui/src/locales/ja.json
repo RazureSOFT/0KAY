@@ -85,6 +85,7 @@
     "compacting": "整理中…",
     "connected": "接続済み",
     "contextHint": "コンテキスト約 {n} トークン",
+    "speedTitle": "生成速度。「~」は回答のストリーミング中に推定した値です。",
     "defaultCharacter": "キャラクター",
     "disconnected": "未接続",
     "download": "履歴をダウンロード",

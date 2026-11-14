@@ -469,6 +469,7 @@ watch(
           {{ t('chat.connected') }}
         </span>
         <span class="hint">{{ t('chat.contextHint', { n: chatStore.contextTokens.toLocaleString() }) }}</span>
+        <span v-if="chatStore.turnSpeed" class="hint speed" :title="t('chat.speedTitle')">{{ chatStore.turnSpeed }}</span>
         <button
           class="context-btn"
           type="button"
@@ -869,6 +870,15 @@ watch(
   align-items: center;
   gap: var(--space-xs);
   font-size: var(--font-size-xs);
+}
+
+/* The rate sits beside the context size: both describe the turn, one in space
+   and one in speed. Tabular figures so the number does not jitter as it
+   changes width while the answer streams. */
+.hint.speed {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  opacity: .85;
 }
 
 .status-dot {

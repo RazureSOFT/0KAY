@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, onScopeDispose } from 'vue'
 import { useWizardStore } from './wizard'
 import { parseMedia } from './media-markers'
+import { formatSpeed, tokenSpeed } from './token-speed'
 import { useLifeStore } from './life'
 import { i18n } from '../i18n'
 import { uid } from '../uid'
@@ -86,9 +87,32 @@ export const useChatStore = defineStore('chat', () => {
     completion_tokens: number
     total_tokens: number
   } | null>(null)
+
+  // Timing for the tokens-per-second line. `turnStartedAt` is set when a request
+  // goes out and `now` is only advanced by the streaming loop, so the rate
+  // updates as text arrives without a timer of its own.
+  const turnStartedAt = ref(0)
+  const turnNow = ref(0)
+  const turnChars = ref(0)
   const contextSummary = ref('')
   const compacting = ref(false)
   const voiceEnabled = ref(localStorage.getItem('0kay.voice') === '1')
+
+  // While a turn streams, the provider has not reported a token count yet, so
+  // the rate is estimated from the characters that have arrived. Once `done`
+  // carries a usage block, the reported count replaces the estimate and the
+  // number stops changing. See stores/token-speed.ts.
+  const turnSpeed = computed(() => {
+    if (!turnStartedAt.value) return formatSpeed({ perSecond: null, tokens: null, estimated: false })
+    return formatSpeed(
+      tokenSpeed({
+        chars: turnChars.value,
+        completionTokens: lastUsage.value?.completion_tokens,
+        startedAt: turnStartedAt.value,
+        endedAt: turnNow.value,
+      }),
+    )
+  })
 
   let ws: WebSocket | null = null
   let messageIdCounter = 0
@@ -264,6 +288,12 @@ export const useChatStore = defineStore('chat', () => {
 
   function appendChunk(requestId: string | undefined, chunk: string, separate = false, payload?: any) {
     if (!chunk && !payload?.think_summary) return
+    // Advance the rate clock with the text, so the line under the composer
+    // moves while the answer streams. Cheap: two writes, no timer.
+    if (chunk) {
+      turnChars.value += chunk.length
+      turnNow.value = Date.now()
+    }
     const current = requestId ? messages.value.find((message) => message.role === 'assistant' && message.requestId === requestId) : undefined
     if (!separate || (current && !current.content)) {
       const target = findOrCreateAssistant(requestId)
@@ -310,10 +340,17 @@ export const useChatStore = defineStore('chat', () => {
     if (data.usage) {
       lastUsage.value = data.usage
     }
+    // The reported count supersedes the character estimate, and freezing the
+    // clock here is what stops the number drifting after the turn already ended.
+    turnNow.value = Date.now()
     isTyping.value = false
   }
 
   function handleDone(_data: any) {
+    // Freeze the rate clock at the end of the turn. Without this the line would
+    // keep dividing by a growing elapsed time and slide towards zero while the
+    // user reads a reply that is already complete.
+    turnNow.value = Date.now()
     isTyping.value = false
   }
 
@@ -367,6 +404,12 @@ export const useChatStore = defineStore('chat', () => {
 
     isTyping.value = true
     const requestId = `req_${Date.now()}`
+    // Start the clock for the rate line. Cleared usage as well: the previous
+    // turn's token count must not be paired with this turn's elapsed time.
+    turnStartedAt.value = Date.now()
+    turnNow.value = turnStartedAt.value
+    turnChars.value = 0
+    lastUsage.value = null
 
     messages.value.push({
       id: `msg_${++messageIdCounter}`,
@@ -445,6 +488,7 @@ export const useChatStore = defineStore('chat', () => {
       const body = await res.json()
       appendChunk(requestId, body.response || '')
       if (body.usage) lastUsage.value = body.usage
+      turnNow.value = Date.now()
       isTyping.value = false
       return
     }
@@ -608,6 +652,7 @@ export const useChatStore = defineStore('chat', () => {
     chatVisible,
     currentTaskId,
     lastUsage,
+    turnSpeed,
     contextTokens,
     contextSummary,
     compacting,

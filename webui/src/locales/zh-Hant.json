@@ -85,6 +85,7 @@
     "compacting": "整理中…",
     "connected": "已連線",
     "contextHint": "上下文約 {n} tokens",
+    "speedTitle": "生成速度。帶「~」表示這是回答還在串流輸出時的估算值。",
     "defaultCharacter": "角色",
     "disconnected": "未連線",
     "download": "下載對話紀錄",
