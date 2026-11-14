@@ -289,6 +289,7 @@
   },
   "mcp": {
     "env": "Environment (KEY=VALUE per line)",
+    "githubCreateApp": "Create GitHub App",
     "githubLogin": "Sign in with GitHub",
     "githubToken": "GitHub token",
     "addGithub": "Add GitHub",

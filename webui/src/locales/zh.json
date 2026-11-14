@@ -289,6 +289,7 @@
   },
   "mcp": {
     "env": "环境变量（每行 KEY=VALUE）",
+    "githubCreateApp": "自动创建 GitHub App",
     "githubLogin": "用 GitHub 登录",
     "githubToken": "GitHub token",
     "addGithub": "添加 GitHub",

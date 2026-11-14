@@ -255,6 +255,7 @@
   <string name="live2d.resetView">重設檢視</string>
   <string name="live2d.stageMissing">渲染舞台尚未就緒</string>
   <string name="mcp.env">環境變數（每行 KEY=VALUE）</string>
+  <string name="mcp.githubCreateApp">自動建立 GitHub App</string>
   <string name="mcp.githubLogin">用 GitHub 登入</string>
   <string name="mcp.githubToken">GitHub token</string>
   <string name="mcp.addGithub">新增 GitHub</string>

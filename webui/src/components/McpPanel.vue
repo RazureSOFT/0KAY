@@ -199,6 +199,7 @@ onMounted(load)
         <p class="subtitle">{{ t('mcp.subtitle') }}</p>
       </div>
       <div class="mcp-actions">
+        <a class="btn btn-tonal" href="/api/oauth/github/manifest" target="_blank" rel="noopener">{{ t('mcp.githubCreateApp') }}</a>
         <a class="btn btn-tonal" href="/api/oauth/github/start" target="_blank" rel="noopener">{{ t('mcp.githubLogin') }}</a>
         <input v-model="githubToken" class="github-token" type="password" autocomplete="off" :placeholder="t('mcp.githubToken')" :aria-label="t('mcp.githubToken')" />
         <button class="btn btn-tonal" type="button" :disabled="!githubToken.trim()" :title="t('mcp.githubHint')" @click="addGithub">{{ t('mcp.addGithub') }}</button>

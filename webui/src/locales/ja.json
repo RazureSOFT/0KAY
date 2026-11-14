@@ -289,6 +289,7 @@
   },
   "mcp": {
     "env": "環境変数（1 行に KEY=VALUE）",
+    "githubCreateApp": "GitHub App を自動作成",
     "githubLogin": "GitHub でログイン",
     "githubToken": "GitHub トークン",
     "addGithub": "GitHub を追加",
