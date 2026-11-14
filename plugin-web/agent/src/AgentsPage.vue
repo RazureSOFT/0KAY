@@ -8,6 +8,7 @@ import FileViewer from './FileViewer.vue'
 import ModelThinkingPicker from './ModelThinkingPicker.vue'
 import GitPanel from './GitPanel.vue'
 import { useReconCanvas } from './composables/useReconCanvas'
+import { usePlanCard } from './composables/usePlanCard'
 import ThinkChain from './ThinkChain.vue'
 import IntentStrip from './IntentStrip.vue'
 import { agentTree, focusChain } from './agentTree'
@@ -1827,7 +1828,13 @@ const currentPlan = computed<{ title: string; markdown: string; steps: number; d
     }
   } catch { return null }
 })
-const planOpen = ref(true)
+const { planOpen, planSteps, rejectedSteps, isRejected, toggleStep, buildPlan } = usePlanCard({
+  currentPlan,
+  busy,
+  active,
+  send,
+  t: (key, named) => t(key, named as Record<string, unknown>),
+})
 /**
  * Reviewing a plan before building it.
  *
@@ -1905,47 +1912,6 @@ onUnmounted(() => {
   overflowObserver = null
 })
 
-const planSteps = computed<PlanStep[]>(() => {
-  const markdown = currentPlan.value?.markdown || ''
-  const found: PlanStep[] = []
-  for (const line of markdown.split(String.fromCharCode(10))) {
-    const heading = /^#{2,4}\s+(.+)$/.exec(line.trim())
-    const numbered = /^(\d{1,2})[.)]\s+(.+)$/.exec(line.trim())
-    const text = heading ? heading[1].trim() : numbered ? numbered[2].trim() : ''
-    if (!text) continue
-    if (/^(问题|边界|数据|步骤|迁移|验证|风险|problem|scope|data|step|migration|verify|risk)/i.test(text)) continue
-    found.push({ n: found.length + 1, text: text.replace(/[*`]/g, '').slice(0, 90) })
-    if (found.length >= 12) break
-  }
-  return found
-})
-
-/** Steps the user vetoed, by number. Empty means "build the plan as written". */
-const rejectedSteps = ref<number[]>([])
-const isRejected = (n: number) => rejectedSteps.value.includes(n)
-function toggleStep(n: number) {
-  rejectedSteps.value = isRejected(n)
-    ? rejectedSteps.value.filter((entry) => entry !== n)
-    : [...rejectedSteps.value, n]
-}
-
-async function buildPlan() {
-  if (!currentPlan.value || busy.value || active.value) return
-  planOpen.value = false
-  const vetoed = planSteps.value.filter((step) => isRejected(step.n))
-  if (!vetoed.length) {
-    await send(t('agent.page.planBuildMessage'))
-    return
-  }
-  // The veto travels inside the message so every executor sees it, no matter
-  // which transport carried the request.
-  const note = t('agent.page.planRejectedNote', {
-    steps: vetoed.map((step) => `${step.n}. ${step.text}`).join(String.fromCharCode(10)),
-  })
-  const gap = String.fromCharCode(10, 10)
-  await send(`${t('agent.page.planBuildMessage')}${gap}${note}`)
-  rejectedSteps.value = []
-}
 const runningTasks = computed(() => store.tasks.filter(item => item.session_id === selectedId.value && ['running', 'pending'].includes(item.state) && ['agent', 'compact', 'tool', 'subagent'].includes(item.kind || '')))
 const todos = computed<Array<{ content: string; status: string }>>(() => {
   const rows = store.tasks
