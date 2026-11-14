@@ -57,3 +57,34 @@ func TestGitHubOAuthCallbackRejectsAnUnknownState(t *testing.T) {
 		t.Fatalf("an unknown state must be refused, got %d", rec.Code)
 	}
 }
+
+func TestGitHubManifestPagePostsTheManifest(t *testing.T) {
+	g := &Gateway{}
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/oauth/github/manifest", nil)
+	req.Host = "127.0.0.1:8080"
+	g.handleGitHubManifest(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", rec.Code)
+	}
+	body := rec.Body.String()
+	for _, want := range []string{
+		"github.com/settings/apps/new",
+		`name="manifest"`,
+		"state=",
+		"127.0.0.1:8080/api/oauth/github/manifest/callback",
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("manifest page is missing %q", want)
+		}
+	}
+}
+
+func TestGitHubManifestCallbackRejectsAnUnknownState(t *testing.T) {
+	g := &Gateway{}
+	rec := httptest.NewRecorder()
+	g.handleGitHubManifestCallback(rec, httptest.NewRequest(http.MethodGet, "/api/oauth/github/manifest/callback?code=x&state=nope", nil))
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("an unknown state must be refused, got %d", rec.Code)
+	}
+}

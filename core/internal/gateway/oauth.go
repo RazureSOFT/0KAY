@@ -191,3 +191,157 @@ func oauthPage(w http.ResponseWriter, status int, title, detail string) {
 h1{font-size:18px;margin:0 0 8px}p{color:#57606a}</style>
 <h1>%s</h1><p>%s</p>`, title, title, detail)
 }
+
+// ---- App manifest flow ----------------------------------------------------
+//
+// Creating an OAuth App has no API: it is a form on github.com that only a
+// logged-in browser can submit. The manifest flow is the closest thing to
+// automation GitHub offers: the browser is sent to GitHub with a manifest, the
+// user clicks Create once, and GitHub redirects back with a one-time code that
+// converts into client_id and client_secret. Those two land in the agent
+// settings, and the normal OAuth flow can then run unattended.
+
+const (
+	githubManifestURL     = "https://github.com/settings/apps/new"
+	githubManifestConvert = "https://api.github.com/app-manifests/%s/conversions"
+)
+
+// coreBaseURL is the address GitHub will redirect back to. It has to be the
+// address the browser used, not a hard-coded one: the flow runs on localhost in
+// development and behind a name in a deployment.
+func coreBaseURL(r *http.Request) string {
+	if value := strings.TrimSpace(os.Getenv("CORE_PUBLIC_URL")); value != "" {
+		return strings.TrimRight(value, "/")
+	}
+	host := strings.TrimSpace(r.Host)
+	if host == "" {
+		host = "127.0.0.1:8080"
+	}
+	return "http://" + host
+}
+
+func (g *Gateway) handleGitHubManifest(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
+	base := coreBaseURL(r)
+	state, err := newOAuthState()
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "oauth_state_failed", err.Error())
+		return
+	}
+	oauthStatesMu.Lock()
+	oauthStates[state] = oauthStateEntry{created: time.Now()}
+	oauthStatesMu.Unlock()
+
+	manifest := map[string]any{
+		"name":                     "0KAY",
+		"url":                      base,
+		"redirect_url":             base + "/api/oauth/github/manifest/callback",
+		"callback_urls":            []string{base + "/api/oauth/github/callback"},
+		"request_oauth_on_install": true,
+		"public":                   false,
+		"default_permissions": map[string]string{
+			"metadata":      "read",
+			"contents":      "write",
+			"issues":        "write",
+			"pull_requests": "write",
+		},
+		"default_events": []string{},
+	}
+	encoded, err := json.Marshal(manifest)
+	if err != nil {
+		writeErr(w, http.StatusInternalServerError, "manifest_failed", err.Error())
+		return
+	}
+	action := githubManifestURL + "?state=" + url.QueryEscape(state)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	fmt.Fprintf(w, `<!doctype html><meta charset="utf-8"><title>0KAY · GitHub App</title>
+<style>body{font:14px/1.6 system-ui,sans-serif;margin:12vh auto;max-width:560px;padding:0 20px;color:#1f2328}p{color:#57606a}</style>
+<h1>正在前往 GitHub…</h1><p>如果没有自动跳转，点下面的按钮。</p>
+<form id="manifest" method="post" action="%s">
+  <input type="hidden" name="manifest" value="%s">
+  <button type="submit">Create GitHub App</button>
+</form>
+<script>document.getElementById('manifest').submit()</script>`,
+		htmlEscape(action), htmlEscape(string(encoded)))
+}
+
+func (g *Gateway) handleGitHubManifestCallback(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
+	code := r.URL.Query().Get("code")
+	state := r.URL.Query().Get("state")
+	if code == "" {
+		oauthPage(w, http.StatusBadRequest, "GitHub 没有返回 code", "请重新点击「自动创建 GitHub App」。")
+		return
+	}
+	oauthStatesMu.Lock()
+	entry, known := oauthStates[state]
+	delete(oauthStates, state)
+	oauthStatesMu.Unlock()
+	if !known || time.Since(entry.created) > oauthStateTTL {
+		oauthPage(w, http.StatusBadRequest, "创建流程已过期", "请重新点击「自动创建 GitHub App」。")
+		return
+	}
+
+	clientID, clientSecret, err := convertManifest(r, code)
+	if err != nil {
+		oauthPage(w, http.StatusBadGateway, "创建失败", err.Error())
+		return
+	}
+	if g.settingsStore != nil {
+		if err := g.settingsStore.SetValues("agent", map[string]interface{}{
+			"github_oauth_client_id":     clientID,
+			"github_oauth_client_secret": clientSecret,
+		}); err != nil {
+			oauthPage(w, http.StatusInternalServerError, "保存失败", err.Error())
+			return
+		}
+	}
+	oauthPage(w, http.StatusOK, "GitHub App 已创建", "client id 和 secret 已保存，回到设置页点「用 GitHub 登录」即可。")
+}
+
+// convertManifest trades the one-time code for the app's credentials.
+func convertManifest(r *http.Request, code string) (string, string, error) {
+	endpoint := fmt.Sprintf(githubManifestConvert, url.PathEscape(code))
+	request, err := http.NewRequestWithContext(r.Context(), http.MethodPost, endpoint, nil)
+	if err != nil {
+		return "", "", err
+	}
+	request.Header.Set("Accept", "application/vnd.github+json")
+	request.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+	client := &http.Client{Timeout: 20 * time.Second, Transport: netguard.Transport(netguard.Strict())}
+	response, err := client.Do(request)
+	if err != nil {
+		return "", "", err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusCreated {
+		return "", "", fmt.Errorf("github answered %d; the code is single-use and expires in an hour", response.StatusCode)
+	}
+	var payload struct {
+		ClientID     string `json:"client_id"`
+		ClientSecret string `json:"client_secret"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+		return "", "", fmt.Errorf("unreadable response: %w", err)
+	}
+	if payload.ClientID == "" || payload.ClientSecret == "" {
+		return "", "", fmt.Errorf("github returned no client credentials")
+	}
+	return payload.ClientID, payload.ClientSecret, nil
+}
+
+// htmlEscape is the small subset of escaping the manifest page needs.
+func htmlEscape(value string) string {
+	replacer := strings.NewReplacer(
+		"&", "&amp;",
+		"<", "&lt;",
+		">", "&gt;",
+		`"`, "&quot;",
+		"'", "&#39;",
+	)
+	return replacer.Replace(value)
+}
