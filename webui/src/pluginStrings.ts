@@ -77,9 +77,11 @@ export function buildLocaleBundles(
       const localised: Record<string, unknown> = {}
       for (const [key, value] of Object.entries(messages)) {
         if (typeof value !== 'string') continue
-        // A message without braces needs no compiling: the runtime returns it
-        // as its own text.
-        const message = value.includes('{') ? interpolateMessage(value) : value
+        // Every message is wrapped, braces or not. The runtime-only build has no
+        // message compiler, so a plain string is not usable as a message: intlify
+        // warns "compilation is not supported" and returns the key. A message
+        // without placeholders simply resolves to itself.
+        const message = interpolateMessage(value)
         nestKey(localised, key.startsWith(prefix) ? key.slice(prefix.length) : key, message)
       }
       if (!Object.keys(localised).length) continue

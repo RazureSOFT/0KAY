@@ -31,8 +31,6 @@ function toggleDock() {
   try { localStorage.setItem('0kay.agent.dock.open', dockOpen.value ? '1' : '0') } catch { }
 }
 function dismissError() { error.value = ''; store.error = '' }
-watch(draft, () => void nextTick(autosizeComposer))
-onMounted(autosizeComposer)
 const search = ref('')
 const source = ref('all')
 const taskKind = ref<'plan' | 'agent' | 'work'>('agent')
@@ -1283,6 +1281,12 @@ const {
   friendlyError,
 })
 
+// These two belong to the composer, so they run here rather than at the top of
+// the file: `draft` and `autosizeComposer` are destructured just above, and a
+// `const` read before its declaration is a TDZ error at module evaluation.
+watch(draft, () => void nextTick(autosizeComposer))
+onMounted(autosizeComposer)
+
 const isLife = (item: TaskRow) => item.caller_id !== 'webui'
 const sessions = computed(() => store.sessions.filter(item =>
   (showArchived.value ? item.state === 'archived' : item.state !== 'archived') &&
@@ -1582,7 +1586,9 @@ const currentPlan = computed<{ title: string; markdown: string; steps: number; d
 const { planOpen, planSteps, rejectedSteps, isRejected, toggleStep, buildPlan } = usePlanCard({
   currentPlan,
   busy,
-  active,
+  // The composable only asks whether a run is in flight; passing the task row
+  // itself made the parameter type narrower than any truthy value.
+  active: computed(() => Boolean(active.value)),
   send,
   t: (key, named) => t(key, named as Record<string, unknown>),
 })
@@ -1955,6 +1961,13 @@ async function create() {
  * sent as soon as the current answer finishes, in the order it was typed. That is
  * what the composer promises — "the agent is busy, your message is next".
  */
+
+/** Append a message to the queue; `flushQueue` sends it when the run ends. */
+function queueMessage(text: string): void {
+  const trimmed = text.trim()
+  if (!trimmed) return
+  queuedMessages.value = [...queuedMessages.value, trimmed]
+}
 
 /** Drain one queued message; the rest wait for the next quiet moment. */
 async function flushQueue(): Promise<void> {
@@ -2688,7 +2701,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
           </ul>
           <MarkdownContent :content="currentPlan.markdown" />
           <figure v-if="currentPlan.diagram" class="plan-diagram">
-            <figcaption>{{ t(agent.page.planDiagram) }}</figcaption>
+            <figcaption>{{ t('agent.page.planDiagram') }}</figcaption>
             <pre>{{ currentPlan.diagram }}</pre>
           </figure>
           <ul v-if="currentPlan.openQuestions.length" class="plan-questions">

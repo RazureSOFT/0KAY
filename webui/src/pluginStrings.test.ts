@@ -27,6 +27,24 @@ describe('normalizeLocale', () => {
   })
 })
 
+/**
+ * Every message now arrives as a function, because the runtime-only vue-i18n
+ * build cannot compile anything itself. Compare what they render, not their
+ * shape.
+ */
+function resolveAll(value: unknown): unknown {
+  if (typeof value === 'function') {
+    const fn = value as (ctx: { named: (k: string) => unknown; list: () => unknown[] }) => string
+    return fn({ named: () => undefined, list: () => [] })
+  }
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) out[k] = resolveAll(v)
+    return out
+  }
+  return value
+}
+
 describe('buildLocaleBundles', () => {
   const response = (locales: Record<string, Record<string, string>>): PluginStringsResponse => ({ locales })
 
@@ -34,8 +52,8 @@ describe('buildLocaleBundles', () => {
     const bundles = buildLocaleBundles([
       { name: 'demo', response: response({ en: { 'panel.title': 'Demo' }, zh: { 'panel.title': '演示' } }) },
     ])
-    expect(bundles.en.demo).toEqual({ panel: { title: 'Demo' } })
-    expect(bundles.zh.demo).toEqual({ panel: { title: '演示' } })
+    expect(resolveAll(bundles.en.demo)).toEqual({ panel: { title: 'Demo' } })
+    expect(resolveAll(bundles.zh.demo)).toEqual({ panel: { title: '演示' } })
   })
 
   it('does not mutate the response it was given', () => {
@@ -63,14 +81,14 @@ describe('buildLocaleBundles', () => {
       { name: 'dup', response: response({ en: { k: 'first' } }) },
       { name: 'dup', response: response({ en: { k: 'second' } }) },
     ])
-    expect(bundles.en.dup).toEqual({ k: 'first' })
+    expect(resolveAll(bundles.en.dup)).toEqual({ k: 'first' })
   })
 
   it('normalises locale codes on the way in', () => {
     const bundles = buildLocaleBundles([
       { name: 'demo', response: response({ 'zh-rTW': { k: '繁' } }) },
     ])
-    expect(bundles['zh-Hant'].demo).toEqual({ k: '繁' })
+    expect(resolveAll(bundles['zh-Hant'].demo)).toEqual({ k: '繁' })
   })
 
   it('strips a key prefix that repeats the namespace', () => {
@@ -82,7 +100,7 @@ describe('buildLocaleBundles', () => {
         }),
       },
     ])
-    expect(bundles.en.demo).toEqual({ title: 'Demo', title2: 'Other', nested: 'N' })
+    expect(resolveAll(bundles.en.demo)).toEqual({ title: 'Demo', title2: 'Other', nested: 'N' })
   })
 
   it('nests dotted keys so vue-i18n can traverse them', () => {
@@ -94,7 +112,7 @@ describe('buildLocaleBundles', () => {
         }),
       },
     ])
-    expect(bundles.en.demo).toEqual({
+    expect(resolveAll(bundles.en.demo)).toEqual({
       memory: { title: 'Memory', tools: { refresh: 'Refresh' } },
       plain: 'P',
     })
@@ -107,7 +125,7 @@ describe('buildLocaleBundles', () => {
         response: response({ en: { ok: 'yes', bad: { nested: true } } as never }),
       },
     ])
-    expect(bundles.en.demo).toEqual({ ok: 'yes' })
+    expect(resolveAll(bundles.en.demo)).toEqual({ ok: 'yes' })
   })
 })
 
