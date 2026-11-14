@@ -261,7 +261,10 @@ type HeartbeatRequest struct {
 	// active_tasks is the number of tasks currently being processed.
 	ActiveTasks int32 `protobuf:"varint,3,opt,name=active_tasks,json=activeTasks,proto3" json:"active_tasks,omitempty"`
 	// host_info describes the host machine running this plugin.
-	Host          *HostInfo `protobuf:"bytes,4,opt,name=host,proto3" json:"host,omitempty"`
+	Host *HostInfo `protobuf:"bytes,4,opt,name=host,proto3" json:"host,omitempty"`
+	// checks are the plugin's own health checks. Empty means the plugin does not
+	// self-check, and Core keeps judging health by heartbeat age alone.
+	Checks        []*v1.PluginCheck `protobuf:"bytes,5,rep,name=checks,proto3" json:"checks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -320,6 +323,13 @@ func (x *HeartbeatRequest) GetActiveTasks() int32 {
 func (x *HeartbeatRequest) GetHost() *HostInfo {
 	if x != nil {
 		return x.Host
+	}
+	return nil
+}
+
+func (x *HeartbeatRequest) GetChecks() []*v1.PluginCheck {
+	if x != nil {
+		return x.Checks
 	}
 	return nil
 }
@@ -2617,12 +2627,13 @@ const file_core_v1_core_proto_rawDesc = "" +
 	"\tplugin_id\x18\x02 \x01(\tR\bpluginId\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\x12#\n" +
 	"\rservice_token\x18\x04 \x01(\tR\fserviceToken\x12)\n" +
-	"\x10assigned_address\x18\x05 \x01(\tR\x0fassignedAddress\"\xa8\x01\n" +
+	"\x10assigned_address\x18\x05 \x01(\tR\x0fassignedAddress\"\xd8\x01\n" +
 	"\x10HeartbeatRequest\x12\x1b\n" +
 	"\tplugin_id\x18\x01 \x01(\tR\bpluginId\x12-\n" +
 	"\x06status\x18\x02 \x01(\x0e2\x15.core.v1.PluginStatusR\x06status\x12!\n" +
 	"\factive_tasks\x18\x03 \x01(\x05R\vactiveTasks\x12%\n" +
-	"\x04host\x18\x04 \x01(\v2\x11.core.v1.HostInfoR\x04host\"\x82\x02\n" +
+	"\x04host\x18\x04 \x01(\v2\x11.core.v1.HostInfoR\x04host\x12.\n" +
+	"\x06checks\x18\x05 \x03(\v2\x16.plugin.v1.PluginCheckR\x06checks\"\x82\x02\n" +
 	"\bHostInfo\x12\x1a\n" +
 	"\bhostname\x18\x01 \x01(\tR\bhostname\x12\x0e\n" +
 	"\x02os\x18\x02 \x01(\tR\x02os\x12\x12\n" +
@@ -2879,62 +2890,64 @@ var file_core_v1_core_proto_goTypes = []any{
 	nil,                                   // 39: core.v1.EgressResponse.HeadersEntry
 	(*v1.PluginInfo)(nil),                 // 40: plugin.v1.PluginInfo
 	(*v1.SettingsSection)(nil),            // 41: plugin.v1.SettingsSection
-	(*v1.PluginTool)(nil),                 // 42: plugin.v1.PluginTool
-	(*v1.InboundMessage)(nil),             // 43: plugin.v1.InboundMessage
+	(*v1.PluginCheck)(nil),                // 42: plugin.v1.PluginCheck
+	(*v1.PluginTool)(nil),                 // 43: plugin.v1.PluginTool
+	(*v1.InboundMessage)(nil),             // 44: plugin.v1.InboundMessage
 }
 var file_core_v1_core_proto_depIdxs = []int32{
 	40, // 0: core.v1.RegisterRequest.plugin_info:type_name -> plugin.v1.PluginInfo
 	41, // 1: core.v1.RegisterRequest.settings_sections:type_name -> plugin.v1.SettingsSection
 	0,  // 2: core.v1.HeartbeatRequest.status:type_name -> core.v1.PluginStatus
 	4,  // 3: core.v1.HeartbeatRequest.host:type_name -> core.v1.HostInfo
-	35, // 4: core.v1.CallMocrRequest.context:type_name -> core.v1.MocrContext
-	7,  // 5: core.v1.CallMocrRequest.messages:type_name -> core.v1.ChatMessage
-	36, // 6: core.v1.CallMocrResponse.usage:type_name -> core.v1.TokenUsage
-	37, // 7: core.v1.UseAgentRequest.metadata:type_name -> core.v1.UseAgentRequest.MetadataEntry
-	15, // 8: core.v1.ListAgentsResponse.agents:type_name -> core.v1.AgentInfo
-	0,  // 9: core.v1.AgentInfo.status:type_name -> core.v1.PluginStatus
-	4,  // 10: core.v1.AgentInfo.host:type_name -> core.v1.HostInfo
-	38, // 11: core.v1.EgressRequest.headers:type_name -> core.v1.EgressRequest.HeadersEntry
-	39, // 12: core.v1.EgressResponse.headers:type_name -> core.v1.EgressResponse.HeadersEntry
-	42, // 13: core.v1.PluginToolEntry.tool:type_name -> plugin.v1.PluginTool
-	21, // 14: core.v1.ListPluginToolsResponse.tools:type_name -> core.v1.PluginToolEntry
-	43, // 15: core.v1.PublishInboundMessageRequest.message:type_name -> plugin.v1.InboundMessage
-	43, // 16: core.v1.SubscribeMessagesResponse.message:type_name -> plugin.v1.InboundMessage
-	33, // 17: core.v1.AdapterInfo.conversations:type_name -> core.v1.ConversationInfo
-	32, // 18: core.v1.ListAdaptersResponse.adapters:type_name -> core.v1.AdapterInfo
-	1,  // 19: core.v1.PluginService.Register:input_type -> core.v1.RegisterRequest
-	3,  // 20: core.v1.PluginService.Heartbeat:input_type -> core.v1.HeartbeatRequest
-	6,  // 21: core.v1.CoreService.CallMocr:input_type -> core.v1.CallMocrRequest
-	9,  // 22: core.v1.CoreService.UseAgent:input_type -> core.v1.UseAgentRequest
-	11, // 23: core.v1.CoreService.CancelAgent:input_type -> core.v1.CancelAgentRequest
-	13, // 24: core.v1.CoreService.ListAgents:input_type -> core.v1.ListAgentsRequest
-	16, // 25: core.v1.CoreService.RunDirect:input_type -> core.v1.RunDirectRequest
-	18, // 26: core.v1.CoreService.Egress:input_type -> core.v1.EgressRequest
-	20, // 27: core.v1.CoreService.ListPluginTools:input_type -> core.v1.ListPluginToolsRequest
-	23, // 28: core.v1.CoreService.CallPluginTool:input_type -> core.v1.CallPluginToolRequest
-	25, // 29: core.v1.CoreService.PublishInboundMessage:input_type -> core.v1.PublishInboundMessageRequest
-	27, // 30: core.v1.CoreService.SubscribeMessages:input_type -> core.v1.SubscribeMessagesRequest
-	29, // 31: core.v1.CoreService.SendMessage:input_type -> core.v1.SendMessageRequest
-	31, // 32: core.v1.CoreService.ListAdapters:input_type -> core.v1.ListAdaptersRequest
-	2,  // 33: core.v1.PluginService.Register:output_type -> core.v1.RegisterResponse
-	5,  // 34: core.v1.PluginService.Heartbeat:output_type -> core.v1.HeartbeatResponse
-	8,  // 35: core.v1.CoreService.CallMocr:output_type -> core.v1.CallMocrResponse
-	10, // 36: core.v1.CoreService.UseAgent:output_type -> core.v1.UseAgentResponse
-	12, // 37: core.v1.CoreService.CancelAgent:output_type -> core.v1.CancelAgentResponse
-	14, // 38: core.v1.CoreService.ListAgents:output_type -> core.v1.ListAgentsResponse
-	17, // 39: core.v1.CoreService.RunDirect:output_type -> core.v1.RunDirectResponse
-	19, // 40: core.v1.CoreService.Egress:output_type -> core.v1.EgressResponse
-	22, // 41: core.v1.CoreService.ListPluginTools:output_type -> core.v1.ListPluginToolsResponse
-	24, // 42: core.v1.CoreService.CallPluginTool:output_type -> core.v1.CallPluginToolResponse
-	26, // 43: core.v1.CoreService.PublishInboundMessage:output_type -> core.v1.PublishInboundMessageResponse
-	28, // 44: core.v1.CoreService.SubscribeMessages:output_type -> core.v1.SubscribeMessagesResponse
-	30, // 45: core.v1.CoreService.SendMessage:output_type -> core.v1.SendMessageResponse
-	34, // 46: core.v1.CoreService.ListAdapters:output_type -> core.v1.ListAdaptersResponse
-	33, // [33:47] is the sub-list for method output_type
-	19, // [19:33] is the sub-list for method input_type
-	19, // [19:19] is the sub-list for extension type_name
-	19, // [19:19] is the sub-list for extension extendee
-	0,  // [0:19] is the sub-list for field type_name
+	42, // 4: core.v1.HeartbeatRequest.checks:type_name -> plugin.v1.PluginCheck
+	35, // 5: core.v1.CallMocrRequest.context:type_name -> core.v1.MocrContext
+	7,  // 6: core.v1.CallMocrRequest.messages:type_name -> core.v1.ChatMessage
+	36, // 7: core.v1.CallMocrResponse.usage:type_name -> core.v1.TokenUsage
+	37, // 8: core.v1.UseAgentRequest.metadata:type_name -> core.v1.UseAgentRequest.MetadataEntry
+	15, // 9: core.v1.ListAgentsResponse.agents:type_name -> core.v1.AgentInfo
+	0,  // 10: core.v1.AgentInfo.status:type_name -> core.v1.PluginStatus
+	4,  // 11: core.v1.AgentInfo.host:type_name -> core.v1.HostInfo
+	38, // 12: core.v1.EgressRequest.headers:type_name -> core.v1.EgressRequest.HeadersEntry
+	39, // 13: core.v1.EgressResponse.headers:type_name -> core.v1.EgressResponse.HeadersEntry
+	43, // 14: core.v1.PluginToolEntry.tool:type_name -> plugin.v1.PluginTool
+	21, // 15: core.v1.ListPluginToolsResponse.tools:type_name -> core.v1.PluginToolEntry
+	44, // 16: core.v1.PublishInboundMessageRequest.message:type_name -> plugin.v1.InboundMessage
+	44, // 17: core.v1.SubscribeMessagesResponse.message:type_name -> plugin.v1.InboundMessage
+	33, // 18: core.v1.AdapterInfo.conversations:type_name -> core.v1.ConversationInfo
+	32, // 19: core.v1.ListAdaptersResponse.adapters:type_name -> core.v1.AdapterInfo
+	1,  // 20: core.v1.PluginService.Register:input_type -> core.v1.RegisterRequest
+	3,  // 21: core.v1.PluginService.Heartbeat:input_type -> core.v1.HeartbeatRequest
+	6,  // 22: core.v1.CoreService.CallMocr:input_type -> core.v1.CallMocrRequest
+	9,  // 23: core.v1.CoreService.UseAgent:input_type -> core.v1.UseAgentRequest
+	11, // 24: core.v1.CoreService.CancelAgent:input_type -> core.v1.CancelAgentRequest
+	13, // 25: core.v1.CoreService.ListAgents:input_type -> core.v1.ListAgentsRequest
+	16, // 26: core.v1.CoreService.RunDirect:input_type -> core.v1.RunDirectRequest
+	18, // 27: core.v1.CoreService.Egress:input_type -> core.v1.EgressRequest
+	20, // 28: core.v1.CoreService.ListPluginTools:input_type -> core.v1.ListPluginToolsRequest
+	23, // 29: core.v1.CoreService.CallPluginTool:input_type -> core.v1.CallPluginToolRequest
+	25, // 30: core.v1.CoreService.PublishInboundMessage:input_type -> core.v1.PublishInboundMessageRequest
+	27, // 31: core.v1.CoreService.SubscribeMessages:input_type -> core.v1.SubscribeMessagesRequest
+	29, // 32: core.v1.CoreService.SendMessage:input_type -> core.v1.SendMessageRequest
+	31, // 33: core.v1.CoreService.ListAdapters:input_type -> core.v1.ListAdaptersRequest
+	2,  // 34: core.v1.PluginService.Register:output_type -> core.v1.RegisterResponse
+	5,  // 35: core.v1.PluginService.Heartbeat:output_type -> core.v1.HeartbeatResponse
+	8,  // 36: core.v1.CoreService.CallMocr:output_type -> core.v1.CallMocrResponse
+	10, // 37: core.v1.CoreService.UseAgent:output_type -> core.v1.UseAgentResponse
+	12, // 38: core.v1.CoreService.CancelAgent:output_type -> core.v1.CancelAgentResponse
+	14, // 39: core.v1.CoreService.ListAgents:output_type -> core.v1.ListAgentsResponse
+	17, // 40: core.v1.CoreService.RunDirect:output_type -> core.v1.RunDirectResponse
+	19, // 41: core.v1.CoreService.Egress:output_type -> core.v1.EgressResponse
+	22, // 42: core.v1.CoreService.ListPluginTools:output_type -> core.v1.ListPluginToolsResponse
+	24, // 43: core.v1.CoreService.CallPluginTool:output_type -> core.v1.CallPluginToolResponse
+	26, // 44: core.v1.CoreService.PublishInboundMessage:output_type -> core.v1.PublishInboundMessageResponse
+	28, // 45: core.v1.CoreService.SubscribeMessages:output_type -> core.v1.SubscribeMessagesResponse
+	30, // 46: core.v1.CoreService.SendMessage:output_type -> core.v1.SendMessageResponse
+	34, // 47: core.v1.CoreService.ListAdapters:output_type -> core.v1.ListAdaptersResponse
+	34, // [34:48] is the sub-list for method output_type
+	20, // [20:34] is the sub-list for method input_type
+	20, // [20:20] is the sub-list for extension type_name
+	20, // [20:20] is the sub-list for extension extendee
+	0,  // [0:20] is the sub-list for field type_name
 }
 
 func init() { file_core_v1_core_proto_init() }

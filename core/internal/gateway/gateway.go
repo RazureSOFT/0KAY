@@ -303,6 +303,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/update/status", g.handleUpdateStatus)
 	mux.HandleFunc("/api/plugins/{name}", g.handlePluginPatch)
 	mux.HandleFunc("POST /api/plugins/{name}/reconnect", g.handlePluginReconnect)
+	mux.HandleFunc("POST /api/plugins/{name}/reload", g.handlePluginReload)
 	mux.HandleFunc("GET /api/plugins/{name}/descriptor", g.handlePluginDescriptor)
 	mux.HandleFunc("POST /api/plugins/enable", g.handlePluginEnable)
 	mux.HandleFunc("POST /api/plugins/disable", g.handlePluginDisable)
@@ -494,6 +495,12 @@ func (g *Gateway) handlePlugins(w http.ResponseWriter, r *http.Request) {
 	_ = g.registry.CheckStalePlugins(pluginStaleAfter)
 	plugins := g.registry.GetAllPlugins()
 
+	type pluginCheckJSON struct {
+		ID     string `json:"id"`
+		OK     bool   `json:"ok"`
+		Detail string `json:"detail,omitempty"`
+	}
+
 	type PluginInfo struct {
 		PluginID     string   `json:"plugin_id"`
 		Name         string   `json:"name"`
@@ -516,6 +523,8 @@ func (g *Gateway) handlePlugins(w http.ResponseWriter, r *http.Request) {
 		HeartbeatAgeSeconds float64 `json:"heartbeat_age_seconds,omitempty"`
 		LastHeartbeat       string  `json:"last_heartbeat,omitempty"`
 		UptimeSeconds       float64 `json:"uptime_seconds,omitempty"`
+		// Checks are the plugin's own verdicts, when it reports any.
+		Checks []pluginCheckJSON `json:"checks,omitempty"`
 	}
 
 	disabledNames := g.registry.DisabledNames()
@@ -555,6 +564,12 @@ func (g *Gateway) handlePlugins(w http.ResponseWriter, r *http.Request) {
 		if !p.LastHeartbeat.IsZero() {
 			info.HeartbeatAgeSeconds = math.Round(age.Seconds()*10) / 10
 			info.LastHeartbeat = p.LastHeartbeat.UTC().Format(time.RFC3339)
+		}
+		for _, check := range p.Checks {
+			if check == nil {
+				continue
+			}
+			info.Checks = append(info.Checks, pluginCheckJSON{ID: check.Id, OK: check.Ok, Detail: check.Detail})
 		}
 		if !p.RegisteredAt.IsZero() {
 			info.UptimeSeconds = math.Round(time.Since(p.RegisteredAt).Seconds())

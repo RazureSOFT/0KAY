@@ -146,7 +146,7 @@ func (s *PluginServiceServer) Heartbeat(ctx context.Context, req *corev1.Heartbe
 		return nil, status.Error(codes.PermissionDenied, "plugin service token mismatch")
 	}
 
-	ok, shutdownSignal, err := s.registry.Heartbeat(req.PluginId, req.Status, req.ActiveTasks, req.Host)
+	ok, shutdownSignal, err := s.registry.Heartbeat(req.PluginId, req.Status, req.ActiveTasks, req.Host, req.Checks)
 	if err != nil {
 		return nil, status.Errorf(codes.NotFound, "heartbeat failed: %v", err)
 	}

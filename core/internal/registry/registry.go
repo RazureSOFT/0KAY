@@ -32,6 +32,8 @@ type PluginInstance struct {
 	LastHeartbeat time.Time
 	Host          *corev1.HostInfo
 	Builtin       bool
+	// Checks are the plugin's own health checks, last reported with a heartbeat.
+	Checks []*pluginv1.PluginCheck
 }
 
 type Registry struct {
@@ -419,7 +421,7 @@ func (r *Registry) TouchBuiltins() {
 	}
 }
 
-func (r *Registry) Heartbeat(pluginID string, status_ corev1.PluginStatus, activeTasks int32, host *corev1.HostInfo) (bool, bool, error) {
+func (r *Registry) Heartbeat(pluginID string, status_ corev1.PluginStatus, activeTasks int32, host *corev1.HostInfo, checks []*pluginv1.PluginCheck) (bool, bool, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
@@ -433,6 +435,18 @@ func (r *Registry) Heartbeat(pluginID string, status_ corev1.PluginStatus, activ
 	plugin.ActiveTasks = activeTasks
 	if host != nil {
 		plugin.Host = proto.Clone(host).(*corev1.HostInfo)
+	}
+	if len(checks) > 0 {
+		plugin.Checks = make([]*pluginv1.PluginCheck, 0, len(checks))
+		for _, check := range checks {
+			if check != nil {
+				plugin.Checks = append(plugin.Checks, proto.Clone(check).(*pluginv1.PluginCheck))
+			}
+		}
+	} else {
+		// A plugin that stops reporting checks must not keep showing the last
+		// ones: stale green checks are worse than no checks.
+		plugin.Checks = nil
 	}
 
 	return true, false, nil

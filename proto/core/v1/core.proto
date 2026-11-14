@@ -17,6 +17,7 @@ service PluginService {
 
   // Heartbeat sends periodic heartbeats to indicate plugin health.
   rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+
 }
 
 // CoreService is the internal service that Core provides to plugins.
@@ -133,6 +134,10 @@ message HeartbeatRequest {
 
   // host_info describes the host machine running this plugin.
   HostInfo host = 4;
+
+  // checks are the plugin's own health checks. Empty means the plugin does not
+  // self-check, and Core keeps judging health by heartbeat age alone.
+  repeated plugin.v1.PluginCheck checks = 5;
 }
 
 // HostInfo describes the machine hosting a plugin.

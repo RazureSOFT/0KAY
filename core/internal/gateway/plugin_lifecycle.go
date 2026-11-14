@@ -1,5 +1,13 @@
 package gateway
 
+import (
+	"context"
+	"net/http"
+	"time"
+
+	corev1 "0kay/gen/core/v1"
+)
+
 // A plugin's phase, derived from what the gateway already knows.
 //
 // The list endpoint used to expose four fields that each answered a different
@@ -66,4 +74,42 @@ func pluginPhase(in pluginPhaseInputs) string {
 // phaseNeedsAttention is true for the phases a person should be told about.
 func phaseNeedsAttention(phase string) bool {
 	return phase == PhaseDegraded || phase == PhaseFailed
+}
+
+// handlePluginReload asks a running plugin to re-read what it can without
+// restarting. Only the agent exposes such a hook today; anything else says so
+// instead of pretending the change took effect.
+func (g *Gateway) handlePluginReload(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodPost) {
+		return
+	}
+	name := r.PathValue("name")
+	if name == "" {
+		badRequest(w, "plugin name is required")
+		return
+	}
+	if name != "agent" {
+		writeErr(w, http.StatusNotImplemented, "reload_unsupported",
+			"plugin "+name+" has no reload hook; restart it to pick up changes")
+		return
+	}
+	if g.coreSvc == nil {
+		writeErr(w, http.StatusServiceUnavailable, "agent_unavailable", "no agent connection")
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
+	defer cancel()
+	resp, err := g.coreSvc.RunDirect(ctx, &corev1.RunDirectRequest{
+		Tool: "extensions_reload",
+		Args: "{\"enabled\":true}",
+	})
+	if err != nil {
+		upstreamError(w, err.Error())
+		return
+	}
+	if !resp.Success {
+		writeErr(w, http.StatusBadGateway, "reload_failed", resp.Error)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "plugin": name, "report": resp.Result})
 }
