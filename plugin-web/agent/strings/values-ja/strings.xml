@@ -216,6 +216,7 @@
   <string name="page.reconNoTasks">評価タスクはまだありません。上のボタンで作成するか、Agent に assessments を実行させてください。</string>
   <string name="page.taskNew">新しいタスク</string>
   <string name="page.taskObjective">目標</string>
+  <string name="page.taskScopeEngineering">変更範囲（ファイル・モジュール）</string>
   <string name="page.taskTargets">対象アセット（1 行に 1 つ）</string>
   <string name="page.taskCoverageGate">カバレッジゲート（%）</string>
   <string name="page.taskKindLabel">タスク種別</string>
@@ -295,6 +296,7 @@
   <string name="page.taskSearchPlaceholder">説明 / 目標 / ID を検索</string>
   <string name="page.taskFilterAll">全ステータス</string>
   <string name="page.taskGoalProgress">目標進捗</string>
+  <string name="page.sessionBack">セッション一覧に戻る</string>
   <string name="page.taskSessList">セッション一覧</string>
   <string name="page.taskLive">ライブ</string>
   <string name="page.taskNoTrace">この方向に記録されたステップはありません</string>

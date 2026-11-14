@@ -1187,7 +1187,44 @@ watch(sidebarTab, (tab) => {
 })
 
 // ---- 会话 tab: the grouped session tree with trace expansion ----------------
-const taskSessionOpen = ref<string | null>(null)
+interface OpenedSession {
+  id: string
+  kind: 'main' | 'planner' | 'worker'
+  round?: number
+  refId?: string
+  title?: string
+  num?: number
+  status?: string
+}
+
+/**
+ * The session currently opened as its own view, if any.
+ *
+ * Clicking an agent in the list opens that lane alone and offers a way back —
+ * the same shape as opening a chat from a chat list. A panel expanding under the
+ * row was the previous behaviour, and it made the transcript compete with the
+ * list for the same column.
+ */
+const openedSession = ref<OpenedSession | null>(null)
+
+const sessionTitle = computed(() => {
+  const open = openedSession.value
+  if (!open) return ''
+  if (open.kind === 'main') return '主 Agent · 编排'
+  if (open.kind === 'planner') return `规划 Planner · 态势研判 #${open.round || 0}`
+  return `#${open.num ?? ''} ${open.title || ''}`.trim()
+})
+
+function openSession(session: OpenedSession): void {
+  openedSession.value = session
+  taskTraceSteps.value = []
+  if (session.kind === 'worker' && session.refId) void toggleSessionTrace({ id: session.id, refId: session.refId, kind: 'worker' })
+}
+
+function closeSession(): void {
+  openedSession.value = null
+  taskTraceSteps.value = []
+}
 const taskTraceSteps = ref<Array<{ action: string; detail: string; ok: boolean; at?: string }>>([])
 const taskTraceLoading = ref(false)
 const taskWorkerRows = computed(() => {
@@ -1282,8 +1319,7 @@ watch(taskDetailTab, (tab) => {
 })
 
 async function toggleSessionTrace(entry: { id: string; refId?: string; kind: string }) {
-  if (taskSessionOpen.value === entry.id) { taskSessionOpen.value = null; taskTraceSteps.value = []; return }
-  taskSessionOpen.value = entry.id
+  taskTraceSteps.value = []
   taskTraceSteps.value = []
   if (entry.kind !== 'worker' || !entry.refId || !taskSelectedId.value) return
   taskTraceLoading.value = true
@@ -2448,19 +2484,50 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             </div>
             <!-- 会话：the conversation tree — planner rounds, worker intents, system events -->
             <template v-if="taskDetailTab === 'sessions'">
-              <div class="recon-sesslist-head">
-                <span class="recon-sesslist-title">{{ t('agent.page.taskSessList') }}</span>
-                <small class="recon-sesslist-usage">{{ t('agent.page.taskUsageTotal') }} · in {{ fmtTokens(taskDetail.live?.usage?.inTokens || 0) }} · out {{ fmtTokens(taskDetail.live?.usage?.outTokens || 0) }}</small>
-              </div>
-              <div class="recon-sessgroup">
-                <h5>⓿ 主 Agent</h5>
-                <button type="button" class="recon-sessitem" :class="{ open: taskSessionOpen === 'main' }" @click="taskSessionOpen = taskSessionOpen === 'main' ? null : 'main'">
-                  主 Agent · 编排
-                </button>
-                <div v-if="taskSessionOpen === 'main'" class="recon-tracebox">
-                  <!-- A conversation, not a log: the operator's turns and the agent's
-                       steps alternate, and the input below is the one place a person
-                       can talk to the orchestrator mid-run. -->
+              <!-- Two states: the list, and one session opened as its own view.
+                   A person clicking an agent expects to be inside that agent's
+                   conversation and to come back, the way a chat list opens a
+                   chat — not a panel that expands under the row. -->
+              <template v-if="!openedSession">
+                <div class="recon-sesslist-head">
+                  <span class="recon-sesslist-title">{{ t('agent.page.taskSessList') }}</span>
+                  <small class="recon-sesslist-usage">{{ t('agent.page.taskUsageTotal') }} · in {{ fmtTokens(taskDetail.live?.usage?.inTokens || 0) }} · out {{ fmtTokens(taskDetail.live?.usage?.outTokens || 0) }}</small>
+                </div>
+                <div class="recon-sessgroup">
+                  <h5>⓿ 主 Agent</h5>
+                  <button type="button" class="recon-sessitem" @click="openSession({ id: 'main', kind: 'main' })">
+                    主 Agent · 编排
+                  </button>
+                </div>
+                <div class="recon-sessgroup">
+                  <h5>◉ 规划 Planner</h5>
+                  <button v-for="entry in taskPlannerRows" :key="entry.id" type="button" class="recon-sessitem" @click="openSession({ id: entry.id, kind: 'planner', round: entry.round })">
+                    规划 Planner · 态势研判 #{{ entry.round }}
+                  </button>
+                </div>
+                <div class="recon-sessgroup">
+                  <h5>((•)) Workers <b>{{ taskWorkerRows.length }}</b></h5>
+                  <button v-for="entry in taskWorkerRows" :key="entry.id" type="button" class="recon-sessitem" @click="openSession({ id: entry.id, kind: 'worker', refId: entry.refId, title: entry.title, num: entry.num, status: entry.status })">
+                    <span class="recon-sessmark" :class="entry.status">{{ entry.status === 'done' ? '✓' : entry.status === 'running' ? '⟳' : entry.status === 'blocked' ? '✕' : entry.status === 'paused' ? '❚❚' : '○' }}</span>
+                    <span class="recon-sessnum">#{{ entry.num }}</span>
+                    <span class="recon-sesstext">{{ entry.title }}</span>
+                    <span v-if="entry.status === 'running'" class="recon-livebadge">• {{ t('agent.page.taskLive') }}</span>
+                  </button>
+                </div>
+              </template>
+
+              <!-- One session, as its own page: a header with the way back, then
+                   the transcript for that lane alone. -->
+              <template v-else>
+                <div class="session-view-head">
+                  <button type="button" class="session-back" :aria-label="t('agent.page.sessionBack')" @click="closeSession">←</button>
+                  <div class="session-view-title">
+                    <b>{{ sessionTitle }}</b>
+                    <small v-if="openedSession.kind !== 'main'">{{ t('agent.page.taskPlanRound', { n: openedSession.round || 0 }) }}</small>
+                  </div>
+                </div>
+
+                <div v-if="openedSession.kind === 'main'" class="session-view-body">
                   <div class="main-console">
                     <p v-if="!taskMainTurns.length" class="muted">{{ t('agent.page.taskMainEmpty') }}</p>
                     <div v-for="(turn, i) in taskMainTurns" :key="i" class="main-turn" :class="'from-' + turn.from">
@@ -2473,42 +2540,29 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
                     <button type="submit" :disabled="!hintDraft.trim()">{{ t('agent.page.taskSend') }}</button>
                   </form>
                 </div>
-              </div>
-              <div class="recon-sessgroup">
-                <h5>◉ 规划 Planner</h5>
-                <button v-for="entry in taskPlannerRows" :key="entry.id" type="button" class="recon-sessitem" :class="{ open: taskSessionOpen === entry.id }" @click="taskSessionOpen = taskSessionOpen === entry.id ? null : entry.id">
-                  规划 Planner · 态势研判 #{{ entry.round }}
-                </button>
-                <div v-if="taskPlannerRows.some((entry) => taskSessionOpen === entry.id)" class="recon-tracebox">
+
+                <div v-else-if="openedSession.kind === 'planner'" class="session-view-body">
                   <ul class="recon-items">
-                    <li v-for="(entry, i) in taskBoard.filter((row) => row.kind === 'planner' || row.kind === 'fact' || row.kind === 'finding').slice(0, 12)" :key="i" class="recon-item">
-                      <i class="recon-dot" :class="entry.kind" />{{ entry.text }}
+                    <li v-for="(row, i) in taskBoard.filter((item) => item.kind === 'planner' || item.kind === 'fact' || item.kind === 'finding').slice(0, 40)" :key="i" class="recon-item">
+                      <i class="recon-dot" :class="row.kind" />{{ row.text }}
                     </li>
                   </ul>
                 </div>
-              </div>
-              <div class="recon-sessgroup">
-                <h5>((•)) Workers <b>{{ taskWorkerRows.length }}</b></h5>
-                <template v-for="entry in taskWorkerRows" :key="entry.id">
-                  <button type="button" class="recon-sessitem" :class="{ open: taskSessionOpen === entry.id }" @click="toggleSessionTrace(entry)">
-                    <span class="recon-sessmark" :class="entry.status">{{ entry.status === 'done' ? '✓' : entry.status === 'running' ? '⟳' : entry.status === 'blocked' ? '✕' : entry.status === 'paused' ? '❚❚' : '○' }}</span>
-                    <span class="recon-sessnum">#{{ entry.num }}</span>
-                    <span class="recon-sesstext">{{ entry.title }}</span>
-                    <span v-if="entry.status === 'running'" class="recon-livebadge">• {{ t('agent.page.taskLive') }}</span>
-                  </button>
-                  <div v-if="taskSessionOpen === entry.id" class="recon-tracebox">
-                    <p v-if="taskTraceLoading" class="tree-msg">…</p>
-                    <p v-else-if="!taskTraceSteps.length" class="tree-msg">{{ t('agent.page.taskNoTrace') }}</p>
-                    <ol v-else class="recon-tracesteps">
-                      <li v-for="(step, i) in taskTraceSteps" :key="i" :class="{ fail: !step.ok }">
-                        <span class="recon-trace-action">{{ step.action }}</span>
-                        <span class="recon-trace-detail">{{ step.detail }}</span>
-                      </li>
-                    </ol>
-                  </div>
-                </template>
-              </div>
+
+                <div v-else class="session-view-body">
+                  <p v-if="openedSession.title" class="session-view-intent">{{ openedSession.title }}</p>
+                  <p v-if="taskTraceLoading" class="tree-msg">…</p>
+                  <p v-else-if="!taskTraceSteps.length" class="tree-msg">{{ t('agent.page.taskNoTrace') }}</p>
+                  <ol v-else class="recon-tracesteps">
+                    <li v-for="(step, i) in taskTraceSteps" :key="i" :class="{ fail: !step.ok }">
+                      <span class="recon-trace-action">{{ step.action }}</span>
+                      <span class="recon-trace-detail">{{ step.detail }}</span>
+                    </li>
+                  </ol>
+                </div>
+              </template>
             </template>
+
             <!-- 计划评审 -->
             <template v-else-if="taskDetailTab === 'plans'">
               <p v-if="!taskReviews.length" class="muted">{{ t('agent.page.taskPlansEmpty') }}</p>

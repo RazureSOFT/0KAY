@@ -216,6 +216,7 @@
   <string name="page.reconNoTasks">No assessments yet. Start one with the button above, or ask the Agent to run assessments.</string>
   <string name="page.taskNew">New task</string>
   <string name="page.taskObjective">Objective</string>
+  <string name="page.taskScopeEngineering">Scope (files or modules)</string>
   <string name="page.taskTargets">Targets (one per line)</string>
   <string name="page.taskCoverageGate">Coverage gate (%)</string>
   <string name="page.taskKindLabel">Task type</string>
@@ -295,6 +296,7 @@
   <string name="page.taskSearchPlaceholder">Search description / objective / ID</string>
   <string name="page.taskFilterAll">All statuses</string>
   <string name="page.taskGoalProgress">Goals</string>
+  <string name="page.sessionBack">Back to the session list</string>
   <string name="page.taskSessList">Session list</string>
   <string name="page.taskLive">live</string>
   <string name="page.taskNoTrace">No recorded steps for this direction</string>

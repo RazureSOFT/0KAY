@@ -216,6 +216,7 @@
   <string name="page.reconNoTasks">还没有评估任务。点上面的按钮新建，或让 Agent 跑 assessments。</string>
   <string name="page.taskNew">新建任务</string>
   <string name="page.taskObjective">目标</string>
+  <string name="page.taskScopeEngineering">改动范围（文件或模块）</string>
   <string name="page.taskTargets">目标资产（每行一个）</string>
   <string name="page.taskCoverageGate">覆盖率门禁（%）</string>
   <string name="page.taskKindLabel">任务类型</string>
@@ -295,6 +296,7 @@
   <string name="page.taskSearchPlaceholder">搜索描述 / 目标 / ID</string>
   <string name="page.taskFilterAll">全部状态</string>
   <string name="page.taskGoalProgress">目标进度</string>
+  <string name="page.sessionBack">返回会话列表</string>
   <string name="page.taskSessList">会话列表</string>
   <string name="page.taskLive">实时</string>
   <string name="page.taskNoTrace">该方向没有记录的执行步骤</string>
