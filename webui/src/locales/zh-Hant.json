@@ -931,6 +931,13 @@
     "refresh": "重新整理",
     "askAnything": "就這個倉庫問 agent…",
     "send": "傳送",
-    "noSession": "沒能建立工作階段"
+    "noSession": "沒能建立工作階段",
+    "attachImage": "加入圖片",
+    "attachFile": "加入檔案",
+    "uploading": "上傳中…",
+    "refImage": "圖片",
+    "refFile": "檔案",
+    "refPath": "路徑",
+    "removeRef": "移除這個參照"
   }
 }

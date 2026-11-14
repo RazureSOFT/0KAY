@@ -931,6 +931,13 @@
     "refresh": "Refresh",
     "askAnything": "Ask the agent about this repo…",
     "send": "Send",
-    "noSession": "No session could be created"
+    "noSession": "No session could be created",
+    "attachImage": "Add an image",
+    "attachFile": "Add a file",
+    "uploading": "Uploading…",
+    "refImage": "Image",
+    "refFile": "File",
+    "refPath": "Path",
+    "removeRef": "Remove this reference"
   }
 }

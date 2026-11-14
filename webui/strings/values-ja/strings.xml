@@ -772,6 +772,13 @@
   <string name="ide.askAnything">このリポジトリについて agent に聞く…</string>
   <string name="ide.send">送信</string>
   <string name="ide.noSession">セッションを作成できませんでした</string>
+  <string name="ide.attachImage">画像を追加</string>
+  <string name="ide.attachFile">ファイルを追加</string>
+  <string name="ide.uploading">アップロード中…</string>
+  <string name="ide.refImage">画像</string>
+  <string name="ide.refFile">ファイル</string>
+  <string name="ide.refPath">パス</string>
+  <string name="ide.removeRef">この参照を削除</string>
   <string name="auth.loginLanHint">この Core はネットワークに公開されているため認証情報が必要です。Core に表示されたアクセストークン、または設定した PIN を入力してください。</string>
   <string name="auth.loginDisabled">現在サインインは無効です。LAN を有効にするまでこのページは不要です。</string>
   <string name="status.localBuild">ローカルビルド（リリースではありません）</string>

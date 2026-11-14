@@ -931,6 +931,13 @@
     "refresh": "刷新",
     "askAnything": "就这个仓库问 agent…",
     "send": "发送",
-    "noSession": "没能创建会话"
+    "noSession": "没能创建会话",
+    "attachImage": "添加图片",
+    "attachFile": "添加文件",
+    "uploading": "上传中…",
+    "refImage": "图片",
+    "refFile": "文件",
+    "refPath": "路径",
+    "removeRef": "移除这个引用"
   }
 }

@@ -7,8 +7,9 @@
  * approval rules); a second editor writing files directly would be a second
  * policy to keep in sync.
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { parseRefs, refFor, resolveRefs, refsForModel } from '../stores/attachment-refs'
 
 type Entry = { name: string; path: string }
 type Row = {
@@ -42,6 +43,26 @@ const turns = ref<Row[]>([])
 const draft = ref('')
 const sending = ref(false)
 const chatError = ref('')
+
+// Attachments for the next turn. Images and files are kept apart because the
+// reference grammar addresses them as separate numbered pools — `@image#1` and
+// `@file#1` both exist in the same message.
+const pendingImages = ref<Array<{ name: string; url: string }>>([])
+const pendingFiles = ref<Array<{ name: string; url: string; mime?: string; size?: number }>>([])
+const uploading = ref(false)
+const imageInput = ref<HTMLInputElement | null>(null)
+const fileInput = ref<HTMLInputElement | null>(null)
+const draftInput = ref<HTMLTextAreaElement | null>(null)
+
+// The chips shown under the composer, resolved from the draft text so the chip
+// and the text can never disagree about what is attached.
+const draftRefs = computed(() =>
+  resolveRefs(
+    parseRefs(draft.value),
+    pendingImages.value.map((image) => image.url),
+    pendingFiles.value,
+  ),
+)
 
 let events: EventSource | null = null
 
@@ -146,7 +167,8 @@ async function ensureSession() {
 
 async function send() {
   const text = draft.value.trim()
-  if (!text || sending.value) return
+  const images = pendingImages.value.map((image) => image.url)
+  if ((!text && !images.length && !pendingFiles.value.length) || sending.value) return
   if (!sessionId.value) await ensureSession().catch(() => undefined)
   if (!sessionId.value) {
     chatError.value = t('ide.noSession')
@@ -155,11 +177,21 @@ async function send() {
   sending.value = true
   chatError.value = ''
   try {
+    // The prompt keeps the references (they are what names the attachment) and
+    // gains a note for any reference that resolved to nothing, so a stale chip
+    // cannot be mistaken for a real file.
+    const prompt = refsForModel(text, images, pendingFiles.value)
+    const attachments = [
+      ...pendingImages.value.map((image) => ({ name: image.name, url: image.url, mime: 'image/*' })),
+      ...pendingFiles.value,
+    ]
     draft.value = ''
+    pendingImages.value = []
+    pendingFiles.value = []
     const response = await fetch('/api/agent/messages', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ session_id: sessionId.value, prompt: text, agent_type: 'general' }),
+      body: JSON.stringify({ session_id: sessionId.value, prompt, agent_type: 'general', attachments }),
     })
     if (!response.ok) throw new Error(`HTTP ${response.status}`)
     await loadTurns()
@@ -168,6 +200,90 @@ async function send() {
   } finally {
     sending.value = false
   }
+}
+
+/** Put text at the caret and leave the cursor after it. */
+function insertAtCaret(text: string) {
+  const input = draftInput.value
+  if (!input) {
+    draft.value += text
+    return
+  }
+  const start = input.selectionStart ?? draft.value.length
+  const end = input.selectionEnd ?? start
+  const before = draft.value.slice(0, start)
+  const after = draft.value.slice(end)
+  const lead = before && !/\s$/.test(before) ? ' ' : ''
+  draft.value = `${before}${lead}${text}${after}`
+  const caret = start + lead.length + text.length
+  void nextTick(() => {
+    input.focus()
+    input.setSelectionRange(caret, caret)
+  })
+}
+
+async function uploadImage(file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  const response = await fetch('/api/images', { method: 'POST', body: form })
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  const data = await response.json()
+  if (!data.url) throw new Error('no url')
+  // Core names the stored file `img_<nanos>.<ext>`. The person's own name is
+  // what the reference should show, so it is kept here and sent alongside.
+  const name = file.name || String(data.file || 'image')
+  pendingImages.value.push({ name, url: data.url as string })
+  insertAtCaret(refFor('image', pendingImages.value.length, name))
+}
+
+async function uploadFile(file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  const response = await fetch('/api/files', { method: 'POST', body: form })
+  if (!response.ok) throw new Error(`HTTP ${response.status}`)
+  const data = await response.json()
+  if (!data.url) throw new Error('no url')
+  const name = data.name || file.name
+  pendingFiles.value.push({ name, url: data.url as string, mime: data.mime, size: data.size })
+  insertAtCaret(refFor('file', pendingFiles.value.length, name))
+}
+
+async function addFiles(files: File[]) {
+  if (!files.length) return
+  uploading.value = true
+  try {
+    for (const file of files) {
+      if (file.type.startsWith('image/')) await uploadImage(file)
+      else await uploadFile(file)
+    }
+  } catch (error) {
+    chatError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    uploading.value = false
+  }
+}
+
+async function onPicked(event: Event) {
+  const input = event.target as HTMLInputElement
+  const files = Array.from(input.files || [])
+  input.value = ''
+  await addFiles(files)
+}
+
+async function onPaste(event: ClipboardEvent) {
+  const files = Array.from(event.clipboardData?.files || [])
+  if (!files.length) return
+  event.preventDefault()
+  await addFiles(files)
+}
+
+function removeRef(raw: string) {
+  // Drop the reference text itself and tidy the double space it leaves behind.
+  draft.value = draft.value
+    .replace(raw, '')
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/[ \t]+$/gm, '')
+    .trimEnd()
 }
 
 /** Any task touching this session means the conversation moved; refetch. */
@@ -240,15 +356,56 @@ onBeforeUnmount(() => {
           <p v-if="!conversation.length" class="hint">{{ t('ide.askAnything') }}</p>
         </div>
         <form class="chat-form" @submit.prevent="send">
+          <div v-if="draftRefs.length" class="ref-row">
+            <span
+              v-for="(ref, index) in draftRefs"
+              :key="`${ref.raw}-${index}`"
+              class="ref-chip"
+              :class="{ missing: !ref.resolved }"
+            >
+              <span class="ref-kind">{{ ref.kind === 'path' ? t('ide.refPath') : ref.kind === 'image' ? t('ide.refImage') : t('ide.refFile') }}</span>
+              <span class="ref-name">{{ ref.target }}</span>
+              <button
+                type="button"
+                class="ref-drop"
+                :aria-label="t('ide.removeRef')"
+                :title="t('ide.removeRef')"
+                @click="removeRef(ref.raw)"
+              >×</button>
+              <span v-if="ref.resolved" class="ref-preview" role="tooltip">
+                <img v-if="ref.kind === 'image' && ref.url" :src="ref.url" alt="" />
+                <span v-else class="ref-preview-text">{{ ref.url || ref.target }}</span>
+              </span>
+            </span>
+          </div>
           <textarea
+            ref="draftInput"
             v-model="draft"
             rows="2"
             :placeholder="t('ide.askAnything')"
             @keydown.enter.exact.prevent="send"
+            @paste="onPaste"
           ></textarea>
+          <input ref="imageInput" type="file" accept="image/*" multiple hidden @change="onPicked" />
+          <input ref="fileInput" type="file" multiple hidden @change="onPicked" />
           <div class="chat-actions">
-            <span v-if="chatError" class="hint bad">{{ chatError }}</span>
-            <button type="submit" class="primary" :disabled="sending || !draft.trim()">{{ t('ide.send') }}</button>
+            <button type="button" class="attach" :title="t('ide.attachImage')" :disabled="uploading" @click="imageInput?.click()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
+                <circle cx="9" cy="10" r="1.5" fill="currentColor"/>
+                <path d="M4 17l5-5 4 4 3-3 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <button type="button" class="attach" :title="t('ide.attachFile')" :disabled="uploading" @click="fileInput?.click()">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+                <path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+            <span v-if="uploading" class="hint inline">{{ t('ide.uploading') }}</span>
+            <span v-if="chatError" class="hint bad inline">{{ chatError }}</span>
+            <button type="submit" class="primary" :disabled="sending || uploading || (!draft.trim() && !pendingImages.length && !pendingFiles.length)">
+              {{ t('ide.send') }}
+            </button>
           </div>
         </form>
       </section>
@@ -286,11 +443,32 @@ onBeforeUnmount(() => {
 .turn.her { align-self: flex-start; background: var(--md-surface-container); }
 
 .chat-form { border-top: 1px solid var(--md-outline-variant); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+
+/* One chip per reference in the draft. The chip and the text are two views of
+   the same thing, so removing the chip edits the text. */
+.ref-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.ref-chip { position: relative; display: inline-flex; align-items: center; gap: 5px; max-width: 100%; padding: 3px 6px 3px 8px; border: 1px solid var(--md-outline-variant); border-radius: 999px; background: var(--md-surface-container); font-size: 11.5px; }
+.ref-chip.missing { border-color: var(--md-error); border-style: dashed; }
+.ref-kind { color: var(--md-on-surface-variant); text-transform: uppercase; letter-spacing: .04em; font-size: 10px; }
+.ref-name { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ref-drop { border: 0; background: transparent; color: var(--md-on-surface-variant); cursor: pointer; font-size: 13px; line-height: 1; padding: 0 1px; }
+.ref-drop:hover { color: var(--md-error); }
+/* Hover preview. Kept in the DOM and revealed with visibility so it does not
+   take part in layout and cannot be hovered into by accident. */
+.ref-preview { position: absolute; bottom: calc(100% + 6px); left: 0; z-index: 20; visibility: hidden; opacity: 0; transition: opacity .12s ease; padding: 6px; border: 1px solid var(--md-outline-variant); border-radius: 10px; background: var(--md-surface); box-shadow: 0 8px 24px rgb(0 0 0 / 18%); }
+.ref-chip:hover .ref-preview, .ref-chip:focus-within .ref-preview { visibility: visible; opacity: 1; }
+.ref-preview img { display: block; max-width: 240px; max-height: 180px; border-radius: 6px; }
+.ref-preview-text { display: block; max-width: 260px; overflow-wrap: anywhere; font-size: 11.5px; color: var(--md-on-surface-variant); }
+
 .chat-form textarea { width: 100%; resize: vertical; border: 1px solid var(--md-outline-variant); border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 12.5px; background: var(--md-surface-container-lowest); color: var(--md-on-surface); }
-.chat-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
-.primary { border: 0; border-radius: 9px; padding: 6px 14px; background: var(--md-primary); color: var(--md-on-primary); font-weight: 600; font-size: 12.5px; cursor: pointer; }
+.chat-actions { display: flex; align-items: center; gap: 8px; }
+.attach { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border: 1px solid var(--md-outline-variant); border-radius: 8px; background: transparent; color: var(--md-on-surface-variant); cursor: pointer; }
+.attach:hover:not(:disabled) { color: var(--md-primary); border-color: var(--md-primary); }
+.attach:disabled { opacity: .45; cursor: not-allowed; }
+.primary { margin-left: auto; border: 0; border-radius: 9px; padding: 6px 14px; background: var(--md-primary); color: var(--md-on-primary); font-weight: 600; font-size: 12.5px; cursor: pointer; }
 .primary:disabled { opacity: .45; cursor: not-allowed; }
 .ghost { border: 1px solid var(--md-outline-variant); background: transparent; border-radius: 8px; padding: 3px 9px; font-size: 11.5px; cursor: pointer; color: var(--md-on-surface-variant); }
 .hint { margin: 8px 12px; color: var(--md-on-surface-variant); font-size: 12px; }
 .hint.bad { color: var(--md-error); }
+.hint.inline { margin: 0; }
 </style>

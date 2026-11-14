@@ -931,6 +931,13 @@
     "refresh": "更新",
     "askAnything": "このリポジトリについて agent に聞く…",
     "send": "送信",
-    "noSession": "セッションを作成できませんでした"
+    "noSession": "セッションを作成できませんでした",
+    "attachImage": "画像を追加",
+    "attachFile": "ファイルを追加",
+    "uploading": "アップロード中…",
+    "refImage": "画像",
+    "refFile": "ファイル",
+    "refPath": "パス",
+    "removeRef": "この参照を削除"
   }
 }
