@@ -34,6 +34,17 @@ func (g *Gateway) imageConfiguredEndpoint() (imageBackend, bool) {
 	if value := strings.TrimSpace(os.Getenv("IMAGE_ENDPOINT")); value != "" {
 		return imageBackend{Endpoint: value, Provider: "env"}, true
 	}
+	// A plugin that declares the image capability and an HTTP surface is the
+	// nearest answer; without one this falls through to the configured chain.
+	if g.registry != nil {
+		if plugin, ok := g.registry.FirstWithCapability("image"); ok && plugin.Info != nil {
+			return imageBackend{
+				Endpoint: strings.TrimRight(strings.TrimSpace(plugin.Info.HttpEndpoint), "/"),
+				Provider: plugin.Info.Name,
+				Token:    g.registry.Token(plugin.PluginID),
+			}, true
+		}
+	}
 	if g.providerStore != nil {
 		if p, ok := g.providerStore.DefaultForKind(providers.KindImage); ok && strings.TrimSpace(p.BaseURL) != "" {
 			return imageBackend{Endpoint: strings.TrimRight(strings.TrimSpace(p.BaseURL), "/"), Provider: p.ID, Token: p.APIKey}, true

@@ -15,7 +15,7 @@ import (
 	"0kay/core/internal/providers"
 )
 
-var ttsSections = []string{"genietts", "deepseek-tts"}
+var ttsSections = []string{"deepseek-tts"}
 
 // firstNonEmpty returns the first trimmed non-empty value. Used to prefer a
 // provider's own credential over the legacy environment variable without
