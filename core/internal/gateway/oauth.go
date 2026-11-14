@@ -368,3 +368,67 @@ func htmlEscape(value string) string {
 	)
 	return replacer.Replace(value)
 }
+
+// ---- who is signed in -----------------------------------------------------
+//
+// The token alone says nothing to a person looking at the panel: "connected"
+// without a name is indistinguishable from "connected as someone else". This
+// asks GitHub who the token belongs to and returns the avatar and display name.
+
+func fetchGitHubUser(r *http.Request, token string) (login, name, avatar string, err error) {
+	request, err := http.NewRequestWithContext(r.Context(), http.MethodGet, "https://api.github.com/user", nil)
+	if err != nil {
+		return "", "", "", err
+	}
+	request.Header.Set("Authorization", "Bearer "+token)
+	request.Header.Set("Accept", "application/vnd.github+json")
+	request.Header.Set("User-Agent", "0kay-agent")
+	client := &http.Client{Timeout: 15 * time.Second, Transport: netguard.Transport(netguard.Strict())}
+	response, err := client.Do(request)
+	if err != nil {
+		return "", "", "", err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return "", "", "", fmt.Errorf("github answered %d", response.StatusCode)
+	}
+	var payload struct {
+		Login     string `json:"login"`
+		Name      string `json:"name"`
+		AvatarURL string `json:"avatar_url"`
+	}
+	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
+		return "", "", "", err
+	}
+	return payload.Login, payload.Name, payload.AvatarURL, nil
+}
+
+func (g *Gateway) handleGitHubProfile(w http.ResponseWriter, r *http.Request) {
+	if !allowMethod(w, r, http.MethodGet) {
+		return
+	}
+	if g.settingsStore == nil {
+		unavailable(w, "settings store not ready")
+		return
+	}
+	token := ""
+	if value, ok := g.settingsStore.GetValues("experiments")["github_token"].(string); ok {
+		token = strings.TrimSpace(value)
+	}
+	if token == "" {
+		writeJSON(w, http.StatusOK, map[string]any{"connected": false})
+		return
+	}
+	login, name, avatar, err := fetchGitHubUser(r, token)
+	if err != nil {
+		// The token can be stale or revoked; say so without failing the panel.
+		writeJSON(w, http.StatusOK, map[string]any{"connected": false, "error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"connected":  true,
+		"login":      login,
+		"name":       name,
+		"avatar_url": avatar,
+	})
+}

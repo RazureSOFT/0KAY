@@ -115,6 +115,15 @@ function onTransportChange(draft: McpServerDraft) {
   if (draft.transport === 'builtin') draft.id = 'mail'
 }
 
+const githubProfile = ref<{ connected: boolean; login?: string; name?: string; avatar_url?: string; error?: string } | null>(null)
+async function loadGithubProfile() {
+  try {
+    githubProfile.value = await apiGet<{ connected: boolean; login?: string; name?: string; avatar_url?: string; error?: string }>('/api/oauth/github/profile')
+  } catch {
+    githubProfile.value = null
+  }
+}
+
 const githubToken = ref('')
 /**
  * Add the GitHub MCP server with a token.
@@ -188,7 +197,7 @@ async function save() {
   }
 }
 
-onMounted(load)
+onMounted(() => { void load(); void loadGithubProfile() })
 </script>
 
 <template>
@@ -199,6 +208,10 @@ onMounted(load)
         <p class="subtitle">{{ t('mcp.subtitle') }}</p>
       </div>
       <div class="mcp-actions">
+        <div v-if="githubProfile?.connected" class="github-user" :title="githubProfile.login">
+          <img :src="githubProfile.avatar_url" alt="" referrerpolicy="no-referrer" />
+          <span>{{ githubProfile.name || githubProfile.login }}</span>
+        </div>
         <a class="btn btn-tonal" href="/api/oauth/github/manifest" target="_blank" rel="noopener">{{ t('mcp.githubCreateApp') }}</a>
         <a class="btn btn-tonal" href="/api/oauth/github/start" target="_blank" rel="noopener">{{ t('mcp.githubLogin') }}</a>
         <input v-model="githubToken" class="github-token" type="password" autocomplete="off" :placeholder="t('mcp.githubToken')" :aria-label="t('mcp.githubToken')" />
@@ -393,4 +406,8 @@ onMounted(load)
 @media (max-width: 720px) {
   .mail-grid { grid-template-columns: 1fr; }
 }
+
+.github-user { display: flex; align-items: center; gap: 8px; margin-right: 4px; }
+.github-user img { width: 26px; height: 26px; border-radius: 50%; border: 1px solid var(--md-outline-variant); }
+.github-user span { font-size: 13px; color: var(--md-on-surface-variant); max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

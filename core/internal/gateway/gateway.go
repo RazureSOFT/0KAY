@@ -308,6 +308,7 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("GET /api/oauth/github/callback", g.handleGitHubOAuthCallback)
 	mux.HandleFunc("GET /api/oauth/github/manifest", g.handleGitHubManifest)
 	mux.HandleFunc("GET /api/oauth/github/manifest/callback", g.handleGitHubManifestCallback)
+	mux.HandleFunc("GET /api/oauth/github/profile", g.handleGitHubProfile)
 	mux.HandleFunc("GET /api/plugins/{name}/descriptor", g.handlePluginDescriptor)
 	mux.HandleFunc("POST /api/plugins/enable", g.handlePluginEnable)
 	mux.HandleFunc("POST /api/plugins/disable", g.handlePluginDisable)
