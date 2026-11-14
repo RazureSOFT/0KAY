@@ -1195,7 +1195,92 @@ const taskWorkerRows = computed(() => {
   return workers.map((entry, index) => ({ ...entry, num: index + 1 }))
 })
 const taskPlannerRows = computed(() => (taskDetail.value?.live?.sessions || []).filter((s) => s.kind === 'planner').slice().reverse())
+/**
+ * The main-agent console: the operator's messages and the agent's own steps, in
+ * order. This is the one lane where a person can talk back, so it is rendered as
+ * a conversation rather than a log.
+ */
+/**
+ * Findings and their retest history for the open task.
+ *
+ * The task carries finding nodes, but a retest addresses the durable row, so
+ * the list is read from the store through the assessments tool rather than
+ * derived from the graph.
+ */
+const taskFindings = ref<Array<{ id: string; text: string; assets: string[] }>>([])
+const findingRetests = ref<Record<string, Array<{ id: string; status: string; verdict?: string; summary?: string; evidence?: string; error?: string; createdAt: string }>>>({})
+const retestBusy = ref<string>('')
+const retestError = ref('')
+
+async function loadFindings() {
+  if (!taskSelectedId.value) { taskFindings.value = []; return }
+  try {
+    const result = await runAssessments({ action: 'findings', id: taskSelectedId.value })
+    taskFindings.value = Array.isArray(result?.findings) ? result.findings : []
+  } catch {
+    taskFindings.value = []
+  }
+}
+
+async function loadRetests(findingId: string) {
+  try {
+    const result = await runAssessments({ action: 'retests', finding_id: findingId })
+    const rows = Array.isArray(result?.retests) ? result.retests : []
+    findingRetests.value = { ...findingRetests.value, [findingId]: rows }
+  } catch {
+    findingRetests.value = { ...findingRetests.value, [findingId]: [] }
+  }
+}
+
+/** A retest is one call that starts and finishes; the button shows that window. */
+async function startRetest(findingId: string) {
+  if (retestBusy.value) return
+  retestBusy.value = findingId
+  retestError.value = ''
+  try {
+    const result = await runAssessments({ action: 'retest', finding_id: findingId })
+    if (result?.error) retestError.value = result.error
+    await loadRetests(findingId)
+  } catch (e: any) {
+    retestError.value = e?.message || String(e)
+  } finally {
+    retestBusy.value = ''
+  }
+}
+
+/**
+ * What the scope field expects.
+ *
+ * An engineering task changes files, so its targets are paths and module names;
+ * a recon task sweeps a network, so its targets are URLs and ranges. Putting
+ * the examples in the template as a ternary made the attribute parser choke on
+ * the newline entity inside a quoted string.
+ */
+const newTaskPlaceholder = computed(() =>
+  newTaskKind.value === 'engineering'
+    ? 'src/analysis' + String.fromCharCode(10) + 'core/internal/gateway'
+    : 'https://a.example' + String.fromCharCode(10) + '10.0.0.0/24',
+)
+
+const taskMainTurns = computed(() => {
+  const activity = (taskDetail.value?.state?.activity || []) as Array<{ at: string; round: number; kind: string; text: string }>
+  const rows = activity
+    .filter((entry) => entry.kind === 'operator' || entry.kind === 'planner' || entry.kind === 'system')
+    .map((entry) => ({
+      at: entry.at,
+      from: entry.kind === 'operator' ? 'operator' as const : 'agent' as const,
+      text: entry.text,
+    }))
+  return rows
+})
+
 const taskSystemRows = computed(() => (taskDetail.value?.live?.sessions || []).filter((s) => s.kind === 'system').slice().reverse())
+// Findings are read when the tab is opened rather than on every poll: a retest
+// history can be long and nobody needs it while looking at the graph.
+watch(taskDetailTab, (tab) => {
+  if (tab === 'findings' && taskSelectedId.value) void loadFindings()
+})
+
 async function toggleSessionTrace(entry: { id: string; refId?: string; kind: string }) {
   if (taskSessionOpen.value === entry.id) { taskSessionOpen.value = null; taskTraceSteps.value = []; return }
   taskSessionOpen.value = entry.id
@@ -2266,9 +2351,12 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             </button>
           </div>
           <label>{{ t('agent.page.taskObjective') }}<textarea v-model="newTaskObjective" rows="2"></textarea></label>
-          <label>{{ t('agent.page.taskTargets') }}<textarea v-model="newTaskTargets" rows="3" placeholder="https://a.example&#10;10.0.0.0/24"></textarea></label>
+          <label>{{ newTaskKind === 'engineering' ? t('agent.page.taskScopeEngineering') : t('agent.page.taskTargets') }}<textarea v-model="newTaskTargets" rows="3" :placeholder="newTaskPlaceholder"></textarea></label>
           <div class="task-opt-grid">
-            <label>{{ t('agent.page.taskCoverageGate') }}<input v-model="newTaskCoverage" type="number" min="0" max="100" /></label>
+            <!-- Coverage is a recon idea: "what share of the target surface has been
+                 proved". An engineering task changes a scope, it does not sweep it,
+                 so the gate would be a number with no meaning behind it. -->
+            <label v-if="newTaskKind !== 'engineering'">{{ t('agent.page.taskCoverageGate') }}<input v-model="newTaskCoverage" type="number" min="0" max="100" /></label>
             <label>{{ t('agent.page.taskRounds') }}<input v-model="newTaskRounds" type="number" min="1" max="48" :placeholder="t('agent.page.taskAuto')" /></label>
             <label>{{ t('agent.page.taskIntents') }}<input v-model="newTaskIntents" type="number" min="1" max="120" :placeholder="t('agent.page.taskAuto')" /></label>
             <label>{{ t('agent.page.taskConcurrency') }}<input v-model="newTaskConcurrency" type="number" min="1" max="6" :placeholder="t('agent.page.taskAuto')" /></label>
@@ -2370,9 +2458,20 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
                   主 Agent · 编排
                 </button>
                 <div v-if="taskSessionOpen === 'main'" class="recon-tracebox">
-                  <ul class="recon-items">
-                    <li v-for="(entry, i) in taskSystemRows" :key="i" class="recon-item system"><i class="recon-dot system" />{{ entry.text }}</li>
-                  </ul>
+                  <!-- A conversation, not a log: the operator's turns and the agent's
+                       steps alternate, and the input below is the one place a person
+                       can talk to the orchestrator mid-run. -->
+                  <div class="main-console">
+                    <p v-if="!taskMainTurns.length" class="muted">{{ t('agent.page.taskMainEmpty') }}</p>
+                    <div v-for="(turn, i) in taskMainTurns" :key="i" class="main-turn" :class="'from-' + turn.from">
+                      <span class="main-turn-who">{{ turn.from === 'operator' ? t('agent.page.taskMainYou') : t('agent.page.taskMainAgent') }}</span>
+                      <p>{{ turn.text }}</p>
+                    </div>
+                  </div>
+                  <form class="main-composer" @submit.prevent="sendHint">
+                    <textarea v-model="hintDraft" rows="2" :placeholder="t('agent.page.taskMainPlaceholder')" @keydown.enter.exact.prevent="sendHint" />
+                    <button type="submit" :disabled="!hintDraft.trim()">{{ t('agent.page.taskSend') }}</button>
+                  </form>
                 </div>
               </div>
               <div class="recon-sessgroup">
@@ -2498,10 +2597,34 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             </template>
             <!-- 发现 -->
             <template v-else-if="taskDetailTab === 'findings'">
-              <p v-if="!taskDetail.live?.findings.length" class="tree-msg">{{ t('agent.page.reconNoFindings') }}</p>
-              <ul v-else class="recon-items">
-                <li v-for="finding in taskDetail.live.findings" :key="finding.id" class="recon-item finding"><i class="recon-dot" />{{ finding.text }}</li>
+              <div class="retest-head">
+                <span class="retest-title">{{ t('agent.page.taskFindingsTitle') }}</span>
+                <button type="button" class="retest-refresh" @click="loadFindings">{{ t('agent.page.taskFindingsRefresh') }}</button>
+              </div>
+              <p v-if="retestError" class="retest-error">{{ retestError }}</p>
+              <p v-if="!taskFindings.length" class="tree-msg">{{ t('agent.page.reconNoFindings') }}</p>
+              <ul v-else class="retest-list">
+                <li v-for="finding in taskFindings" :key="finding.id" class="retest-finding">
+                  <div class="retest-finding-top">
+                    <span class="retest-finding-text">{{ finding.text }}</span>
+                    <button type="button" class="retest-start" :disabled="!!retestBusy" @click="startRetest(finding.id)">
+                      {{ retestBusy === finding.id ? t('agent.page.taskRetestRunning') : t('agent.page.taskRetestStart') }}
+                    </button>
+                  </div>
+                  <p v-if="finding.assets.length" class="retest-assets">{{ finding.assets.join(' · ') }}</p>
+                  <button v-if="!findingRetests[finding.id]" type="button" class="retest-history-toggle" @click="loadRetests(finding.id)">{{ t('agent.page.taskRetestHistory') }}</button>
+                  <ul v-else class="retest-history">
+                    <li v-for="retest in findingRetests[finding.id]" :key="retest.id" :class="'is-' + (retest.verdict || retest.status)">
+                      <span class="retest-verdict">{{ retest.verdict ? t('agent.page.taskRetestVerdict_' + retest.verdict) : t('agent.page.taskRetestStatus_' + retest.status) }}</span>
+                      <span class="retest-when">{{ retest.createdAt.slice(0, 16).replace('T', ' ') }}</span>
+                      <p v-if="retest.summary" class="retest-summary">{{ retest.summary }}</p>
+                      <pre v-if="retest.evidence" class="retest-evidence">{{ retest.evidence }}</pre>
+                      <p v-if="retest.error" class="retest-error">{{ retest.error }}</p>
+                    </li>
+                  </ul>
+                </li>
               </ul>
+              <p class="retest-note">{{ t('agent.page.taskRetestNote') }}</p>
             </template>
             <!-- 测试资产 -->
             <template v-else-if="taskDetailTab === 'assets'">
