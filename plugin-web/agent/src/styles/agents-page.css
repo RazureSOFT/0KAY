@@ -536,7 +536,7 @@ button.subagent-card-head>strong{font-weight:700}
 .sub-view-body{min-height:120px}
 
 /* Every agent in this session, as a switcher.
-   Artex's task page lists planner/main/worker sessions because a task is not
+   the task page lists planner/main/worker sessions because a task is not
    one conversation. Same idea here for the agent side: the main agent and each
    child it spawned are separate transcripts, and the reader should be able to
    move between them without walking back down the tree. */

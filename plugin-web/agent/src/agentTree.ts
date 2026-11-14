@@ -2,7 +2,7 @@
  * The agents inside one conversation, as a flat list.
  *
  * A task is not one conversation. The main agent hands work to sub-agents, those
- * hand work to their own, and each of them has its own steps. Artex's task page
+ * hand work to their own, and each of them has its own steps. the task page
  * shows this as a sessions tab (planner / main / each worker); on the agent side
  * the same need is "let me open any of them without hunting for the card that
  * spawned it".

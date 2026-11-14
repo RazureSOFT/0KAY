@@ -925,7 +925,7 @@ const onUsageResizeDown = usageHandlers.rdown
 const usagePanelStyle = computed(() => ({ translate: `${usagePos.value.x}px ${usagePos.value.y}px`, width: `${usageSize.value.w}px`, height: `${usageSize.value.h}px` }))
 function toggleUsage() { usageOpen.value = !usageOpen.value; if (usageOpen.value) void fetchContextUsage() }
 
-// ---- the task detail (ARTEX's 任务 page) ------------------------------------
+// ---- the task detail (the task detail page) ------------------------------------
 // Tasks live in the left sidebar — the list is the sidebar's second tab, and
 // selecting one swaps the list for its detail in place. No floating window,
 // no dock button: the chat column keeps running while you read the graph. The
@@ -1067,7 +1067,7 @@ function computeReconLayout(nodes: ReconNode[], edges: ReconEdge[], expanded: Se
     height: rowCount * RECON_ROW_H + 8,
   }
 }
-// ---- ARTEX-style canvas: drag to pan, wheel to zoom -------------------------
+// ---- pannable canvas: drag to pan, wheel to zoom -------------------------
 const reconZoom = ref(1)
 const reconPan = ref({ x: 0, y: 0 })
 const expandedDigests = ref(new Set<string>())
@@ -1105,7 +1105,7 @@ function reconFit() {
   reconPan.value = { x: 0, y: 0 }
 }
 
-// ---- the task tab: ARTEX's task list, fed by the assessments tool -----------
+// ---- the task tab: the task list, fed by the assessments tool -----------
 interface ReconTaskRow {
   id: string
   objective: string
@@ -1241,7 +1241,7 @@ const taskPercent = computed(() => {
   return live.coverage.total ? Math.round((live.coverage.tested / live.coverage.total) * 100) : 0
 })
 
-// ---- the task page tabs (ARTEX's task detail) -------------------------------
+// ---- the task page tabs (the task detail) -------------------------------
 type TaskDetailTab = 'sessions' | 'overview' | 'graph' | 'board' | 'findings' | 'assets' | 'approvals' | 'report'
 const taskDetailTab = ref<TaskDetailTab>('overview')
 // 探索链路 draws the session graph — the same recon_graph export the agent
@@ -1294,7 +1294,7 @@ async function decideApproval(id: string, allow: boolean) {
 const taskReport = ref('')
 const taskReportBusy = ref(false)
 
-// ---- ARTEX-style task list: search + status filter + count ------------------
+// ---- task list: search + status filter + count ------------------
 const taskSearch = ref('')
 const taskStatusFilter = ref('')
 const sidebarTab = ref<'sessions' | 'tasks'>('sessions')
@@ -2576,7 +2576,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
            284px 的侧栏放不下，只能横向滚动硬塞；而看任务时右栏本来就是空的。
            外层保留 task-tab 类，样式表里的 .task-tab .recon-* 规则继续生效。 -->
       <div v-if="showingTask" class="conversation-task task-tab">
-        <!-- 任务详情：选中一个任务后列表就地换成详情（ARTEX 的任务详情页），← 返回列表。
+        <!-- 任务详情：选中一个任务后列表就地换成详情（任务详情），← 返回列表。
              聊天列保持原样——看得见图，也看得见 agent 在干什么。 -->
         <div v-if="taskSelectedId" class="task-detail">
           <div class="recon-task-head">
