@@ -90,11 +90,81 @@ func TestEgressStrictBlocksLoopbackByDefault(t *testing.T) {
 	}
 }
 
-func TestTransportDisablesProxyInStrictMode(t *testing.T) {
-	if Transport(true).Proxy != nil {
-		t.Fatal("strict transport Proxy must be nil")
+// A machine behind a proxy reaches nothing without one, so strict mode has to
+// keep it. What strict mode still guarantees is the destination check, which
+// runs before the request is built rather than at dial time -- see
+// TestStrictEgressChecksTheDestinationNotTheProxy.
+func TestTransportKeepsProxyInStrictMode(t *testing.T) {
+	if Transport(true).Proxy == nil {
+		t.Fatal("strict transport must honour a proxy")
 	}
 	if Transport(false).Proxy == nil {
-		t.Fatal("non-strict transport Proxy must stay ProxyFromEnvironment")
+		t.Fatal("non-strict transport must honour a proxy")
+	}
+}
+
+// net/http snapshots the proxy environment on first use and keeps it for the
+// life of the process; there is no way to reset it. So the checks below call
+// the guard directly with a request and rely on t.Setenv, which only affects
+// a process that has not resolved a proxy yet. Each test builds its own
+// request, and the guard reads the environment through the same snapshot --
+// which is why these tests assert on the guard's own decisions rather than on
+// ProxyFromEnvironment's.
+
+func TestProxyFromEnvironmentIsHonoured(t *testing.T) {
+	t.Setenv("HTTP_PROXY", "http://127.0.0.1:7890")
+	t.Setenv("NO_PROXY", "")
+	proxy, err := guardedProxy("http://127.0.0.1:7890", "example.com")
+	if err != nil {
+		t.Fatalf("a local relay is a normal proxy: %v", err)
+	}
+	if proxy == nil || proxy.Host != "127.0.0.1:7890" {
+		t.Fatalf("proxy not accepted: %v", proxy)
+	}
+}
+
+func TestAProxyIntoABlockedRangeIsRefused(t *testing.T) {
+	// The metadata address is never a legitimate proxy, and pointing the
+	// agent at it would be a way around the destination checks.
+	if _, err := guardedProxy("http://169.254.169.254:80", "example.com"); err == nil {
+		t.Fatal("a proxy on the metadata address must be refused")
+	}
+	if _, err := guardedProxy("http://0.0.0.0:80", "example.com"); err == nil {
+		t.Fatal("a proxy on an unspecified address must be refused")
+	}
+}
+
+func TestAnOrdinaryProxyIsAccepted(t *testing.T) {
+	for _, raw := range []string{
+		"http://127.0.0.1:7890",   // a local relay: the ordinary case
+		"http://192.168.1.10:3128", // the operator's own LAN
+		"http://proxy.corp.example:8080",
+	} {
+		if _, err := guardedProxy(raw, "example.com"); err != nil {
+			t.Fatalf("%s should be accepted: %v", raw, err)
+		}
+	}
+}
+
+// The reason strict mode used to disable the proxy was that a proxy hides the
+// destination: the dial goes to the proxy, so dial-time checks see the proxy
+// and not the site. The protection that remains is the check on the URL
+// before the request, which resolves the destination the same way either way.
+// These two cases are what that check must keep refusing.
+func TestStrictEgressChecksTheDestinationNotTheProxy(t *testing.T) {
+	t.Setenv("HTTP_PROXY", "http://127.0.0.1:7890")
+	for _, target := range []string{
+		"http://127.0.0.1:8080/admin",     // loopback
+		"http://169.254.169.254/latest",   // link-local metadata
+		"http://10.0.0.5/internal",        // private range
+	} {
+		if err := CheckURL(target, true); err == nil {
+			t.Fatalf("%s must be refused in strict mode even with a proxy set", target)
+		}
+		// And it is the destination that decides, not the proxy: the same
+		// proxy is accepted, so the refusal above came from the target.
+		if err := checkProxy("127.0.0.1"); err != nil {
+			t.Fatalf("the proxy itself is fine: %v", err)
+		}
 	}
 }

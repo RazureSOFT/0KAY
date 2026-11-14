@@ -161,12 +161,18 @@ func DialContext(strict bool) func(ctx context.Context, network, addr string) (n
 }
 
 func Transport(strict bool) *http.Transport {
-	// In strict mode the HTTP proxy is disabled: routing the connection
-	// through a proxy would bypass the dial-time target checks and make the
-	// strict policy meaningless.
+	// A proxy is how a machine behind one reaches anything at all, so strict
+	// mode cannot simply refuse it. What strict mode must not lose is the
+	// check on the *destination*: with a proxy, the dial target is the proxy
+	// and the destination is never resolved locally, so the checks that run
+	// before the request are the ones that matter. Those still run -- see
+	// Do, which calls CheckURL on the destination before building the
+	// request -- and the proxy itself is checked here, because an operator
+	// pointing HTTP_PROXY at a private address is a separate decision from
+	// what the agent may fetch through it.
 	proxy := http.ProxyFromEnvironment
 	if strict {
-		proxy = nil
+		proxy = guardedProxyFromEnvironment
 	}
 	return &http.Transport{
 		Proxy:               proxy,
@@ -176,4 +182,60 @@ func Transport(strict bool) *http.Transport {
 		IdleConnTimeout:     90 * time.Second,
 		TLSHandshakeTimeout: 10 * time.Second,
 	}
+}
+
+func guardedProxyFromEnvironment(req *http.Request) (*url.URL, error) {
+	proxy, err := http.ProxyFromEnvironment(req)
+	if err != nil || proxy == nil {
+		return proxy, err
+	}
+	if err := checkProxy(proxy.Hostname()); err != nil {
+		return nil, err
+	}
+	return proxy, nil
+}
+
+// guardedProxy is the same decision, callable without the environment, so it
+// can be tested: net/http snapshots the proxy variables once per process and
+// gives no way to reset that snapshot.
+func guardedProxy(rawURL, _ string) (*url.URL, error) {
+	proxy, err := url.Parse(rawURL)
+	if err != nil {
+		return nil, err
+	}
+	if err := checkProxy(proxy.Hostname()); err != nil {
+		return nil, err
+	}
+	return proxy, nil
+}
+
+// checkProxy refuses a proxy the agent may not otherwise reach.
+//
+// A proxy is the operator's own configuration, not something a fetched page
+// can steer, so the bar is different from the destination check: private and
+// loopback addresses are ordinary relay locations and stay allowed, while the
+// addresses that are dangerous to dial whatever the reason -- metadata,
+// unspecified, multicast, link-local -- are refused. The destination is still
+// checked before every request, so an allowed proxy cannot be used to reach a
+// blocked one.
+func checkProxy(host string) error {
+	if host == "" {
+		return fmt.Errorf("proxy has no host")
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		// A proxy named by hostname is the operator's own configuration; the
+		// address it resolves to is not the request's target.
+		if BlockedHost(host) {
+			return fmt.Errorf("proxy %q is not permitted", host)
+		}
+		return nil
+	}
+	if ip.IsUnspecified() || ip.IsMulticast() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
+		return fmt.Errorf("proxy %q is not permitted", host)
+	}
+	if inAlwaysBlocked(ip) || (metadataIPv6 != nil && ip.Equal(metadataIPv6)) {
+		return fmt.Errorf("proxy %q is not permitted", host)
+	}
+	return nil
 }
