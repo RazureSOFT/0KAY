@@ -304,6 +304,8 @@ func (g *Gateway) Handler() http.Handler {
 	mux.HandleFunc("/api/plugins/{name}", g.handlePluginPatch)
 	mux.HandleFunc("POST /api/plugins/{name}/reconnect", g.handlePluginReconnect)
 	mux.HandleFunc("POST /api/plugins/{name}/reload", g.handlePluginReload)
+	mux.HandleFunc("GET /api/oauth/github/start", g.handleGitHubOAuthStart)
+	mux.HandleFunc("GET /api/oauth/github/callback", g.handleGitHubOAuthCallback)
 	mux.HandleFunc("GET /api/plugins/{name}/descriptor", g.handlePluginDescriptor)
 	mux.HandleFunc("POST /api/plugins/enable", g.handlePluginEnable)
 	mux.HandleFunc("POST /api/plugins/disable", g.handlePluginDisable)
