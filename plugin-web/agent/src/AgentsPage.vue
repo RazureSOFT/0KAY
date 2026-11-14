@@ -10,6 +10,8 @@ import GitPanel from './GitPanel.vue'
 import { useReconCanvas } from './composables/useReconCanvas'
 import { usePlanCard } from './composables/usePlanCard'
 import { useSessionList, type WorkspaceRow } from './composables/useSessionList'
+import { useTaskDetail } from './composables/useTaskDetail'
+import { useComposer } from './composables/useComposer'
 import ThinkChain from './ThinkChain.vue'
 import IntentStrip from './IntentStrip.vue'
 import { agentTree, focusChain } from './agentTree'
@@ -20,68 +22,6 @@ const { confirm } = useConfirm()
 
 const store = useAgentsStore()
 const selectedId = ref(localStorage.getItem('0kay.agent.selected') || '')
-const draft = ref('')
-const attachments = ref<Array<{ name: string; url: string; mime: string; size: number }>>([])
-const uploading = ref(false)
-const attachError = ref('')
-const fileInput = ref<HTMLInputElement | null>(null)
-function pickFiles() { fileInput.value?.click() }
-function removeAttachment(index: number) { attachments.value.splice(index, 1) }
-async function addFiles(files: File[]) {
-  if (!files.length) return
-  uploading.value = true; attachError.value = ''
-  try {
-    for (const file of files) {
-      const form = new FormData()
-      form.append('file', file)
-      const response = await fetch('/api/files', { method: 'POST', body: form })
-      if (!response.ok) throw new Error(await response.text())
-      const data = await response.json()
-      attachments.value.push({ name: data.name || file.name, url: data.url, mime: data.mime || file.type || 'application/octet-stream', size: data.size ?? file.size })
-    }
-  } catch (e: any) { attachError.value = friendlyError(e?.message || String(e)) }
-  finally { uploading.value = false }
-}
-async function onFilesPicked(event: Event) {
-  const input = event.target as HTMLInputElement
-  const files = Array.from(input.files || [])
-  input.value = ''
-  await addFiles(files)
-}
-function onPaste(event: ClipboardEvent) {
-  const files = Array.from(event.clipboardData?.files || [])
-  if (!files.length) return
-  event.preventDefault()
-  void addFiles(files)
-}
-
-const dragDepth = ref(0)
-const dropping = computed(() => dragDepth.value > 0)
-function hasFiles(event: DragEvent): boolean {
-  return Array.from(event.dataTransfer?.types || []).includes('Files')
-}
-function onDragEnter(event: DragEvent) {
-  if (!hasFiles(event)) return
-  event.preventDefault()
-  dragDepth.value += 1
-}
-function onDragOver(event: DragEvent) {
-  if (!hasFiles(event)) return
-  event.preventDefault()
-  if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy'
-}
-function onDragLeave(event: DragEvent) {
-  if (!hasFiles(event)) return
-  dragDepth.value = Math.max(0, dragDepth.value - 1)
-}
-async function onDropFiles(event: DragEvent) {
-  if (!hasFiles(event)) return
-  event.preventDefault()
-  dragDepth.value = 0
-  const files = Array.from(event.dataTransfer?.files || [])
-  if (!files.length || busy.value || session.value?.state === 'archived') return
-  await addFiles(files)
-}
 const dockOpen = ref((() => {
   try { const saved = localStorage.getItem('0kay.agent.dock.open'); if (saved === '1' || saved === '0') return saved === '1' } catch { }
   return (window.innerWidth || 1280) > 800
@@ -91,13 +31,6 @@ function toggleDock() {
   try { localStorage.setItem('0kay.agent.dock.open', dockOpen.value ? '1' : '0') } catch { }
 }
 function dismissError() { error.value = ''; store.error = '' }
-const composerArea = ref<HTMLTextAreaElement | null>(null)
-function autosizeComposer() {
-  const el = composerArea.value
-  if (!el) return
-  el.style.height = 'auto'
-  el.style.height = `${Math.min(el.scrollHeight, 120)}px`
-}
 watch(draft, () => void nextTick(autosizeComposer))
 onMounted(autosizeComposer)
 const search = ref('')
@@ -1079,146 +1012,19 @@ const {
 } = useReconCanvas(() => taskLayout.value)
 
 // ---- the task tab: the task list, fed by the assessments tool -----------
-interface ReconTaskRow {
-  id: string
-  objective: string
-  status: string
-  createdAt: string
-  endedAt?: string
-  stopped?: string
-  error?: string
-  goalTexts: Array<{ id: string; text: string }>
-  scope: string[]
-  report?: { rounds: number; intents: number; facts: number; findings: number; proven: boolean; pct: number | null }
-}
-interface TaskDetail {
-  state: ReconTaskRow & { activity: Array<{ at: string; round: number; kind: string; text: string }>; targets: string[]; coverageArg?: number; constraints: string[] }
-  live?: {
-    coverage: { total: number; tested: number; scope: { rows: number; denominator: number; pct: number | null } }
-    goals: Array<{ id: string; text: string; status: string }>
-    openIntents: Array<{ id: string; text: string }>
-    runningIntents: number
-    findings: Array<{ id: string; text: string; status: string }>
-    digests: number
-    /** The recon engine's own sessions: planner rounds, workers, system events. */
-    sessions: Array<{ id: string; kind: string; refId?: string; title?: string; text?: string; status?: string; round?: number }>
-    usage?: { inTokens?: number; outTokens?: number; llmCalls?: number }
-  }
-}
-const taskDetail = ref<TaskDetail | null>(null)
-const taskSelectedId = ref<string | null>(null)
-const taskShowNew = ref(false)
-const taskCreating = ref(false)
-const taskError = ref('')
-const newTaskObjective = ref('')
-const newTaskTargets = ref('')
-const newTaskCoverage = ref('')
-const newTaskModel = ref('')
-const hintDraft = ref('')
-
-async function runAssessments(args: Record<string, any>): Promise<any> {
-  if (!selectedId.value) throw new Error(t('agent.page.taskNeedSession'))
-  // Polls fail fast so a gated or stale agent cannot stack hung requests.
-  // create/report run the goals phase / render a file first and legitimately
-  // take longer, so they get their own budget.
-  const long = args.action === 'create' || args.action === 'report'
-  const response = await fetch('/api/run', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ tool: 'assessments', args: JSON.stringify(args), session_id: selectedId.value }),
-    signal: AbortSignal.timeout(long ? 180_000 : 8000),
-  })
-  const data = await response.json()
-  if (!data?.success) throw new Error(data?.error || 'assessments call failed')
-  return typeof data.result === 'string' ? JSON.parse(data.result) : data.result
-}
-async function loadTaskDetail() {
-  if (!taskSelectedId.value) return
-  taskDetail.value = await runAssessments({ action: 'get', id: taskSelectedId.value })
-}
-/** Leave the task pane and go back to the conversation it was opened from. */
-function closeTask(): void {
-  taskSelectedId.value = null
-  taskDetail.value = null
-}
-
-async function openTask(id: string) {
-  taskSelectedId.value = id
-  taskDetail.value = null
-  hintDraft.value = ''
-  taskShowNew.value = false
-  taskDetailTab.value = 'overview'
-  await loadTaskDetail().catch(() => {})
-}
-// Every action shows its failure INLINE: an error escaping an event handler
-// reaches the host's error boundary and takes the whole page down with it.
-async function controlTask(operation: string) {
-  if (!taskSelectedId.value) return
-  taskError.value = ''
-  try {
-    await runAssessments({ action: 'control', id: taskSelectedId.value, operation })
-    await Promise.all([pollAssessments().catch(() => {}), loadTaskDetail().catch(() => {})])
-  } catch (e: any) {
-    taskError.value = e?.message || String(e)
-  }
-}
-async function sendHint() {
-  const text = hintDraft.value.trim()
-  if (!taskSelectedId.value || !text) return
-  taskError.value = ''
-  try {
-    hintDraft.value = ''
-    // `say` instead of `hint`: this input talks to the running agent (it lands in
-    // the constraints the next planning round re-reads), which is what the box
-    // promises. Graph-level hints stay available through the tool.
-    await runAssessments({ action: 'say', id: taskSelectedId.value, text })
-    await loadTaskDetail().catch(() => {})
-  } catch (e: any) {
-    taskError.value = e?.message || String(e)
-  }
-}
-async function createTask() {
-  const objective = newTaskObjective.value.trim()
-  const targets = newTaskTargets.value.split(/[\n,]+/).map((entry) => entry.trim()).filter(Boolean)
-  if (!objective || !targets.length) return
-  taskError.value = ''
-  if (!selectedId.value) { taskError.value = t('agent.page.taskNeedSession'); return }
-  taskCreating.value = true
-  try {
-    const created = await runAssessments({
-      action: 'create',
-      objective,
-      targets,
-      ...(newTaskCoverage.value ? { coverage: Number(newTaskCoverage.value) } : {}),
-      ...(newTaskModel.value ? { model: newTaskModel.value } : {}),
-      language: locale.value.startsWith('zh') ? 'zh' : 'en',
-    })
-    newTaskObjective.value = ''; newTaskTargets.value = ''; newTaskCoverage.value = ''; newTaskModel.value = ''
-    taskShowNew.value = false
-    await pollAssessments().catch(() => {})
-    if (created?.id) await openTask(created.id)
-  } catch (e: any) {
-    taskError.value = e?.message || String(e)
-  } finally {
-    taskCreating.value = false
-  }
-}
-function deleteTask(id: string) {
-  if (taskSelectedId.value === id) { taskSelectedId.value = null; taskDetail.value = null }
-  void runAssessments({ action: 'control', id, operation: 'delete' }).then(() => pollAssessments()).catch(() => {})
-}
-const taskPercent = computed(() => {
-  const live = taskDetail.value?.live
-  if (!live) return null
-  if (live.coverage.scope.pct != null) return live.coverage.scope.pct
-  return live.coverage.total ? Math.round((live.coverage.tested / live.coverage.total) * 100) : 0
+// The task pane lives in a composable; the markup and styles stay here.
+const {
+  taskDetail, taskSelectedId, taskShowNew, taskCreating, taskError,
+  newTaskObjective, newTaskTargets, newTaskCoverage, newTaskModel, hintDraft,
+  taskDetailTab, runAssessments, loadTaskDetail, closeTask, openTask,
+  controlTask, sendHint, createTask, deleteTask, taskPercent,
+} = useTaskDetail({
+  selectedId,
+  locale,
+  t: (key, named) => t(key, named as Record<string, unknown>),
+  pollAssessments,
 })
 
-// ---- the task page tabs (the task detail) -------------------------------
-type TaskDetailTab = 'sessions' | 'overview' | 'graph' | 'board' | 'findings' | 'assets' | 'approvals' | 'report'
-const taskDetailTab = ref<TaskDetailTab>('overview')
-// 探索链路 draws the session graph — the same recon_graph export the agent
-// writes to, laid out along provenance depth.
 const taskLayout = computed(() => computeReconLayout(reconNodes.value, reconEdges.value, expandedDigests.value))
 
 const taskAssets = computed(() => {
@@ -1467,6 +1273,16 @@ const subStack = ref<TaskRow[]>([])
 const activeSub = computed<TaskRow | null>(() => subStack.value[subStack.value.length - 1] || null)
 const transcript = ref<HTMLElement | null>(null)
 const session = computed(() => store.sessions.find(item => item.session_id === selectedId.value))
+const {
+  draft, attachments, uploading, attachError, fileInput, queuedMessages, composerArea,
+  pickFiles, removeAttachment, addFiles, onFilesPicked, onPaste,
+  dragDepth, dropping, onDragEnter, onDragOver, onDragLeave, onDropFiles, dropQueued, autosizeComposer,
+} = useComposer({
+  busy,
+  archived: computed(() => session.value?.state === 'archived'),
+  friendlyError,
+})
+
 const isLife = (item: TaskRow) => item.caller_id !== 'webui'
 const sessions = computed(() => store.sessions.filter(item =>
   (showArchived.value ? item.state === 'archived' : item.state !== 'archived') &&
@@ -2139,17 +1955,6 @@ async function create() {
  * sent as soon as the current answer finishes, in the order it was typed. That is
  * what the composer promises — "the agent is busy, your message is next".
  */
-const queuedMessages = ref<string[]>([])
-
-function queueMessage(text: string): void {
-  const trimmed = text.trim()
-  if (!trimmed) return
-  queuedMessages.value = [...queuedMessages.value, trimmed]
-}
-
-function dropQueued(index: number): void {
-  queuedMessages.value = queuedMessages.value.filter((_, position) => position !== index)
-}
 
 /** Drain one queued message; the rest wait for the next quiet moment. */
 async function flushQueue(): Promise<void> {
