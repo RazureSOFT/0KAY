@@ -10,6 +10,7 @@
 import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { parseRefs, refFor, resolveRefs, refsForModel } from '../stores/attachment-refs'
+import { latestPlan } from '../stores/plan-card'
 
 type Entry = { name: string; path: string }
 type Row = {
@@ -20,6 +21,8 @@ type Row = {
   prompt?: string
   result?: string
   started_at?: string
+  /** JSON string written by the agent's plan tool, see src/tools/plan.ts. */
+  plan?: string
 }
 
 const { t } = useI18n()
@@ -135,6 +138,54 @@ function renderTurn(row: Row): { role: 'you' | 'her'; text: string } | null {
   const text = String(row.result || '').trim()
   if (!text) return null
   return { role: 'her', text }
+}
+
+// A plan is not a chat turn — it is a handoff waiting for a decision, so it is
+// parsed out into a card instead of rendered as another bubble. `latestPlan`
+// lives in its own module because the row is written by another process.
+const activePlan = computed(() => latestPlan(turns.value))
+
+const planOpen = ref(false)
+
+// Building a plan is a new task whose prompt is the plan itself — the agent
+// that wrote it is gone by now, so the plan has to carry everything the build
+// needs. This is the handoff the plan tool exists for.
+async function buildPlan() {
+  const plan = activePlan.value
+  if (!plan || sending.value) return
+  if (!sessionId.value) await ensureSession().catch(() => undefined)
+  if (!sessionId.value) {
+    chatError.value = t('ide.noSession')
+    return
+  }
+  sending.value = true
+  chatError.value = ''
+  try {
+    const prompt = `${t('ide.buildPromptLead')}\n\n${plan.markdown}`
+    const response = await fetch('/api/agent/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId.value, prompt, agent_type: 'general' }),
+    })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
+    planOpen.value = false
+    await loadTurns()
+  } catch (error) {
+    chatError.value = error instanceof Error ? error.message : String(error)
+  } finally {
+    sending.value = false
+  }
+}
+
+async function copyPlan() {
+  const plan = activePlan.value
+  if (!plan) return
+  try {
+    await navigator.clipboard.writeText(plan.markdown)
+    chatError.value = ''
+  } catch {
+    chatError.value = t('ide.copyFailed')
+  }
 }
 
 const conversation = computed(() =>
@@ -355,6 +406,30 @@ onBeforeUnmount(() => {
           <p v-for="(line, index) in conversation" :key="index" :class="['turn', line.role]">{{ line.text }}</p>
           <p v-if="!conversation.length" class="hint">{{ t('ide.askAnything') }}</p>
         </div>
+        <div v-if="activePlan" class="plan-card">
+          <div class="plan-head">
+            <span class="plan-badge">{{ t('ide.planReady') }}</span>
+            <strong class="plan-title">{{ activePlan.title }}</strong>
+            <span class="plan-steps">{{ t('ide.planSteps', { n: activePlan.steps }) }}</span>
+          </div>
+          <div v-if="planOpen" class="plan-body">
+            <pre class="plan-md">{{ activePlan.markdown }}</pre>
+            <iframe
+              v-if="activePlan.demoHtml"
+              class="plan-demo"
+              :srcdoc="activePlan.demoHtml"
+              sandbox=""
+              :title="t('ide.planDemo')"
+            ></iframe>
+          </div>
+          <div class="plan-actions">
+            <button type="button" class="ghost" @click="planOpen = !planOpen">
+              {{ planOpen ? t('ide.planHide') : t('ide.planShow') }}
+            </button>
+            <button type="button" class="ghost" @click="copyPlan">{{ t('ide.copyPlan') }}</button>
+            <button type="button" class="primary" :disabled="sending" @click="buildPlan">{{ t('ide.buildThisPlan') }}</button>
+          </div>
+        </div>
         <form class="chat-form" @submit.prevent="send">
           <div v-if="draftRefs.length" class="ref-row">
             <span
@@ -441,6 +516,18 @@ onBeforeUnmount(() => {
 .turn { margin: 0; font-size: 12.5px; line-height: 1.5; overflow-wrap: anywhere; padding: 7px 10px; border-radius: 10px; }
 .turn.you { align-self: flex-end; background: color-mix(in srgb, var(--md-primary) 12%, transparent); }
 .turn.her { align-self: flex-start; background: var(--md-surface-container); }
+
+/* The plan handoff: a card, not a chat bubble, because the next move is a
+   decision (build it) rather than a reply. */
+.plan-card { margin: 0 12px 10px; border: 1px solid var(--md-outline-variant); border-left: 3px solid var(--md-primary); border-radius: 10px; background: var(--md-surface-container-lowest); display: flex; flex-direction: column; min-height: 0; }
+.plan-head { display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
+.plan-badge { flex: none; padding: 1px 6px; border-radius: 999px; background: color-mix(in srgb, var(--md-primary) 15%, transparent); color: var(--md-primary); font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+.plan-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
+.plan-steps { flex: none; color: var(--md-on-surface-variant); font-size: 11px; }
+.plan-body { max-height: 260px; overflow: auto; border-top: 1px solid var(--md-outline-variant); }
+.plan-md { margin: 0; padding: 10px; font: 12px/1.55 ui-monospace, Consolas, "Cascadia Mono", monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.plan-demo { width: 100%; height: 220px; border: 0; border-top: 1px solid var(--md-outline-variant); background: #fff; }
+.plan-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 8px 10px; border-top: 1px solid var(--md-outline-variant); }
 
 .chat-form { border-top: 1px solid var(--md-outline-variant); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
 

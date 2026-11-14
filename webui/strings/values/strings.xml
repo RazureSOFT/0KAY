@@ -779,6 +779,15 @@
   <string name="ide.refFile">File</string>
   <string name="ide.refPath">Path</string>
   <string name="ide.removeRef">Remove this reference</string>
+  <string name="ide.planReady">Plan ready</string>
+  <string name="ide.planSteps">{n} steps</string>
+  <string name="ide.planShow">Show plan</string>
+  <string name="ide.planHide">Hide plan</string>
+  <string name="ide.planDemo">Plan preview</string>
+  <string name="ide.copyPlan">Copy</string>
+  <string name="ide.copyFailed">Could not copy the plan</string>
+  <string name="ide.buildThisPlan">Build this plan</string>
+  <string name="ide.buildPromptLead">Build the following plan. It was approved as written; follow its steps and verify each one.</string>
   <string name="auth.loginLanHint">This Core is reachable on the network, so it needs a credential. Paste the access token shown in Core, or the PIN you set.</string>
   <string name="auth.loginDisabled">Sign-in is currently turned off; this page will not be needed until LAN access is enabled.</string>
   <string name="status.localBuild">Local build — not a release</string>

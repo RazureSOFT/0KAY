@@ -938,6 +938,15 @@
     "refImage": "Image",
     "refFile": "File",
     "refPath": "Path",
-    "removeRef": "Remove this reference"
+    "removeRef": "Remove this reference",
+    "planReady": "Plan ready",
+    "planSteps": "{n} steps",
+    "planShow": "Show plan",
+    "planHide": "Hide plan",
+    "planDemo": "Plan preview",
+    "copyPlan": "Copy",
+    "copyFailed": "Could not copy the plan",
+    "buildThisPlan": "Build this plan",
+    "buildPromptLead": "Build the following plan. It was approved as written; follow its steps and verify each one."
   }
 }

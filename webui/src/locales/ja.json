@@ -938,6 +938,15 @@
     "refImage": "画像",
     "refFile": "ファイル",
     "refPath": "パス",
-    "removeRef": "この参照を削除"
+    "removeRef": "この参照を削除",
+    "planReady": "計画の準備ができました",
+    "planSteps": "{n} ステップ",
+    "planShow": "計画を表示",
+    "planHide": "計画を閉じる",
+    "planDemo": "計画のプレビュー",
+    "copyPlan": "コピー",
+    "copyFailed": "計画をコピーできませんでした",
+    "buildThisPlan": "この計画で実行",
+    "buildPromptLead": "以下の計画を実装してください。原文のまま承認済みです。手順に従い、各項目を検証してください。"
   }
 }

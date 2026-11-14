@@ -938,6 +938,15 @@
     "refImage": "图片",
     "refFile": "文件",
     "refPath": "路径",
-    "removeRef": "移除这个引用"
+    "removeRef": "移除这个引用",
+    "planReady": "方案已就绪",
+    "planSteps": "{n} 步",
+    "planShow": "展开方案",
+    "planHide": "收起方案",
+    "planDemo": "方案预览",
+    "copyPlan": "复制",
+    "copyFailed": "复制方案失败",
+    "buildThisPlan": "按这个方案开始做",
+    "buildPromptLead": "按下面的方案实施。方案已按原文通过，请逐步执行并逐项验证。"
   }
 }

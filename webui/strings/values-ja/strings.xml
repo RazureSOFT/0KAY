@@ -779,6 +779,15 @@
   <string name="ide.refFile">ファイル</string>
   <string name="ide.refPath">パス</string>
   <string name="ide.removeRef">この参照を削除</string>
+  <string name="ide.planReady">計画の準備ができました</string>
+  <string name="ide.planSteps">{n} ステップ</string>
+  <string name="ide.planShow">計画を表示</string>
+  <string name="ide.planHide">計画を閉じる</string>
+  <string name="ide.planDemo">計画のプレビュー</string>
+  <string name="ide.copyPlan">コピー</string>
+  <string name="ide.copyFailed">計画をコピーできませんでした</string>
+  <string name="ide.buildThisPlan">この計画で実行</string>
+  <string name="ide.buildPromptLead">以下の計画を実装してください。原文のまま承認済みです。手順に従い、各項目を検証してください。</string>
   <string name="auth.loginLanHint">この Core はネットワークに公開されているため認証情報が必要です。Core に表示されたアクセストークン、または設定した PIN を入力してください。</string>
   <string name="auth.loginDisabled">現在サインインは無効です。LAN を有効にするまでこのページは不要です。</string>
   <string name="status.localBuild">ローカルビルド（リリースではありません）</string>

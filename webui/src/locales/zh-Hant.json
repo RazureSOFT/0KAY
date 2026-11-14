@@ -938,6 +938,15 @@
     "refImage": "圖片",
     "refFile": "檔案",
     "refPath": "路徑",
-    "removeRef": "移除這個參照"
+    "removeRef": "移除這個參照",
+    "planReady": "方案已就緒",
+    "planSteps": "{n} 步",
+    "planShow": "展開方案",
+    "planHide": "收起方案",
+    "planDemo": "方案預覽",
+    "copyPlan": "複製",
+    "copyFailed": "複製方案失敗",
+    "buildThisPlan": "按這個方案開始做",
+    "buildPromptLead": "按下面的方案實施。方案已按原文通過，請逐步執行並逐項驗證。"
   }
 }

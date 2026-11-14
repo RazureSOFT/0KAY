@@ -779,6 +779,15 @@
   <string name="ide.refFile">文件</string>
   <string name="ide.refPath">路径</string>
   <string name="ide.removeRef">移除这个引用</string>
+  <string name="ide.planReady">方案已就绪</string>
+  <string name="ide.planSteps">{n} 步</string>
+  <string name="ide.planShow">展开方案</string>
+  <string name="ide.planHide">收起方案</string>
+  <string name="ide.planDemo">方案预览</string>
+  <string name="ide.copyPlan">复制</string>
+  <string name="ide.copyFailed">复制方案失败</string>
+  <string name="ide.buildThisPlan">按这个方案开始做</string>
+  <string name="ide.buildPromptLead">按下面的方案实施。方案已按原文通过，请逐步执行并逐项验证。</string>
   <string name="auth.loginLanHint">这台 Core 开在局域网上，所以需要凭据。粘贴 Core 里显示的访问令牌，或你设置的 PIN。</string>
   <string name="auth.loginDisabled">当前未开启登录校验；本机访问不需要这个页面，开 LAN 后才会用到。</string>
   <string name="status.localBuild">本地构建（非发布版）</string>
