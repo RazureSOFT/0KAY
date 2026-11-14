@@ -288,6 +288,10 @@
     "stageMissing": "ステージの準備ができていません"
   },
   "mcp": {
+    "env": "環境変数（1 行に KEY=VALUE）",
+    "githubToken": "GitHub トークン",
+    "addGithub": "GitHub を追加",
+    "githubHint": "GitHub MCP サーバーを追加します。トークンは環境変数に保存されます。",
     "addServer": "サーバーを追加",
     "args": "引数（1 行に 1 つ）",
     "builtinMail": "組み込みメール (mail)",

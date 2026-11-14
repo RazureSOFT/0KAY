@@ -254,6 +254,10 @@
   <string name="live2d.preview">プレビュー</string>
   <string name="live2d.resetView">表示をリセット</string>
   <string name="live2d.stageMissing">ステージの準備ができていません</string>
+  <string name="mcp.env">環境変数（1 行に KEY=VALUE）</string>
+  <string name="mcp.githubToken">GitHub トークン</string>
+  <string name="mcp.addGithub">GitHub を追加</string>
+  <string name="mcp.githubHint">GitHub MCP サーバーを追加します。トークンは環境変数に保存されます。</string>
   <string name="mcp.addServer">サーバーを追加</string>
   <string name="mcp.args">引数（1 行に 1 つ）</string>
   <string name="mcp.builtinMail">組み込みメール (mail)</string>

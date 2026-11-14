@@ -254,6 +254,10 @@
   <string name="live2d.preview">预览</string>
   <string name="live2d.resetView">重置视图</string>
   <string name="live2d.stageMissing">渲染舞台未就绪</string>
+  <string name="mcp.env">环境变量（每行 KEY=VALUE）</string>
+  <string name="mcp.githubToken">GitHub token</string>
+  <string name="mcp.addGithub">添加 GitHub</string>
+  <string name="mcp.githubHint">添加 GitHub MCP 服务器；token 存在服务器环境变量里，不写在命令行上。</string>
   <string name="mcp.addServer">添加服务</string>
   <string name="mcp.args">参数（每行一个）</string>
   <string name="mcp.builtinMail">内置邮件 (mail)</string>

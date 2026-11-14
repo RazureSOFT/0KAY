@@ -14,6 +14,7 @@ interface McpServerDraft {
   argsText: string
   url: string
   headersText: string
+  envText: string
   enabled: boolean
   imapHost: string
   imapPort: number
@@ -37,7 +38,7 @@ const saved = ref(false)
 
 function blank(): McpServerDraft {
   return {
-    id: '', transport: 'stdio', command: '', argsText: '', url: '', headersText: '', enabled: true,
+    id: '', transport: 'stdio', command: '', argsText: '', url: '', headersText: '', envText: '', enabled: true,
     imapHost: '', imapPort: 993, imapSsl: true, imapUser: '', imapPassword: '',
     smtpHost: '', smtpPort: 465, smtpSecure: true, smtpUser: '', smtpPassword: '',
     from: '', fromName: '0KAY',
@@ -56,6 +57,7 @@ function toDraft(raw: any): McpServerDraft {
     argsText: Array.isArray(raw?.args) ? raw.args.join('\n') : '',
     url: String(raw?.url || ''),
     headersText: raw?.headers && typeof raw.headers === 'object' ? JSON.stringify(raw.headers, null, 2) : '',
+    envText: raw?.env && typeof raw.env === 'object' ? Object.entries(raw.env).map(([key, value]) => `${key}=${String(value)}`).join(String.fromCharCode(10)) : '',
     enabled: raw?.enabled !== false,
     imapHost: String(imap.host || ''), imapPort: Number(imap.port) || 993, imapSsl: imap.ssl !== false,
     imapUser: String(imap.user || ''), imapPassword: String(imap.password || ''),
@@ -97,12 +99,39 @@ function toWire(draft: McpServerDraft): Record<string, unknown> {
     if (draft.command.trim()) out.command = draft.command.trim()
     const args = draft.argsText.split('\n').map((line) => line.trim()).filter(Boolean)
     if (args.length) out.args = args
+    // KEY=VALUE per line: a token reaches a stdio server through its
+    // environment, not the command line, where `ps` would show it.
+    const env: Record<string, string> = {}
+    for (const line of draft.envText.split(String.fromCharCode(10))) {
+      const match = /^([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(line.trim())
+      if (match) env[match[1]] = match[2]
+    }
+    if (Object.keys(env).length) out.env = env
   }
   return out
 }
 
 function onTransportChange(draft: McpServerDraft) {
   if (draft.transport === 'builtin') draft.id = 'mail'
+}
+
+const githubToken = ref('')
+/**
+ * Add the GitHub MCP server with a token.
+ *
+ * The token goes into the server's env, not into its args: an argument shows up
+ * in the process list and in every log line that prints the command.
+ */
+function addGithub() {
+  const token = githubToken.value.trim()
+  if (!token) return
+  const draft = blank()
+  draft.id = 'github'
+  draft.command = 'npx'
+  draft.argsText = ['-y', '@modelcontextprotocol/server-github'].join(String.fromCharCode(10))
+  draft.envText = `GITHUB_PERSONAL_ACCESS_TOKEN=${token}`
+  servers.value.push(draft)
+  githubToken.value = ''
 }
 
 function addServer() {
@@ -170,6 +199,8 @@ onMounted(load)
         <p class="subtitle">{{ t('mcp.subtitle') }}</p>
       </div>
       <div class="mcp-actions">
+        <input v-model="githubToken" class="github-token" type="password" autocomplete="off" :placeholder="t('mcp.githubToken')" :aria-label="t('mcp.githubToken')" />
+        <button class="btn btn-tonal" type="button" :disabled="!githubToken.trim()" :title="t('mcp.githubHint')" @click="addGithub">{{ t('mcp.addGithub') }}</button>
         <button class="btn btn-tonal" type="button" @click="addServer">{{ t('mcp.addServer') }}</button>
         <button class="btn primary" type="button" :disabled="saving" @click="save">
           {{ saving ? t('common.saving') : t('common.save') }}
@@ -211,6 +242,10 @@ onMounted(load)
           <label class="mcp-field">
             <span>{{ t('mcp.args') }}</span>
             <textarea v-model="s.argsText" rows="2" placeholder="-y&#10;@modelcontextprotocol/server-filesystem&#10;C:\work" />
+          </label>
+          <label class="mcp-field">
+            <span>{{ t('mcp.env') }}</span>
+            <textarea v-model="s.envText" rows="2" placeholder="GITHUB_PERSONAL_ACCESS_TOKEN=ghp_..." />
           </label>
         </template>
 

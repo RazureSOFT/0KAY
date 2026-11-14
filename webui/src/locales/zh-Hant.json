@@ -288,6 +288,10 @@
     "stageMissing": "渲染舞台尚未就緒"
   },
   "mcp": {
+    "env": "環境變數（每行 KEY=VALUE）",
+    "githubToken": "GitHub token",
+    "addGithub": "新增 GitHub",
+    "githubHint": "新增 GitHub MCP 伺服器；token 存在伺服器環境變數裡。",
     "addServer": "新增伺服器",
     "args": "參數（每行一個）",
     "builtinMail": "內建郵件 (mail)",

@@ -254,6 +254,10 @@
   <string name="live2d.preview">Preview</string>
   <string name="live2d.resetView">Reset view</string>
   <string name="live2d.stageMissing">Stage not ready</string>
+  <string name="mcp.env">Environment (KEY=VALUE per line)</string>
+  <string name="mcp.githubToken">GitHub token</string>
+  <string name="mcp.addGithub">Add GitHub</string>
+  <string name="mcp.githubHint">Adds the GitHub MCP server; the token is stored in the server env, not on the command line.</string>
   <string name="mcp.addServer">Add server</string>
   <string name="mcp.args">Arguments (one per line)</string>
   <string name="mcp.builtinMail">Built-in mail (mail)</string>

@@ -288,6 +288,10 @@
     "stageMissing": "Stage not ready"
   },
   "mcp": {
+    "env": "Environment (KEY=VALUE per line)",
+    "githubToken": "GitHub token",
+    "addGithub": "Add GitHub",
+    "githubHint": "Adds the GitHub MCP server; the token is stored in the server env, not on the command line.",
     "addServer": "Add server",
     "args": "Arguments (one per line)",
     "builtinMail": "Built-in mail (mail)",
