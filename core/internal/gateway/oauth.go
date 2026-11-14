@@ -97,7 +97,17 @@ func (g *Gateway) handleGitHubOAuthStart(w http.ResponseWriter, r *http.Request)
 	query := url.Values{}
 	query.Set("client_id", clientID)
 	query.Set("redirect_uri", redirect)
-	query.Set("scope", "repo")
+	// A GitHub App takes its permissions from the app definition and rejects a
+	// scope parameter; an OAuth App needs one. Empty means "do not send it".
+	scope := "repo"
+	if g.settingsStore != nil {
+		if value, ok := g.settingsStore.GetValues("experiments")["github_oauth_scope"].(string); ok {
+			scope = strings.TrimSpace(value)
+		}
+	}
+	if scope != "" {
+		query.Set("scope", scope)
+	}
 	query.Set("state", state)
 	http.Redirect(w, r, githubAuthorizeURL+"?"+query.Encode(), http.StatusFound)
 }
