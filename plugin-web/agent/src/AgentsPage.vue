@@ -9,6 +9,7 @@ import ModelThinkingPicker from './ModelThinkingPicker.vue'
 import GitPanel from './GitPanel.vue'
 import { useReconCanvas } from './composables/useReconCanvas'
 import { usePlanCard } from './composables/usePlanCard'
+import { useSessionList, type WorkspaceRow } from './composables/useSessionList'
 import ThinkChain from './ThinkChain.vue'
 import IntentStrip from './IntentStrip.vue'
 import { agentTree, focusChain } from './agentTree'
@@ -1472,10 +1473,18 @@ const sessions = computed(() => store.sessions.filter(item =>
   (source.value === 'all' || (source.value === 'life' ? isLife(item) : !isLife(item))) &&
   (item.prompt || '').toLowerCase().includes(search.value.toLowerCase())))
 
-interface WorkspaceRow { id: string; title: string; path: string; createdAt?: string; updatedAt?: string; sessionIds?: string[]; sessions?: TaskRow[]; exists?: boolean }
 const workspaces = ref<WorkspaceRow[]>([])
-const collapsed = ref<Set<string>>(new Set(JSON.parse(localStorage.getItem('0kay.agent.ws.collapsed') || '[]')))
-const expandedGroups = ref<Set<string>>(new Set())
+const {
+  collapsed, expandedGroups, orderMode, setOrderMode, sessionState,
+  sessionGroups, toggleGroup, isExpanded, toggleExpanded, visibleSessions,
+} = useSessionList({
+  sessions,
+  tasks: computed(() => store.tasks),
+  workspaces,
+  selectedId,
+  notifyDone,
+  t: (key, named) => t(key, named as Record<string, unknown>),
+})
 const workspacePick = ref(false)
 function workspaceQuery(): string { return executor.value?.plugin_id ? `executor_id=${encodeURIComponent(executor.value.plugin_id)}` : '' }
 async function fetchWorkspaces() {
@@ -1499,80 +1508,6 @@ async function workspaceAction(action: string, payload: Record<string, unknown> 
   await fetchWorkspaces()
   return response.json()
 }
-const orderMode = ref<'manual' | 'recent'>(localStorage.getItem('0kay.agent.ws.order') === 'recent' ? 'recent' : 'manual')
-function setOrderMode(mode: 'manual' | 'recent') { orderMode.value = mode; localStorage.setItem('0kay.agent.ws.order', mode) }
-function sessionActivity(item: TaskRow): number {
-  let latest = Date.parse(item.started_at || '') || 0
-  for (const task of store.tasks) if (task.session_id === item.session_id && task.started_at) latest = Math.max(latest, Date.parse(task.started_at) || 0)
-  return latest
-}
-/** Sessions with a task still in flight — the list marks them and floats them up. */
-const runningSessionIds = computed(() => new Set(
-  store.tasks.filter(row => row.session_id && ['running', 'pending'].includes(row.state)).map(row => row.session_id!),
-))
-
-/**
- * When each session last finished, so a run that just completed can sit at the
- * top for a few minutes instead of being buried under newer-but-idle sessions.
- */
-const finishedAt = ref<Record<string, number>>({})
-const RECENT_DONE_MS = 5 * 60 * 1000
-const previousRunning = new Set<string>()
-watch(runningSessionIds, (now) => {
-  const stamp = Date.now()
-  for (const id of previousRunning) {
-    if (!now.has(id)) {
-      finishedAt.value = { ...finishedAt.value, [id]: stamp }
-      // A session that finished while another was selected is worth a word: the
-      // run may have been long enough that the user moved on.
-      if (id !== selectedId.value) {
-        const row = sessions.value.find(item => item.session_id === id)
-        notifyDone(row?.prompt || t('agent.page.untitledSession'))
-      }
-    }
-  }
-  previousRunning.clear()
-  now.forEach(id => previousRunning.add(id))
-}, { immediate: true })
-
-const recentlyDone = (sessionId?: string) => {
-  const at = finishedAt.value[sessionId || ''] || 0
-  return at > 0 && Date.now() - at < RECENT_DONE_MS
-}
-/** '' | 'running' | 'done' — drives the dot on the session card. */
-const sessionState = (item: TaskRow) => runningSessionIds.value.has(item.session_id || '')
-  ? 'running'
-  : recentlyDone(item.session_id) ? 'done' : ''
-
-const arrange = (list: TaskRow[]) => {
-  // Running first, then what just finished, then the user's chosen order.
-  const running = list.filter(item => sessionState(item) === 'running')
-  const done = list.filter(item => sessionState(item) === 'done')
-    .sort((a, b) => (finishedAt.value[b.session_id!] || 0) - (finishedAt.value[a.session_id!] || 0))
-  const seen = new Set([...running, ...done].map(item => item.task_id))
-  const rest = list.filter(item => !seen.has(item.task_id))
-  const ordered = orderMode.value === 'recent'
-    ? [...rest].sort((a, b) => sessionActivity(b) - sessionActivity(a))
-    : rest
-  return [...running, ...done, ...ordered]
-}
-const sessionGroups = computed(() => {
-  const groups = workspaces.value.map(workspace => ({
-    id: workspace.id, title: workspace.title, path: workspace.path, exists: workspace.exists !== false,
-    sessions: arrange(sessions.value.filter(item => (workspace.sessionIds || []).includes(item.session_id || ''))),
-  }))
-  const claimed = new Set(workspaces.value.flatMap(workspace => workspace.sessionIds || []))
-  return { groups, ungrouped: arrange(sessions.value.filter(item => !claimed.has(item.session_id || ''))) }
-})
-function toggleGroup(id: string) {
-  const next = new Set(collapsed.value)
-  if (next.has(id)) next.delete(id); else next.add(id)
-  collapsed.value = next
-  localStorage.setItem('0kay.agent.ws.collapsed', JSON.stringify([...next]))
-}
-const isExpanded = (id: string) => expandedGroups.value.has(id)
-function toggleExpanded(id: string) { const next = new Set(expandedGroups.value); if (next.has(id)) next.delete(id); else next.add(id); expandedGroups.value = next }
-const visibleSessions = (group: { id: string; sessions: TaskRow[] }) => isExpanded(group.id) ? group.sessions : group.sessions.slice(0, 5)
 async function addWorkspace() {
   if (!executor.value) { error.value = t('agent.page.selectOnlineExecutor'); return }
   workspacePick.value = true
