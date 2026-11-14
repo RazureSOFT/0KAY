@@ -84,7 +84,9 @@ export function useTaskDetail(options: {
   const taskDetailTab = ref<TaskDetailTab>('overview');
 
   async function runAssessments(args: Record<string, any>): Promise<any> {
-    if (!selectedId.value) throw new Error(t('agent.page.taskNeedSession'));
+    // A cross-session read needs no session: refusing it when nothing is selected
+    // is what made the tasks tab go blank on a fresh page load.
+    if (!selectedId.value && args.all !== true) throw new Error(t('agent.page.taskNeedSession'));
     // Polls fail fast so a gated or stale agent cannot stack hung requests.
     // create/report run the goals phase / render a file first and legitimately
     // take longer, so they get their own budget.
@@ -92,7 +94,7 @@ export function useTaskDetail(options: {
     const response = await fetch('/api/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tool: 'assessments', args: JSON.stringify(args), session_id: selectedId.value }),
+      body: JSON.stringify({ tool: 'assessments', args: JSON.stringify(args), session_id: selectedId.value || 'tasks-tab' }),
       signal: AbortSignal.timeout(long ? 180_000 : 8000),
     });
     const data = await response.json();

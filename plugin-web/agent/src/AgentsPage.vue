@@ -1685,9 +1685,11 @@ const assessmentPrev = new Map<string, string>()
 let assessmentTimer: ReturnType<typeof setInterval> | null = null
 const reconRunningCount = computed(() => assessmentRows.value.filter((row) => row.status === 'running').length)
 async function pollAssessments() {
-  if (!selectedId.value) { assessmentRows.value = []; return }
+  // The tasks tab is not scoped to the open conversation: a task created in one
+  // session used to vanish from the list as soon as another conversation was
+  // selected, which reads as data loss. `all` asks for every session's tasks.
   try {
-    const payload = await runAssessments({ action: 'list' })
+    const payload = await runAssessments({ action: 'list', all: true })
     const rows: Array<{ id: string; objective: string; status: string; createdAt: string; endedAt?: string; stopped?: string; error?: string; goalProgress?: { met: number; total: number }; findingsCount?: number }> = Array.isArray(payload?.tasks) ? payload.tasks : []
     for (const row of rows) {
       const before = assessmentPrev.get(row.id)
