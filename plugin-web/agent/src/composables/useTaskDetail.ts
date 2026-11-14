@@ -22,8 +22,26 @@ export interface ReconTaskRow {
   report?: { rounds: number; intents: number; facts: number; findings: number; proven: boolean; pct: number | null };
 }
 
+/**
+ * One planner round as the reviewer judged it.
+ *
+ * Mirrors `AssessmentReview` on the agent side. The dimension notes are the
+ * substance here: a verdict word alone tells you a plan was sent back, not why.
+ */
+export interface TaskReview {
+  round: number;
+  at: string;
+  plan: Array<{ id: string; text: string; needs: string[] }>;
+  intents: string[];
+  verdict: 'accept' | 'revise' | 'reject';
+  dimensions: Array<{ id: string; question: string; verdict: 'ok' | 'weak' | 'fails'; note?: string }>;
+  revision?: string;
+  revised: boolean;
+  error?: string;
+}
+
 export interface TaskDetail {
-  state: ReconTaskRow & { activity: Array<{ at: string; round: number; kind: string; text: string }>; targets: string[]; coverageArg?: number; constraints: string[] };
+  state: ReconTaskRow & { activity: Array<{ at: string; round: number; kind: string; text: string }>; targets: string[]; coverageArg?: number; constraints: string[]; reviews?: TaskReview[] };
   live?: {
     coverage: { total: number; tested: number; scope: { rows: number; denominator: number; pct: number | null } };
     goals: Array<{ id: string; text: string; status: string }>;
@@ -37,7 +55,7 @@ export interface TaskDetail {
   };
 }
 
-export type TaskDetailTab = 'sessions' | 'overview' | 'graph' | 'board' | 'findings' | 'assets' | 'approvals' | 'report';
+export type TaskDetailTab = 'sessions' | 'overview' | 'plans' | 'graph' | 'board' | 'findings' | 'assets' | 'approvals' | 'report';
 
 export function useTaskDetail(options: {
   selectedId: Ref<string>;
@@ -168,6 +186,12 @@ export function useTaskDetail(options: {
     void runAssessments({ action: 'control', id, operation: 'delete' }).then(() => pollAssessments()).catch(() => {});
   }
 
+  /** Reviewer verdicts, newest round first: the newest plan is the live one. */
+  const taskReviews = computed<TaskReview[]>(() => {
+    const rows = taskDetail.value?.state?.reviews || [];
+    return [...rows].sort((a, b) => b.round - a.round);
+  });
+
   const taskPercent = computed(() => {
     const live = taskDetail.value?.live;
     if (!live) return null;
@@ -200,5 +224,6 @@ export function useTaskDetail(options: {
     createTask,
     deleteTask,
     taskPercent,
+    taskReviews,
   };
 }

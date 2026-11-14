@@ -316,6 +316,28 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .recon-newtask-btn{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--md-outline-variant);background:transparent;color:var(--md-on-surface);font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;cursor:pointer;font-family:inherit}
 .recon-newtask-btn.active,.recon-newtask-btn:hover{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 .recon-taskform{display:flex;flex-direction:column;gap:8px;border:1px dashed var(--md-outline-variant);border-radius:10px;padding:10px}
+.plan-reviews{display:flex;flex-direction:column;gap:8px;list-style:none;margin:0;padding:0}
+.plan-review{border:1px solid var(--md-outline-variant);border-radius:10px;padding:10px;background:var(--md-surface-container-lowest);display:flex;flex-direction:column;gap:6px}
+.plan-review.is-revise{border-color:var(--md-warning,#b26a00)}
+.plan-review.is-reject{border-color:var(--md-error)}
+.plan-review-head{display:flex;align-items:center;gap:8px;font-size:11px;font-weight:700}
+.plan-review-round{color:var(--md-on-surface-variant)}
+.plan-review-verdict{color:var(--md-primary)}
+.plan-review.is-revise .plan-review-verdict{color:var(--md-warning,#b26a00)}
+.plan-review.is-reject .plan-review-verdict{color:var(--md-error)}
+.plan-review-revised{font-weight:500;color:var(--md-on-surface-variant);font-size:10px}
+.plan-review-steps{margin:0;padding-left:18px;font-size:12px;line-height:1.5}
+.plan-step-id{color:var(--md-on-surface-variant);margin-right:6px;font-variant-numeric:tabular-nums}
+.plan-step-needs{font-style:normal;color:var(--md-on-surface-variant);margin-left:6px;font-size:10px}
+.plan-review-dims{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px;font-size:11px}
+.plan-review-dims li{display:flex;gap:6px;align-items:baseline}
+.plan-review-dims b{min-width:88px;font-weight:600}
+.plan-review-dims span{color:var(--md-on-surface-variant)}
+.plan-review-dims li.is-fails span{color:var(--md-error)}
+.plan-review-dims li.is-weak span{color:var(--md-warning,#b26a00)}
+.plan-review-dims i{font-style:normal;color:var(--md-on-surface-variant)}
+.plan-review-revision{margin:0;padding:6px 8px;border-radius:8px;background:var(--md-surface-container-high,var(--md-surface-container-lowest));font-size:11px;line-height:1.5}
+.plan-review-error{margin:0;font-size:11px;color:var(--md-error)}
 .task-kind-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .task-kind-btn{display:flex;flex-direction:column;gap:2px;text-align:left;border:1px solid var(--md-outline-variant);border-radius:8px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);padding:6px 8px;cursor:pointer;font-family:inherit}
 .task-kind-btn b{font-size:12px;font-weight:700}

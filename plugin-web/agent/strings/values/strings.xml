@@ -248,6 +248,13 @@
   <string name="page.taskNeedSession">Select a session first — tasks attach to the session you are in.</string>
   <string name="page.taskTabSessions">Sessions</string>
   <string name="page.taskTabOverview">Overview</string>
+  <string name="page.taskTabPlans">Plans</string>
+  <string name="page.taskPlansEmpty">No planner round has been reviewed yet.</string>
+  <string name="page.taskPlanRound">Round {n}</string>
+  <string name="page.taskPlanVerdict_accept">accepted</string>
+  <string name="page.taskPlanVerdict_revise">sent back</string>
+  <string name="page.taskPlanVerdict_reject">rejected</string>
+  <string name="page.taskPlanRevised">revised</string>
   <string name="page.taskTabGraph">Exploration</string>
   <string name="page.taskTabBoard">Board</string>
   <string name="page.taskTabFindings">Findings</string>

@@ -248,6 +248,13 @@
   <string name="page.taskNeedSession">先にセッションを選択してください。タスクは現在のセッションに紐づきます。</string>
   <string name="page.taskTabSessions">セッション</string>
   <string name="page.taskTabOverview">概要</string>
+  <string name="page.taskTabPlans">計画レビュー</string>
+  <string name="page.taskPlansEmpty">まだレビューされた計画がありません。</string>
+  <string name="page.taskPlanRound">第 {n} ラウンド</string>
+  <string name="page.taskPlanVerdict_accept">承認</string>
+  <string name="page.taskPlanVerdict_revise">差し戻し</string>
+  <string name="page.taskPlanVerdict_reject">却下</string>
+  <string name="page.taskPlanRevised">修正済み</string>
   <string name="page.taskTabGraph">探索グラフ</string>
   <string name="page.taskTabBoard">ボード</string>
   <string name="page.taskTabFindings">検出</string>

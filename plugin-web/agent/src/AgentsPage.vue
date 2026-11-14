@@ -1037,7 +1037,7 @@ const {
   taskDetail, taskSelectedId, taskShowNew, taskCreating, taskError,
   newTaskKind, newTaskObjective, newTaskTargets, newTaskCoverage, newTaskRounds, newTaskIntents, newTaskConcurrency, newTaskModel, hintDraft,
   taskDetailTab, runAssessments, loadTaskDetail, closeTask, openTask,
-  controlTask, sendHint, createTask, deleteTask, taskPercent,
+  controlTask, sendHint, createTask, deleteTask, taskPercent, taskReviews,
 } = useTaskDetail({
   selectedId,
   locale,
@@ -2350,6 +2350,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             <div class="recon-tabs">
               <button type="button" :class="{ active: taskDetailTab === 'sessions' }" @click="taskDetailTab = 'sessions'">{{ t('agent.page.taskTabSessions') }}</button>
               <button type="button" :class="{ active: taskDetailTab === 'overview' }" @click="taskDetailTab = 'overview'">{{ t('agent.page.taskTabOverview') }}</button>
+              <button type="button" :class="{ active: taskDetailTab === 'plans' }" @click="taskDetailTab = 'plans'">{{ t('agent.page.taskTabPlans') }}</button>
               <button type="button" :class="{ active: taskDetailTab === 'graph' }" @click="taskDetailTab = 'graph'">{{ t('agent.page.taskTabGraph') }}</button>
               <button type="button" :class="{ active: taskDetailTab === 'board' }" @click="taskDetailTab = 'board'">{{ t('agent.page.taskTabBoard') }}</button>
               <button type="button" :class="{ active: taskDetailTab === 'findings' }" @click="taskDetailTab = 'findings'">{{ t('agent.page.taskTabFindings') }}</button>
@@ -2409,6 +2410,30 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
                 </template>
               </div>
             </template>
+            <!-- 计划评审 -->
+            <template v-else-if="taskDetailTab === 'plans'">
+              <p v-if="!taskReviews.length" class="muted">{{ t('agent.page.taskPlansEmpty') }}</p>
+              <ul v-else class="plan-reviews">
+                <li v-for="review in taskReviews" :key="review.round" class="plan-review" :class="'is-' + review.verdict">
+                  <header class="plan-review-head">
+                    <span class="plan-review-round">{{ t('agent.page.taskPlanRound', { n: review.round }) }}</span>
+                    <span class="plan-review-verdict">{{ t('agent.page.taskPlanVerdict_' + review.verdict) }}</span>
+                    <span v-if="review.revised" class="plan-review-revised">{{ t('agent.page.taskPlanRevised') }}</span>
+                  </header>
+                  <ol class="plan-review-steps">
+                    <li v-for="step in review.plan" :key="step.id"><span class="plan-step-id">{{ step.id }}</span>{{ step.text }}<i v-if="step.needs.length" class="plan-step-needs">← {{ step.needs.join(', ') }}</i></li>
+                  </ol>
+                  <ul v-if="review.dimensions.length" class="plan-review-dims">
+                    <li v-for="dim in review.dimensions" :key="dim.id" :class="'is-' + dim.verdict">
+                      <b>{{ dim.id }}</b><span>{{ dim.verdict }}</span><i v-if="dim.note">{{ dim.note }}</i>
+                    </li>
+                  </ul>
+                  <p v-if="review.revision" class="plan-review-revision">{{ review.revision }}</p>
+                  <p v-if="review.error" class="plan-review-error">{{ review.error }}</p>
+                </li>
+              </ul>
+            </template>
+
             <!-- 总览 -->
             <template v-else-if="taskDetailTab === 'overview'">
               <div v-if="taskDetail.live" class="recon-coverage">

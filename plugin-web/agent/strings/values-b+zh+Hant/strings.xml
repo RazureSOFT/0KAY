@@ -248,6 +248,13 @@
   <string name="page.taskNeedSession">請先選擇一個會話——任務掛在當前會話上。</string>
   <string name="page.taskTabSessions">會話</string>
   <string name="page.taskTabOverview">總覽</string>
+  <string name="page.taskTabPlans">計畫審查</string>
+  <string name="page.taskPlansEmpty">還沒有審查過的規劃輪次。</string>
+  <string name="page.taskPlanRound">第 {n} 輪</string>
+  <string name="page.taskPlanVerdict_accept">通過</string>
+  <string name="page.taskPlanVerdict_revise">退回修改</string>
+  <string name="page.taskPlanVerdict_reject">駁回</string>
+  <string name="page.taskPlanRevised">已按意見重寫</string>
   <string name="page.taskTabGraph">探索鏈路</string>
   <string name="page.taskTabBoard">播報板</string>
   <string name="page.taskTabFindings">發現</string>

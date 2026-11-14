@@ -248,6 +248,13 @@
   <string name="page.taskNeedSession">请先选择一个会话——任务挂在当前会话上。</string>
   <string name="page.taskTabSessions">会话</string>
   <string name="page.taskTabOverview">总览</string>
+  <string name="page.taskTabPlans">计划评审</string>
+  <string name="page.taskPlansEmpty">还没有评审过的规划轮次。</string>
+  <string name="page.taskPlanRound">第 {n} 轮</string>
+  <string name="page.taskPlanVerdict_accept">通过</string>
+  <string name="page.taskPlanVerdict_revise">打回修改</string>
+  <string name="page.taskPlanVerdict_reject">驳回</string>
+  <string name="page.taskPlanRevised">已按意见重写</string>
   <string name="page.taskTabGraph">探索链路</string>
   <string name="page.taskTabBoard">播报板</string>
   <string name="page.taskTabFindings">发现</string>
