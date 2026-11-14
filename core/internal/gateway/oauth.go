@@ -54,11 +54,18 @@ func (g *Gateway) githubOAuthConfig() (clientID, clientSecret, redirect string, 
 	clientSecret = strings.TrimSpace(os.Getenv("GITHUB_OAUTH_CLIENT_SECRET"))
 	if g.settingsStore != nil {
 		values := g.settingsStore.GetValues("agent")
+		// A type assertion, not fmt.Sprint: a missing key formats as "<nil>",
+		// which is a non-empty string and would make "not configured" look
+		// configured.
 		if clientID == "" {
-			clientID = strings.TrimSpace(fmt.Sprint(values["github_oauth_client_id"]))
+			if value, ok := values["github_oauth_client_id"].(string); ok {
+				clientID = strings.TrimSpace(value)
+			}
 		}
 		if clientSecret == "" {
-			clientSecret = strings.TrimSpace(fmt.Sprint(values["github_oauth_client_secret"]))
+			if value, ok := values["github_oauth_client_secret"].(string); ok {
+				clientSecret = strings.TrimSpace(value)
+			}
 		}
 	}
 	redirect = strings.TrimSpace(os.Getenv("GITHUB_OAUTH_REDIRECT"))
