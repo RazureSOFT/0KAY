@@ -1030,7 +1030,7 @@ const {
 // The task pane lives in a composable; the markup and styles stay here.
 const {
   taskDetail, taskSelectedId, taskShowNew, taskCreating, taskError,
-  newTaskObjective, newTaskTargets, newTaskCoverage, newTaskModel, hintDraft,
+  newTaskObjective, newTaskTargets, newTaskCoverage, newTaskRounds, newTaskIntents, newTaskConcurrency, newTaskModel, hintDraft,
   taskDetailTab, runAssessments, loadTaskDetail, closeTask, openTask,
   controlTask, sendHint, createTask, deleteTask, taskPercent,
 } = useTaskDetail({
@@ -2256,7 +2256,12 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
         <form v-if="taskShowNew" class="recon-taskform task-new-form" @submit.prevent="createTask">
           <label>{{ t('agent.page.taskObjective') }}<textarea v-model="newTaskObjective" rows="2"></textarea></label>
           <label>{{ t('agent.page.taskTargets') }}<textarea v-model="newTaskTargets" rows="3" placeholder="https://a.example&#10;10.0.0.0/24"></textarea></label>
-          <label>{{ t('agent.page.taskCoverageGate') }}<input v-model="newTaskCoverage" type="number" min="0" max="100" /></label>
+          <div class="task-opt-grid">
+            <label>{{ t('agent.page.taskCoverageGate') }}<input v-model="newTaskCoverage" type="number" min="0" max="100" /></label>
+            <label>{{ t('agent.page.taskRounds') }}<input v-model="newTaskRounds" type="number" min="1" max="48" :placeholder="t('agent.page.taskAuto')" /></label>
+            <label>{{ t('agent.page.taskIntents') }}<input v-model="newTaskIntents" type="number" min="1" max="120" :placeholder="t('agent.page.taskAuto')" /></label>
+            <label>{{ t('agent.page.taskConcurrency') }}<input v-model="newTaskConcurrency" type="number" min="1" max="6" :placeholder="t('agent.page.taskAuto')" /></label>
+          </div>
           <label>{{ t('agent.page.taskModel') }}<AppSelect v-model="newTaskModel" :options="[{ value: '', label: t('agent.page.taskModelAuto') }, ...modelSelectOptions]" /></label>
           <button type="submit" :disabled="taskCreating || !selectedId || !newTaskObjective.trim() || !newTaskTargets.trim()">{{ t('agent.page.taskCreate') }}</button>
         </form>

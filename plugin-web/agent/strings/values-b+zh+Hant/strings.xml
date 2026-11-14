@@ -218,6 +218,11 @@
   <string name="page.taskObjective">目標</string>
   <string name="page.taskTargets">目標資產（每行一個）</string>
   <string name="page.taskCoverageGate">覆蓋率門檻（%）</string>
+  <string name="page.taskRounds">輪次上限</string>
+  <string name="page.taskIntents">意圖上限</string>
+  <string name="page.taskConcurrency">並行</string>
+  <string name="page.taskAuto">自動</string>
+  <string name="page.taskMoreOptions">更多選項</string>
   <string name="page.taskCreate">開始</string>
   <string name="page.taskPause">暫停</string>
   <string name="page.taskResume">繼續</string>

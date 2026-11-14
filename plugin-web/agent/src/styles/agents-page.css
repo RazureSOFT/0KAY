@@ -316,6 +316,7 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .recon-newtask-btn{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--md-outline-variant);background:transparent;color:var(--md-on-surface);font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;cursor:pointer;font-family:inherit}
 .recon-newtask-btn.active,.recon-newtask-btn:hover{background:var(--md-secondary-container);color:var(--md-on-secondary-container)}
 .recon-taskform{display:flex;flex-direction:column;gap:8px;border:1px dashed var(--md-outline-variant);border-radius:10px;padding:10px}
+.task-opt-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .recon-taskform label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:600;color:var(--md-on-surface-variant)}
 .recon-taskform textarea,.recon-taskform input{border:1px solid var(--md-outline-variant);border-radius:8px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);font-size:12px;padding:6px 8px;font-family:inherit;resize:vertical}
 .recon-taskform button[type="submit"]{align-self:flex-end;border:0;background:var(--md-primary);color:var(--md-on-primary);font-size:12px;font-weight:700;padding:6px 14px;border-radius:999px;cursor:pointer;font-family:inherit}

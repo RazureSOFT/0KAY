@@ -218,6 +218,11 @@
   <string name="page.taskObjective">Objective</string>
   <string name="page.taskTargets">Targets (one per line)</string>
   <string name="page.taskCoverageGate">Coverage gate (%)</string>
+  <string name="page.taskRounds">Rounds</string>
+  <string name="page.taskIntents">Intents</string>
+  <string name="page.taskConcurrency">Concurrency</string>
+  <string name="page.taskAuto">auto</string>
+  <string name="page.taskMoreOptions">More options</string>
   <string name="page.taskCreate">Start</string>
   <string name="page.taskPause">Pause</string>
   <string name="page.taskResume">Resume</string>

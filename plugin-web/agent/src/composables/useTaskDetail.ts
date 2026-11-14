@@ -54,6 +54,11 @@ export function useTaskDetail(options: {
   const newTaskTargets = ref('');
   const newTaskCoverage = ref('');
   const newTaskModel = ref('');
+  // The engine accepts these too; the form only showed the first four, so a
+  // task always ran on defaults nobody could see.
+  const newTaskRounds = ref('');
+  const newTaskIntents = ref('');
+  const newTaskConcurrency = ref('');
   const hintDraft = ref('');
   const taskDetailTab = ref<TaskDetailTab>('overview');
 
@@ -136,10 +141,14 @@ export function useTaskDetail(options: {
         objective,
         targets,
         ...(newTaskCoverage.value ? { coverage: Number(newTaskCoverage.value) } : {}),
+        ...(newTaskRounds.value ? { rounds: Number(newTaskRounds.value) } : {}),
+        ...(newTaskIntents.value ? { intents: Number(newTaskIntents.value) } : {}),
+        ...(newTaskConcurrency.value ? { concurrency: Number(newTaskConcurrency.value) } : {}),
         ...(newTaskModel.value ? { model: newTaskModel.value } : {}),
         language: locale.value.startsWith('zh') ? 'zh' : 'en',
       });
-      newTaskObjective.value = ''; newTaskTargets.value = ''; newTaskCoverage.value = ''; newTaskModel.value = '';
+      newTaskObjective.value = ''; newTaskTargets.value = ''; newTaskCoverage.value = '';
+      newTaskRounds.value = ''; newTaskIntents.value = ''; newTaskConcurrency.value = ''; newTaskModel.value = '';
       taskShowNew.value = false;
       await pollAssessments().catch(() => {});
       if (created?.id) await openTask(created.id);
@@ -171,6 +180,9 @@ export function useTaskDetail(options: {
     newTaskObjective,
     newTaskTargets,
     newTaskCoverage,
+    newTaskRounds,
+    newTaskIntents,
+    newTaskConcurrency,
     newTaskModel,
     hintDraft,
     taskDetailTab,

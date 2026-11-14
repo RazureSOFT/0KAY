@@ -218,6 +218,11 @@
   <string name="page.taskObjective">目標</string>
   <string name="page.taskTargets">対象アセット（1 行に 1 つ）</string>
   <string name="page.taskCoverageGate">カバレッジゲート（%）</string>
+  <string name="page.taskRounds">ラウンド上限</string>
+  <string name="page.taskIntents">インテント上限</string>
+  <string name="page.taskConcurrency">並列数</string>
+  <string name="page.taskAuto">自動</string>
+  <string name="page.taskMoreOptions">詳細オプション</string>
   <string name="page.taskCreate">開始</string>
   <string name="page.taskPause">一時停止</string>
   <string name="page.taskResume">再開</string>
