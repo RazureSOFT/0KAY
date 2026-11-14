@@ -13,20 +13,33 @@ export interface Attachment {
   size: number;
 }
 
+/**
+ * The composer's state comes from the caller.
+ *
+ * Those refs are read by top-level statements near the very top of the page
+ * (the slash menu watches `draft`, the autosize watcher follows it). If this
+ * composable created them, they would be declared after those statements and
+ * every read would be a temporal-dead-zone error at module evaluation — which
+ * is exactly the crash this shipped with. Declaring state in the page and
+ * passing it in keeps the ordering obvious; only behaviour lives here.
+ */
+export interface ComposerState {
+  draft: Ref<string>;
+  attachments: Ref<Attachment[]>;
+  uploading: Ref<boolean>;
+  attachError: Ref<string>;
+  fileInput: Ref<HTMLInputElement | null>;
+  queuedMessages: Ref<string[]>;
+  composerArea: Ref<HTMLTextAreaElement | null>;
+}
+
 export function useComposer(options: {
   busy: Ref<boolean>;
   archived: ComputedRef<boolean>;
   friendlyError: (message: string) => string;
-}) {
+} & ComposerState) {
   const { busy, archived, friendlyError } = options;
-
-  const draft = ref('');
-  const attachments = ref<Attachment[]>([]);
-  const uploading = ref(false);
-  const attachError = ref('');
-  const fileInput = ref<HTMLInputElement | null>(null);
-  const queuedMessages = ref<string[]>([]);
-  const composerArea = ref<HTMLTextAreaElement | null>(null);
+  const { draft, attachments, uploading, attachError, fileInput, queuedMessages, composerArea } = options;
 
   function pickFiles() { fileInput.value?.click(); }
 
@@ -115,13 +128,6 @@ export function useComposer(options: {
   }
 
   return {
-    draft,
-    attachments,
-    uploading,
-    attachError,
-    fileInput,
-    queuedMessages,
-    composerArea,
     pickFiles,
     removeAttachment,
     addFiles,

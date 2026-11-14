@@ -22,6 +22,20 @@ const { confirm } = useConfirm()
 
 const store = useAgentsStore()
 const selectedId = ref(localStorage.getItem('0kay.agent.selected') || '')
+
+// The composer's state is declared here, at the top, rather than inside
+// `useComposer`. Top-level statements in this file read it — the slash menu
+// watches `draft`, the autosize watcher follows it — and a `const` declared
+// further down would make every one of those reads a TDZ error at module
+// evaluation. Only the behaviour lives in the composable.
+const draft = ref('')
+const attachments = ref<Array<{ name: string; url: string; mime: string; size: number }>>([])
+const uploading = ref(false)
+const attachError = ref('')
+const fileInput = ref<HTMLInputElement | null>(null)
+const queuedMessages = ref<string[]>([])
+const composerArea = ref<HTMLTextAreaElement | null>(null)
+
 const dockOpen = ref((() => {
   try { const saved = localStorage.getItem('0kay.agent.dock.open'); if (saved === '1' || saved === '0') return saved === '1' } catch { }
   return (window.innerWidth || 1280) > 800
@@ -100,8 +114,12 @@ async function fetchSkills() {
     else skillsLoaded = false
   } catch { skillsLoaded = false }
 }
-const slashCommands = [{ name: 'compact', description: t('agent.page.slashCompact') }]
+// Reads `draft`, which is declared near the top of the file.
 const slashQuery = computed(() => { const match = /^\/([^\s]*)$/.exec(draft.value); return match ? match[1].toLowerCase() : null })
+watch(slashQuery, query => { slashSuppressed.value = false; if (query !== null) void fetchSkills() })
+
+const slashCommands = [{ name: 'compact', description: t('agent.page.slashCompact') }]
+
 const slashItems = computed(() => {
   const query = slashQuery.value
   if (query === null) return [] as Array<{ name: string; description: string }>
@@ -120,7 +138,6 @@ const slashSuppressed = ref(false)
 const slashOpen = computed(() => !slashSuppressed.value && slashItems.value.length > 0)
 const slashIndex = ref(0)
 watch(slashItems, () => { slashIndex.value = 0 })
-watch(slashQuery, query => { slashSuppressed.value = false; if (query !== null) void fetchSkills() })
 const composerInput = ref<HTMLElement | null>(null)
 const slashMenuStyle = ref<Record<string, string>>({})
 function positionSlashMenu() {
@@ -1020,7 +1037,9 @@ const {
   selectedId,
   locale,
   t: (key, named) => t(key, named as Record<string, unknown>),
-  pollAssessments,
+  // Wrapped: the impl is declared further down, and passing the identifier
+  // itself would read its binding during setup (TDZ).
+  pollAssessments: () => pollAssessments(),
 })
 
 const taskLayout = computed(() => computeReconLayout(reconNodes.value, reconEdges.value, expandedDigests.value))
@@ -1272,13 +1291,14 @@ const activeSub = computed<TaskRow | null>(() => subStack.value[subStack.value.l
 const transcript = ref<HTMLElement | null>(null)
 const session = computed(() => store.sessions.find(item => item.session_id === selectedId.value))
 const {
-  draft, attachments, uploading, attachError, fileInput, queuedMessages, composerArea,
   pickFiles, removeAttachment, addFiles, onFilesPicked, onPaste,
   dragDepth, dropping, onDragEnter, onDragOver, onDragLeave, onDropFiles, dropQueued, autosizeComposer,
 } = useComposer({
+  // The state declared at the top of the file; the composable only owns behaviour.
+  draft, attachments, uploading, attachError, fileInput, queuedMessages, composerArea,
   busy,
   archived: computed(() => session.value?.state === 'archived'),
-  friendlyError,
+  friendlyError: (message) => friendlyError(message),
 })
 
 // These two belong to the composer, so they run here rather than at the top of
@@ -1302,7 +1322,7 @@ const {
   tasks: computed(() => store.tasks),
   workspaces,
   selectedId,
-  notifyDone,
+  notifyDone: (text) => notifyDone(text),
   t: (key, named) => t(key, named as Record<string, unknown>),
 })
 const workspacePick = ref(false)
