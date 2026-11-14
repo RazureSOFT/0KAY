@@ -66,11 +66,15 @@ export function precompileI18nMessages() {
             out[key] = walk(value as Record<string, unknown>, full)
             continue
           }
-          // No braces, nothing to interpolate: the runtime returns the text as-is.
-          if (typeof value !== 'string' || !value.includes('{')) {
+          // Non-strings pass through; there is nothing to compile.
+          if (typeof value !== 'string') {
             out[key] = value
             continue
           }
+          // EVERY string is compiled, braces or not. The runtime-only build has no
+          // message compiler at all, so a plain string is not usable as a message:
+          // intlify warns "message format compilation is not supported" and returns
+          // the key. Compiling a literal is cheap and produces a constant function.
           try {
             out[key] = { __code: baseCompile(value).code, __text: value }
           } catch (error) {
