@@ -338,6 +338,18 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .retest-evidence{margin:2px 0;padding:4px 6px;border-radius:6px;background:var(--md-surface-container-lowest);font-size:10px;white-space:pre-wrap;word-break:break-word}
 .retest-error{color:var(--md-error);font-size:11px;margin:2px 0}
 .retest-note{font-size:10px;color:var(--md-on-surface-variant);line-height:1.5;margin-top:8px}
+.tool-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.tool-step{border:1px solid var(--md-outline-variant);border-radius:8px;padding:6px 8px;background:var(--md-surface-container-lowest);display:flex;flex-direction:column;gap:3px;font-size:11px}
+.tool-step.fail{border-color:var(--md-error)}
+.tool-step.plain{flex-direction:row;align-items:baseline;gap:6px;border:0;background:none;padding:2px 0}
+.tool-step-head{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.tool-step-name{font-weight:700;color:var(--md-primary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+.tool-step-status{font-size:10px;color:var(--md-on-surface-variant)}
+.tool-step.fail .tool-step-status{color:var(--md-error)}
+.tool-step-cmd{margin:0;padding:4px 6px;border-radius:5px;background:var(--md-surface-container-high,var(--md-surface-container-low));font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;white-space:pre-wrap;word-break:break-word;max-height:88px;overflow:auto}
+.tool-step-out{margin:0;padding:4px 6px;border-radius:5px;background:none;color:var(--md-on-surface-variant);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;white-space:pre-wrap;word-break:break-word;max-height:110px;overflow:auto}
+.tool-step-text{font-size:11px;line-height:1.5}
+.tool-step-text i{display:block;font-style:normal;color:var(--md-on-surface-variant);margin-top:1px}
 .session-view-head{display:flex;align-items:center;gap:8px;padding:6px 0 10px;border-bottom:1px solid var(--md-outline-variant);margin-bottom:10px}
 .session-back{border:1px solid var(--md-outline-variant);border-radius:999px;background:none;color:var(--md-on-surface);width:26px;height:26px;cursor:pointer;font-size:13px;line-height:1;font-family:inherit;flex:0 0 auto}
 .session-back:hover{border-color:var(--md-primary);color:var(--md-primary)}

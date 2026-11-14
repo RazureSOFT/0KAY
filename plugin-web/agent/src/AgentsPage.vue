@@ -1189,7 +1189,7 @@ watch(sidebarTab, (tab) => {
 // ---- 会话 tab: the grouped session tree with trace expansion ----------------
 interface OpenedSession {
   id: string
-  kind: 'main' | 'planner' | 'worker'
+  kind: 'main' | 'planner' | 'worker' | 'retest'
   round?: number
   refId?: string
   title?: string
@@ -1212,6 +1212,7 @@ const sessionTitle = computed(() => {
   if (!open) return ''
   if (open.kind === 'main') return '主 Agent · 编排'
   if (open.kind === 'planner') return `规划 Planner · 态势研判 #${open.round || 0}`
+  if (open.kind === 'retest') return `复测 · ${open.title || ''}`.trim()
   return `#${open.num ?? ''} ${open.title || ''}`.trim()
 })
 
@@ -1219,19 +1220,54 @@ function openSession(session: OpenedSession): void {
   openedSession.value = session
   taskTraceSteps.value = []
   if (session.kind === 'worker' && session.refId) void toggleSessionTrace({ id: session.id, refId: session.refId, kind: 'worker' })
+  // A retest lane's `refId` is the retest id; its history is keyed by finding, so
+  // find the finding first and then load that history.
+  if (session.kind === 'retest' && session.refId) void loadRetestHistoryForRetest(session.refId)
+}
+
+async function loadRetestHistoryForRetest(retestId: string): Promise<void> {
+  const rows = taskFindings.value
+  for (const finding of rows) {
+    if (!findingRetests.value[finding.id]) await loadRetests(finding.id)
+    const history = findingRetests.value[finding.id] || []
+    if (history.some((entry) => entry.id === retestId)) {
+      // Re-key the view onto the finding so the list above resolves.
+      if (openedSession.value?.kind === 'retest') {
+        openedSession.value = { ...openedSession.value, refId: finding.id }
+      }
+      return
+    }
+  }
 }
 
 function closeSession(): void {
   openedSession.value = null
   taskTraceSteps.value = []
 }
-const taskTraceSteps = ref<Array<{ action: string; detail: string; ok: boolean; at?: string }>>([])
+/**
+ * The worker's own record of what it ran.
+ *
+ * `tool` is the field that makes this look like an agent transcript rather than a
+ * summary: a call with a tool name is drawn as a tool card (name, command body,
+ * result), and `step` means the worker reported a sentence rather than a call.
+ * Older traces have no `tool`, which lands them on the sentence rendering.
+ */
+const taskTraceSteps = ref<Array<{ tool?: string; action: string; detail: string; ok: boolean; at?: string }>>([])
 const taskTraceLoading = ref(false)
 const taskWorkerRows = computed(() => {
   const workers = (taskDetail.value?.live?.sessions || []).filter((s) => s.kind === 'worker')
   return workers.map((entry, index) => ({ ...entry, num: index + 1 }))
 })
 const taskPlannerRows = computed(() => (taskDetail.value?.live?.sessions || []).filter((s) => s.kind === 'planner').slice().reverse())
+
+/**
+ * Retests are sessions of their own: each one ran against a different question,
+ * so it gets a lane next to the planners and workers instead of a line under a
+ * finding. Newest first, like the others.
+ */
+const taskRetestRows = computed(() =>
+  (taskDetail.value?.live?.sessions || []).filter((s) => s.kind === 'retest').slice().reverse(),
+)
 /**
  * The main-agent console: the operator's messages and the agent's own steps, in
  * order. This is the one lane where a person can talk back, so it is rendered as
@@ -2086,8 +2122,19 @@ async function manage(action: 'archive' | 'restore' | 'delete') {
   } catch (e: any) { error.value = e.message }
   finally {busy.value=false}
 }
-function choose(id: string) { rememberEditor();selectedId.value = id; localStorage.setItem('0kay.agent.selected', id) }
+function choose(id: string) {
+  rememberEditor()
+  selectedId.value = id
+  localStorage.setItem('0kay.agent.selected', id)
+  // An open task belongs to one session. Switching sessions without closing it
+  // left the task pane covering the new conversation, and the only way out was
+  // the back button inside the pane — the session list could not navigate.
+  if (taskSelectedId.value) closeTask()
+}
 async function create() {
+  // Same rule: a new conversation is a different session, so an open task from
+  // the previous one has to be left behind.
+  if (taskSelectedId.value) closeTask()
   busy.value = true; error.value = ''
   try {
     // A click on 新对话 reuses the newest untouched empty session instead of
@@ -2505,6 +2552,12 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
                     规划 Planner · 态势研判 #{{ entry.round }}
                   </button>
                 </div>
+                <div v-if="taskRetestRows.length" class="recon-sessgroup">
+                  <h5>◍ 复测 Retest <b>{{ taskRetestRows.length }}</b></h5>
+                  <button v-for="entry in taskRetestRows" :key="entry.id" type="button" class="recon-sessitem" @click="openSession({ id: entry.id, kind: 'retest', refId: entry.refId, title: entry.title })">
+                    <span class="recon-sesstext">{{ entry.title }}</span>
+                  </button>
+                </div>
                 <div class="recon-sessgroup">
                   <h5>((•)) Workers <b>{{ taskWorkerRows.length }}</b></h5>
                   <button v-for="entry in taskWorkerRows" :key="entry.id" type="button" class="recon-sessitem" @click="openSession({ id: entry.id, kind: 'worker', refId: entry.refId, title: entry.title, num: entry.num, status: entry.status })">
@@ -2541,6 +2594,20 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
                   </form>
                 </div>
 
+                <div v-else-if="openedSession.kind === 'retest'" class="session-view-body">
+                  <p class="session-view-intent">{{ openedSession.title }}</p>
+                  <p v-if="!openedSession.refId" class="tree-msg">{{ t('agent.page.taskRetestNoRecord') }}</p>
+                  <ul v-else class="retest-history">
+                    <li v-for="retest in (findingRetests[openedSession.refId] || [])" :key="retest.id" :class="'is-' + (retest.verdict || retest.status)">
+                      <span class="retest-verdict">{{ retest.verdict ? t('agent.page.taskRetestVerdict_' + retest.verdict) : t('agent.page.taskRetestStatus_' + retest.status) }}</span>
+                      <span class="retest-when">{{ retest.createdAt.slice(0, 16).replace('T', ' ') }}</span>
+                      <p v-if="retest.summary" class="retest-summary">{{ retest.summary }}</p>
+                      <pre v-if="retest.evidence" class="retest-evidence">{{ retest.evidence }}</pre>
+                      <p v-if="retest.error" class="retest-error">{{ retest.error }}</p>
+                    </li>
+                  </ul>
+                </div>
+
                 <div v-else-if="openedSession.kind === 'planner'" class="session-view-body">
                   <ul class="recon-items">
                     <li v-for="(row, i) in taskBoard.filter((item) => item.kind === 'planner' || item.kind === 'fact' || item.kind === 'finding').slice(0, 40)" :key="i" class="recon-item">
@@ -2553,12 +2620,26 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
                   <p v-if="openedSession.title" class="session-view-intent">{{ openedSession.title }}</p>
                   <p v-if="taskTraceLoading" class="tree-msg">…</p>
                   <p v-else-if="!taskTraceSteps.length" class="tree-msg">{{ t('agent.page.taskNoTrace') }}</p>
-                  <ol v-else class="recon-tracesteps">
-                    <li v-for="(step, i) in taskTraceSteps" :key="i" :class="{ fail: !step.ok }">
-                      <span class="recon-trace-action">{{ step.action }}</span>
-                      <span class="recon-trace-detail">{{ step.detail }}</span>
+                  <!-- Tool calls, the way an agent transcript shows them: the tool
+                       name, the command it ran, the result it got back. A step the
+                       worker reported without naming a tool stays a sentence,
+                       because drawing it as a call would invent structure. -->
+                  <ul v-else class="tool-steps">
+                    <li v-for="(step, i) in taskTraceSteps" :key="i" class="tool-step" :class="{ fail: !step.ok, plain: !step.tool || step.tool === 'step' }">
+                      <template v-if="step.tool && step.tool !== 'step'">
+                        <div class="tool-step-head">
+                          <span class="tool-step-name">{{ step.tool }}</span>
+                          <span class="tool-step-status">{{ step.ok ? '✓' : '✕' }}</span>
+                        </div>
+                        <pre class="tool-step-cmd">{{ step.action }}</pre>
+                        <pre v-if="step.detail" class="tool-step-out">{{ step.detail }}</pre>
+                      </template>
+                      <template v-else>
+                        <span class="tool-step-status">{{ step.ok ? '✓' : '✕' }}</span>
+                        <span class="tool-step-text">{{ step.action }}<i v-if="step.detail">{{ step.detail }}</i></span>
+                      </template>
                     </li>
-                  </ol>
+                  </ul>
                 </div>
               </template>
             </template>
