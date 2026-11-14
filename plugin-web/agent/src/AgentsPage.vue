@@ -7,6 +7,7 @@ import DirectoryDialog from './DirectoryDialog.vue'
 import FileViewer from './FileViewer.vue'
 import ModelThinkingPicker from './ModelThinkingPicker.vue'
 import GitPanel from './GitPanel.vue'
+import { useReconCanvas } from './composables/useReconCanvas'
 import ThinkChain from './ThinkChain.vue'
 import IntentStrip from './IntentStrip.vue'
 import { agentTree, focusChain } from './agentTree'
@@ -1068,42 +1069,12 @@ function computeReconLayout(nodes: ReconNode[], edges: ReconEdge[], expanded: Se
   }
 }
 // ---- pannable canvas: drag to pan, wheel to zoom -------------------------
-const reconZoom = ref(1)
-const reconPan = ref({ x: 0, y: 0 })
-const expandedDigests = ref(new Set<string>())
-let reconDrag: { x: number; y: number; panX: number; panY: number; moved: boolean } | null = null
-
-function onReconCanvasDown(event: PointerEvent) {
-  if (event.button !== 0) return
-  const target = event.currentTarget as HTMLElement
-  reconDrag = { x: event.clientX, y: event.clientY, panX: reconPan.value.x, panY: reconPan.value.y, moved: false }
-  target.setPointerCapture(event.pointerId)
-}
-function onReconCanvasMove(event: PointerEvent) {
-  if (!reconDrag) return
-  const dx = event.clientX - reconDrag.x
-  const dy = event.clientY - reconDrag.y
-  if (Math.abs(dx) + Math.abs(dy) > 4) reconDrag.moved = true
-  reconPan.value = { x: reconDrag.panX + dx, y: reconDrag.panY + dy }
-}
-function onReconCanvasUp(event: PointerEvent) {
-  const target = event.currentTarget as HTMLElement
-  if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId)
-  reconDrag = null
-}
-function onReconCanvasWheel(event: WheelEvent) {
-  event.preventDefault()
-  const factor = event.deltaY < 0 ? 1.15 : 1 / 1.15
-  reconZoom.value = Math.min(3, Math.max(0.25, reconZoom.value * factor))
-}
-function reconFit() {
-  const canvas = document.querySelector('.recon-canvas') as HTMLElement | null
-  const layout = taskLayout.value
-  if (!canvas || !layout) return
-  const scale = Math.min(canvas.clientWidth / layout.width, canvas.clientHeight / layout.height, 1)
-  reconZoom.value = Math.max(0.25, Math.round(scale * 100) / 100)
-  reconPan.value = { x: 0, y: 0 }
-}
+// Logic lives in a composable; the markup stays here so the scoped styles keep
+// applying to it.
+const {
+  reconZoom, reconPan, expandedDigests,
+  onReconCanvasDown, onReconCanvasMove, onReconCanvasUp, onReconCanvasWheel, reconFit,
+} = useReconCanvas(() => taskLayout.value)
 
 // ---- the task tab: the task list, fed by the assessments tool -----------
 interface ReconTaskRow {
@@ -1839,14 +1810,21 @@ function notifyDone(title: string) {
  * The plan a planning run submitted, if this session has one. It stays on the
  * task row, so reopening the session still offers the Build button.
  */
-const currentPlan = computed<{ title: string; markdown: string; steps: number; demo: string } | null>(() => {
+const currentPlan = computed<{ title: string; markdown: string; steps: number; demo: string; diagram: string; openQuestions: string[] } | null>(() => {
   const rows = store.tasks.filter(item => item.session_id === selectedId.value && item.plan)
   if (!rows.length) return null
   const raw = rows[rows.length - 1].plan || ''
   try {
     const parsed = JSON.parse(raw)
     if (!parsed?.markdown) return null
-    return { title: parsed.title || 'Plan', markdown: String(parsed.markdown), steps: Number(parsed.steps) || 0, demo: parsed.demo_html || '' }
+    return {
+      title: parsed.title || 'Plan',
+      markdown: String(parsed.markdown),
+      steps: Number(parsed.steps) || 0,
+      demo: parsed.demo_html || '',
+      diagram: typeof parsed.diagram === 'string' ? parsed.diagram : '',
+      openQuestions: Array.isArray(parsed.open_questions) ? parsed.open_questions.map(String) : [],
+    }
   } catch { return null }
 })
 const planOpen = ref(true)
@@ -3003,6 +2981,13 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             </li>
           </ul>
           <MarkdownContent :content="currentPlan.markdown" />
+          <figure v-if="currentPlan.diagram" class="plan-diagram">
+            <figcaption>{{ t(agent.page.planDiagram) }}</figcaption>
+            <pre>{{ currentPlan.diagram }}</pre>
+          </figure>
+          <ul v-if="currentPlan.openQuestions.length" class="plan-questions">
+            <li v-for="(question, index) in currentPlan.openQuestions" :key="index">{{ question }}</li>
+          </ul>
           <iframe v-if="currentPlan.demo" class="plan-demo" sandbox="" :srcdoc="currentPlan.demo" :title="currentPlan.title" />
         </div>
       </section>

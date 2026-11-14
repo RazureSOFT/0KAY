@@ -280,6 +280,7 @@
   <string name="page.restore">復元</string>
   <string name="page.restoreToChat">セッションを復元すると会話を続けられます</string>
   <string name="page.run">実行</string>
+  <string name="page.planDiagram">フロー</string>
   <string name="page.planReady">計画の準備ができました</string>
   <string name="page.planSteps">{n} ステップ</string>
   <string name="page.planBuild">実行する</string>
