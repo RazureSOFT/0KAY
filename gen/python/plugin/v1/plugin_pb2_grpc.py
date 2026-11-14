@@ -86,7 +86,7 @@ class MessageServiceStub(object):
     routes an outbound send to the adapter's owning plugin here — the plugin that
     claimed the adapter via CoreService.PublishInboundMessage or advertised it
     with ListAdapters.
-
+    
     Naming note: `SendMessageRequest` / `ListAdaptersRequest` also exist in
     `core.v1`, because the same verb is seen from two directions. The package
     says which side you are on — `plugin.v1` is the adapter receiving a delivery,
@@ -122,7 +122,7 @@ class MessageServiceServicer(object):
     routes an outbound send to the adapter's owning plugin here — the plugin that
     claimed the adapter via CoreService.PublishInboundMessage or advertised it
     with ListAdapters.
-
+    
     Naming note: `SendMessageRequest` / `ListAdaptersRequest` also exist in
     `core.v1`, because the same verb is seen from two directions. The package
     says which side you are on — `plugin.v1` is the adapter receiving a delivery,
@@ -152,7 +152,7 @@ class MessageServiceServicer(object):
         """DecideInbound arbitrates one inbound message before the default assistant
         processes it. Core calls this only on plugins that declared
         permissions.messages.gate, and only for messages their read scope covers.
-
+        
         Optional in practice: a plugin without `gate` is never called, and one that
         declares it but leaves this unimplemented answers Unimplemented, which Core
         treats as "abstain".
@@ -192,7 +192,7 @@ class MessageService(object):
     routes an outbound send to the adapter's owning plugin here — the plugin that
     claimed the adapter via CoreService.PublishInboundMessage or advertised it
     with ListAdapters.
-
+    
     Naming note: `SendMessageRequest` / `ListAdaptersRequest` also exist in
     `core.v1`, because the same verb is seen from two directions. The package
     says which side you are on — `plugin.v1` is the adapter receiving a delivery,

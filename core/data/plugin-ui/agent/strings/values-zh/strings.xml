@@ -280,6 +280,7 @@
   <string name="page.restore">恢复</string>
   <string name="page.restoreToChat">恢复会话后可以继续对话</string>
   <string name="page.run">运行</string>
+  <string name="page.planDiagram">流程</string>
   <string name="page.planReady">计划已就绪</string>
   <string name="page.planSteps">{n} 步</string>
   <string name="page.planBuild">开始执行</string>

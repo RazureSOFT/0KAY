@@ -44,6 +44,15 @@ func (g *Gateway) ttsTarget() (endpoint, token string) {
 	if value := strings.TrimSpace(os.Getenv("TTS_ENDPOINT")); value != "" {
 		return value, strings.TrimSpace(os.Getenv("TTS_SERVICE_TOKEN"))
 	}
+	// A plugin that declares the tts capability and an HTTP surface is the
+	// nearest answer: it is running, it said what it can do, and its address is
+	// live. A plugin without an HTTP surface is not a match, so this falls
+	// through to the provider/settings chain exactly as before.
+	if g.registry != nil {
+		if plugin, ok := g.registry.FirstWithCapability("tts"); ok && plugin.Info != nil {
+			return strings.TrimRight(strings.TrimSpace(plugin.Info.HttpEndpoint), "/"), g.registry.Token(plugin.PluginID)
+		}
+	}
 	// A provider registered with kind=tts is the first-class answer: base_url is
 	// the synthesis endpoint, api_key is its bearer token.
 	if g.providerStore != nil {

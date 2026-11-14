@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file plugin/v1/plugin.proto.
  */
 export const file_plugin_v1_plugin: GenFile = /*@__PURE__*/
-  fileDesc("ChZwbHVnaW4vdjEvcGx1Z2luLnByb3RvEglwbHVnaW4udjEi1AEKClBsdWdpbkluZm8SDAoEbmFtZRgBIAEoCRIPCgd2ZXJzaW9uGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEg4KBmF1dGhvchgEIAEoCRIqCgtwbHVnaW5fdHlwZRgFIAEoDjIVLnBsdWdpbi52MS5QbHVnaW5UeXBlEjAKC3Blcm1pc3Npb25zGAYgASgLMhsucGx1Z2luLnYxLlBsdWdpblBlcm1pc3Npb24SJAoFdG9vbHMYByADKAsyFS5wbHVnaW4udjEuUGx1Z2luVG9vbCJrCgpQbHVnaW5Ub29sEgwKBG5hbWUYASABKAkSEwoLZGVzY3JpcHRpb24YAiABKAkSFwoPcGFyYW1ldGVyc19qc29uGAMgASgJEhEKCWRhbmdlcm91cxgEIAEoCBIOCgZzY29wZXMYBSADKAkiWQoPQ2FsbFRvb2xSZXF1ZXN0EhEKCWNhbGxlcl9pZBgBIAEoCRIMCgR0b29sGAIgASgJEhEKCWFyZ3NfanNvbhgDIAEoCRISCgpzZXNzaW9uX2lkGAQgASgJIkIKEENhbGxUb29sUmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCBIOCgZyZXN1bHQYAiABKAkSDQoFZXJyb3IYAyABKAkihgIKDkluYm91bmRNZXNzYWdlEhIKCmFkYXB0ZXJfaWQYASABKAkSEAoIcGxhdGZvcm0YAiABKAkSFAoMY29udmVyc2F0aW9uGAMgASgJEgwKBGtpbmQYBCABKAkSDwoHcGVlcl9pZBgFIAEoCRIRCglwZWVyX25hbWUYBiABKAkSEQoJc2VuZGVyX2lkGAcgASgJEhMKC3NlbmRlcl9uYW1lGAggASgJEgwKBHRleHQYCSABKAkSDQoFbWVkaWEYCiADKAkSCgoCYXQYCyABKAkSEgoKbWVzc2FnZV9pZBgMIAEoCRIPCgdpc193YWtlGA0gASgIEhAKCHJhd19qc29uGA4gASgJIlUKFERlY2lkZUluYm91bmRSZXF1ZXN0EhEKCWNhbGxlcl9pZBgBIAEoCRIqCgdtZXNzYWdlGAIgASgLMhkucGx1Z2luLnYxLkluYm91bmRNZXNzYWdlIjcKFURlY2lkZUluYm91bmRSZXNwb25zZRIOCgZhY3Rpb24YASABKAkSDgoGcmVhc29uGAIgASgJIm4KElNlbmRNZXNzYWdlUmVxdWVzdBIRCgljYWxsZXJfaWQYASABKAkSEgoKYWRhcHRlcl9pZBgCIAEoCRIUCgxjb252ZXJzYXRpb24YAyABKAkSDAoEdGV4dBgEIAEoCRINCgVtZWRpYRgFIAMoCSJJChNTZW5kTWVzc2FnZVJlc3BvbnNlEg8KB3N1Y2Nlc3MYASABKAgSEgoKbWVzc2FnZV9pZBgCIAEoCRINCgVlcnJvchgDIAEoCSIoChNMaXN0QWRhcHRlcnNSZXF1ZXN0EhEKCWNhbGxlcl9pZBgBIAEoCSJGChRMaXN0QWRhcHRlcnNSZXNwb25zZRIuCghhZGFwdGVycxgBIAMoCzIcLnBsdWdpbi52MS5BZGFwdGVyRGVzY3JpcHRvciJ+ChFBZGFwdGVyRGVzY3JpcHRvchISCgphZGFwdGVyX2lkGAEgASgJEhAKCHBsYXRmb3JtGAIgASgJEgwKBG5hbWUYAyABKAkSNQoNY29udmVyc2F0aW9ucxgEIAMoCzIeLnBsdWdpbi52MS5BZGFwdGVyQ29udmVyc2F0aW9uIkcKE0FkYXB0ZXJDb252ZXJzYXRpb24SFAoMY29udmVyc2F0aW9uGAEgASgJEgwKBGtpbmQYAiABKAkSDAoEbmFtZRgDIAEoCSJuChJBZGFwdGVyU2VuZFJlcXVlc3QSEQoJY2FsbGVyX2lkGAEgASgJEhIKCmFkYXB0ZXJfaWQYAiABKAkSFAoMY29udmVyc2F0aW9uGAMgASgJEgwKBHRleHQYBCABKAkSDQoFbWVkaWEYBSADKAkiSQoTQWRhcHRlclNlbmRSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEhIKCm1lc3NhZ2VfaWQYAiABKAkSDQoFZXJyb3IYAyABKAkiegoQUGx1Z2luUGVybWlzc2lvbhIUCgxhcGlfcmVxdWlyZXMYASADKAkSEwoLYXBpX2V4cG9zZXMYAiADKAkSDgoGZWdyZXNzGAMgAygJEisKCG1lc3NhZ2VzGAQgASgLMhkucGx1Z2luLnYxLlBsdWdpbk1lc3NhZ2VzIqwBCg5QbHVnaW5NZXNzYWdlcxIRCglyZWFkX21vZGUYASABKAkSFQoNcmVhZF9hZGFwdGVycxgCIAMoCRIaChJyZWFkX2NvbnZlcnNhdGlvbnMYAyADKAkSFQoNc2VuZF9hZGFwdGVycxgEIAMoCRIYChBwdWJsaXNoX2FkYXB0ZXJzGAUgAygJEgwKBGdhdGUYBiABKAgSFQoNZ2F0ZV9vbl9lcnJvchgHIAEoCSJvCg1TZXR0aW5nc0ZpZWxkEgsKA2tleRgBIAEoCRIMCgR0eXBlGAIgASgJEg0KBWxhYmVsGAMgASgJEhUKDWRlZmF1bHRfdmFsdWUYBCABKAkSDwoHb3B0aW9ucxgFIAMoCRIMCgRoZWxwGAYgASgJIogBCg9TZXR0aW5nc1NlY3Rpb24SCgoCaWQYASABKAkSDQoFbGFiZWwYAiABKAkSDAoEaWNvbhgDIAEoCRINCgVvcmRlchgEIAEoBRITCgtkZXNjcmlwdGlvbhgFIAEoCRIoCgZmaWVsZHMYBiADKAsyGC5wbHVnaW4udjEuU2V0dGluZ3NGaWVsZCqlAQoKUGx1Z2luVHlwZRIbChdQTFVHSU5fVFlQRV9VTlNQRUNJRklFRBAAEhcKE1BMVUdJTl9UWVBFX0FEQVBURVIQARIXChNQTFVHSU5fVFlQRV9QRVJTT05BEAISFAoQUExVR0lOX1RZUEVfVE9PTBADEhcKE1BMVUdJTl9UWVBFX1NFUlZJQ0UQBBIZChVQTFVHSU5fVFlQRV9NRVNTQUdJTkcQBSqdAQoJVGFza1N0YXRlEhoKFlRBU0tfU1RBVEVfVU5TUEVDSUZJRUQQABIWChJUQVNLX1NUQVRFX1BFTkRJTkcQARIWChJUQVNLX1NUQVRFX1JVTk5JTkcQAhITCg9UQVNLX1NUQVRFX0RPTkUQAxIVChFUQVNLX1NUQVRFX0ZBSUxFRBAEEhgKFFRBU0tfU1RBVEVfQ0FOQ0VMTEVEEAUyUgoLVG9vbFNlcnZpY2USQwoIQ2FsbFRvb2wSGi5wbHVnaW4udjEuQ2FsbFRvb2xSZXF1ZXN0GhsucGx1Z2luLnYxLkNhbGxUb29sUmVzcG9uc2UygwIKDk1lc3NhZ2VTZXJ2aWNlEkwKC1NlbmRNZXNzYWdlEh0ucGx1Z2luLnYxLlNlbmRNZXNzYWdlUmVxdWVzdBoeLnBsdWdpbi52MS5TZW5kTWVzc2FnZVJlc3BvbnNlEk8KDExpc3RBZGFwdGVycxIeLnBsdWdpbi52MS5MaXN0QWRhcHRlcnNSZXF1ZXN0Gh8ucGx1Z2luLnYxLkxpc3RBZGFwdGVyc1Jlc3BvbnNlElIKDURlY2lkZUluYm91bmQSHy5wbHVnaW4udjEuRGVjaWRlSW5ib3VuZFJlcXVlc3QaIC5wbHVnaW4udjEuRGVjaWRlSW5ib3VuZFJlc3BvbnNlQlYKFWFpLnplcm8ua2F5LnBsdWdpbi52MVABWhswa2F5L2dlbi9wbHVnaW4vdjE7cGx1Z2ludjGiAghaS1BsdWdpbqoCElplcm8uS2F5LlBsdWdpbi5WMWIGcHJvdG8z");
+  fileDesc("ChZwbHVnaW4vdjEvcGx1Z2luLnByb3RvEglwbHVnaW4udjEiqAIKClBsdWdpbkluZm8SDAoEbmFtZRgBIAEoCRIPCgd2ZXJzaW9uGAIgASgJEhMKC2Rlc2NyaXB0aW9uGAMgASgJEg4KBmF1dGhvchgEIAEoCRIqCgtwbHVnaW5fdHlwZRgFIAEoDjIVLnBsdWdpbi52MS5QbHVnaW5UeXBlEjAKC3Blcm1pc3Npb25zGAYgASgLMhsucGx1Z2luLnYxLlBsdWdpblBlcm1pc3Npb24SJAoFdG9vbHMYByADKAsyFS5wbHVnaW4udjEuUGx1Z2luVG9vbBITCgthcGlfdmVyc2lvbhgIIAEoCRIVCg1odHRwX2VuZHBvaW50GAkgASgJEiYKBmNoZWNrcxgKIAMoCzIWLnBsdWdpbi52MS5QbHVnaW5DaGVjayI1CgtQbHVnaW5DaGVjaxIKCgJpZBgBIAEoCRIKCgJvaxgCIAEoCBIOCgZkZXRhaWwYAyABKAkiawoKUGx1Z2luVG9vbBIMCgRuYW1lGAEgASgJEhMKC2Rlc2NyaXB0aW9uGAIgASgJEhcKD3BhcmFtZXRlcnNfanNvbhgDIAEoCRIRCglkYW5nZXJvdXMYBCABKAgSDgoGc2NvcGVzGAUgAygJIlkKD0NhbGxUb29sUmVxdWVzdBIRCgljYWxsZXJfaWQYASABKAkSDAoEdG9vbBgCIAEoCRIRCglhcmdzX2pzb24YAyABKAkSEgoKc2Vzc2lvbl9pZBgEIAEoCSJCChBDYWxsVG9vbFJlc3BvbnNlEg8KB3N1Y2Nlc3MYASABKAgSDgoGcmVzdWx0GAIgASgJEg0KBWVycm9yGAMgASgJIoYCCg5JbmJvdW5kTWVzc2FnZRISCgphZGFwdGVyX2lkGAEgASgJEhAKCHBsYXRmb3JtGAIgASgJEhQKDGNvbnZlcnNhdGlvbhgDIAEoCRIMCgRraW5kGAQgASgJEg8KB3BlZXJfaWQYBSABKAkSEQoJcGVlcl9uYW1lGAYgASgJEhEKCXNlbmRlcl9pZBgHIAEoCRITCgtzZW5kZXJfbmFtZRgIIAEoCRIMCgR0ZXh0GAkgASgJEg0KBW1lZGlhGAogAygJEgoKAmF0GAsgASgJEhIKCm1lc3NhZ2VfaWQYDCABKAkSDwoHaXNfd2FrZRgNIAEoCBIQCghyYXdfanNvbhgOIAEoCSJVChREZWNpZGVJbmJvdW5kUmVxdWVzdBIRCgljYWxsZXJfaWQYASABKAkSKgoHbWVzc2FnZRgCIAEoCzIZLnBsdWdpbi52MS5JbmJvdW5kTWVzc2FnZSI3ChVEZWNpZGVJbmJvdW5kUmVzcG9uc2USDgoGYWN0aW9uGAEgASgJEg4KBnJlYXNvbhgCIAEoCSJuChJTZW5kTWVzc2FnZVJlcXVlc3QSEQoJY2FsbGVyX2lkGAEgASgJEhIKCmFkYXB0ZXJfaWQYAiABKAkSFAoMY29udmVyc2F0aW9uGAMgASgJEgwKBHRleHQYBCABKAkSDQoFbWVkaWEYBSADKAkiSQoTU2VuZE1lc3NhZ2VSZXNwb25zZRIPCgdzdWNjZXNzGAEgASgIEhIKCm1lc3NhZ2VfaWQYAiABKAkSDQoFZXJyb3IYAyABKAkiKAoTTGlzdEFkYXB0ZXJzUmVxdWVzdBIRCgljYWxsZXJfaWQYASABKAkiRgoUTGlzdEFkYXB0ZXJzUmVzcG9uc2USLgoIYWRhcHRlcnMYASADKAsyHC5wbHVnaW4udjEuQWRhcHRlckRlc2NyaXB0b3IifgoRQWRhcHRlckRlc2NyaXB0b3ISEgoKYWRhcHRlcl9pZBgBIAEoCRIQCghwbGF0Zm9ybRgCIAEoCRIMCgRuYW1lGAMgASgJEjUKDWNvbnZlcnNhdGlvbnMYBCADKAsyHi5wbHVnaW4udjEuQWRhcHRlckNvbnZlcnNhdGlvbiJHChNBZGFwdGVyQ29udmVyc2F0aW9uEhQKDGNvbnZlcnNhdGlvbhgBIAEoCRIMCgRraW5kGAIgASgJEgwKBG5hbWUYAyABKAkibgoSQWRhcHRlclNlbmRSZXF1ZXN0EhEKCWNhbGxlcl9pZBgBIAEoCRISCgphZGFwdGVyX2lkGAIgASgJEhQKDGNvbnZlcnNhdGlvbhgDIAEoCRIMCgR0ZXh0GAQgASgJEg0KBW1lZGlhGAUgAygJIkkKE0FkYXB0ZXJTZW5kUmVzcG9uc2USDwoHc3VjY2VzcxgBIAEoCBISCgptZXNzYWdlX2lkGAIgASgJEg0KBWVycm9yGAMgASgJInoKEFBsdWdpblBlcm1pc3Npb24SFAoMYXBpX3JlcXVpcmVzGAEgAygJEhMKC2FwaV9leHBvc2VzGAIgAygJEg4KBmVncmVzcxgDIAMoCRIrCghtZXNzYWdlcxgEIAEoCzIZLnBsdWdpbi52MS5QbHVnaW5NZXNzYWdlcyKsAQoOUGx1Z2luTWVzc2FnZXMSEQoJcmVhZF9tb2RlGAEgASgJEhUKDXJlYWRfYWRhcHRlcnMYAiADKAkSGgoScmVhZF9jb252ZXJzYXRpb25zGAMgAygJEhUKDXNlbmRfYWRhcHRlcnMYBCADKAkSGAoQcHVibGlzaF9hZGFwdGVycxgFIAMoCRIMCgRnYXRlGAYgASgIEhUKDWdhdGVfb25fZXJyb3IYByABKAkibwoNU2V0dGluZ3NGaWVsZBILCgNrZXkYASABKAkSDAoEdHlwZRgCIAEoCRINCgVsYWJlbBgDIAEoCRIVCg1kZWZhdWx0X3ZhbHVlGAQgASgJEg8KB29wdGlvbnMYBSADKAkSDAoEaGVscBgGIAEoCSKIAQoPU2V0dGluZ3NTZWN0aW9uEgoKAmlkGAEgASgJEg0KBWxhYmVsGAIgASgJEgwKBGljb24YAyABKAkSDQoFb3JkZXIYBCABKAUSEwoLZGVzY3JpcHRpb24YBSABKAkSKAoGZmllbGRzGAYgAygLMhgucGx1Z2luLnYxLlNldHRpbmdzRmllbGQqpQEKClBsdWdpblR5cGUSGwoXUExVR0lOX1RZUEVfVU5TUEVDSUZJRUQQABIXChNQTFVHSU5fVFlQRV9BREFQVEVSEAESFwoTUExVR0lOX1RZUEVfUEVSU09OQRACEhQKEFBMVUdJTl9UWVBFX1RPT0wQAxIXChNQTFVHSU5fVFlQRV9TRVJWSUNFEAQSGQoVUExVR0lOX1RZUEVfTUVTU0FHSU5HEAUqnQEKCVRhc2tTdGF0ZRIaChZUQVNLX1NUQVRFX1VOU1BFQ0lGSUVEEAASFgoSVEFTS19TVEFURV9QRU5ESU5HEAESFgoSVEFTS19TVEFURV9SVU5OSU5HEAISEwoPVEFTS19TVEFURV9ET05FEAMSFQoRVEFTS19TVEFURV9GQUlMRUQQBBIYChRUQVNLX1NUQVRFX0NBTkNFTExFRBAFMlIKC1Rvb2xTZXJ2aWNlEkMKCENhbGxUb29sEhoucGx1Z2luLnYxLkNhbGxUb29sUmVxdWVzdBobLnBsdWdpbi52MS5DYWxsVG9vbFJlc3BvbnNlMoMCCg5NZXNzYWdlU2VydmljZRJMCgtTZW5kTWVzc2FnZRIdLnBsdWdpbi52MS5TZW5kTWVzc2FnZVJlcXVlc3QaHi5wbHVnaW4udjEuU2VuZE1lc3NhZ2VSZXNwb25zZRJPCgxMaXN0QWRhcHRlcnMSHi5wbHVnaW4udjEuTGlzdEFkYXB0ZXJzUmVxdWVzdBofLnBsdWdpbi52MS5MaXN0QWRhcHRlcnNSZXNwb25zZRJSCg1EZWNpZGVJbmJvdW5kEh8ucGx1Z2luLnYxLkRlY2lkZUluYm91bmRSZXF1ZXN0GiAucGx1Z2luLnYxLkRlY2lkZUluYm91bmRSZXNwb25zZUJWChVhaS56ZXJvLmtheS5wbHVnaW4udjFQAVobMGtheS9nZW4vcGx1Z2luL3YxO3BsdWdpbnYxogIIWktQbHVnaW6qAhJaZXJvLktheS5QbHVnaW4uVjFiBnByb3RvMw");
 
 /**
  * PluginInfo contains metadata about a plugin.
@@ -71,6 +71,32 @@ export type PluginInfo = Message<"plugin.v1.PluginInfo"> & {
    * @generated from field: repeated plugin.v1.PluginTool tools = 7;
    */
   tools: PluginTool[];
+
+  /**
+   * api_version is the plugin API version this plugin was built against.
+   * Empty means "1.0": Core does not require it, and only refuses a plugin that
+   * declares a major version it does not understand.
+   *
+   * @generated from field: string api_version = 8;
+   */
+  apiVersion: string;
+
+  /**
+   * http_endpoint is the base URL of the plugin's own HTTP surface, when it has
+   * one (e.g. "http://127.0.0.1:50055"). Empty means "no HTTP surface": Core
+   * keeps using its configured endpoints and never routes by capability.
+   *
+   * @generated from field: string http_endpoint = 9;
+   */
+  httpEndpoint: string;
+
+  /**
+   * checks are the plugin's own health checks, reported with every heartbeat.
+   * Empty means the plugin does not self-check and health stays heartbeat-only.
+   *
+   * @generated from field: repeated plugin.v1.PluginCheck checks = 10;
+   */
+  checks: PluginCheck[];
 };
 
 /**
@@ -79,6 +105,41 @@ export type PluginInfo = Message<"plugin.v1.PluginInfo"> & {
  */
 export const PluginInfoSchema: GenMessage<PluginInfo> = /*@__PURE__*/
   messageDesc(file_plugin_v1_plugin, 0);
+
+/**
+ * PluginCheck is one self-reported health check.
+ *
+ * @generated from message plugin.v1.PluginCheck
+ */
+export type PluginCheck = Message<"plugin.v1.PluginCheck"> & {
+  /**
+   * id names the check ("database", "model", "upstream").
+   *
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * ok is the check's verdict.
+   *
+   * @generated from field: bool ok = 2;
+   */
+  ok: boolean;
+
+  /**
+   * detail explains a failure; empty when ok.
+   *
+   * @generated from field: string detail = 3;
+   */
+  detail: string;
+};
+
+/**
+ * Describes the message plugin.v1.PluginCheck.
+ * Use `create(PluginCheckSchema)` to create a new message.
+ */
+export const PluginCheckSchema: GenMessage<PluginCheck> = /*@__PURE__*/
+  messageDesc(file_plugin_v1_plugin, 1);
 
 /**
  * PluginTool is a tool a plugin contributes to Agent / L.I.F.E.
@@ -127,7 +188,7 @@ export type PluginTool = Message<"plugin.v1.PluginTool"> & {
  * Use `create(PluginToolSchema)` to create a new message.
  */
 export const PluginToolSchema: GenMessage<PluginTool> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 1);
+  messageDesc(file_plugin_v1_plugin, 2);
 
 /**
  * CallToolRequest is the request for ToolService.CallTool.
@@ -169,7 +230,7 @@ export type CallToolRequest = Message<"plugin.v1.CallToolRequest"> & {
  * Use `create(CallToolRequestSchema)` to create a new message.
  */
 export const CallToolRequestSchema: GenMessage<CallToolRequest> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 2);
+  messageDesc(file_plugin_v1_plugin, 3);
 
 /**
  * CallToolResponse is the response for ToolService.CallTool.
@@ -204,11 +265,11 @@ export type CallToolResponse = Message<"plugin.v1.CallToolResponse"> & {
  * Use `create(CallToolResponseSchema)` to create a new message.
  */
 export const CallToolResponseSchema: GenMessage<CallToolResponse> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 3);
+  messageDesc(file_plugin_v1_plugin, 4);
 
 /**
  * InboundMessage is one message observed on a chat adapter (QQ/OneBot, …).
- *
+ * 
  * It is the unit Core's message bus carries: an adapter plugin reports it with
  * CoreService.PublishInboundMessage, Core fans it out to subscribers, and each
  * subscriber receives the same shape. `conversation` is the stable addressing
@@ -326,7 +387,7 @@ export type InboundMessage = Message<"plugin.v1.InboundMessage"> & {
  * Use `create(InboundMessageSchema)` to create a new message.
  */
 export const InboundMessageSchema: GenMessage<InboundMessage> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 4);
+  messageDesc(file_plugin_v1_plugin, 5);
 
 /**
  * DecideInboundRequest is the request for MessageService.DecideInbound.
@@ -354,11 +415,11 @@ export type DecideInboundRequest = Message<"plugin.v1.DecideInboundRequest"> & {
  * Use `create(DecideInboundRequestSchema)` to create a new message.
  */
 export const DecideInboundRequestSchema: GenMessage<DecideInboundRequest> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 5);
+  messageDesc(file_plugin_v1_plugin, 6);
 
 /**
  * DecideInboundResponse is the verdict for one message.
- *
+ * 
  * Arbitration is deliberately asymmetric: any "deny" wins outright, "allow"
  * only applies when nobody denied, and "abstain" defers to the publisher's own
  * wake rule. A veto must not be overridable by another plugin, or the last gate
@@ -369,7 +430,7 @@ export const DecideInboundRequestSchema: GenMessage<DecideInboundRequest> = /*@_
 export type DecideInboundResponse = Message<"plugin.v1.DecideInboundResponse"> & {
   /**
    * action is the verdict:
-   *
+   * 
    *   "abstain" — no opinion; fall through to the publisher's own decision.
    *   "allow"   — the assistant should process this message. This can force a
    *               message the publisher's wake rule would have skipped, so it
@@ -377,7 +438,7 @@ export type DecideInboundResponse = Message<"plugin.v1.DecideInboundResponse"> &
    *   "deny"    — the assistant must not process this message. The gate is
    *               taking responsibility for it (answering itself, or dropping
    *               it). Hard veto.
-   *
+   * 
    * An empty value means "abstain".
    *
    * @generated from field: string action = 1;
@@ -398,7 +459,7 @@ export type DecideInboundResponse = Message<"plugin.v1.DecideInboundResponse"> &
  * Use `create(DecideInboundResponseSchema)` to create a new message.
  */
 export const DecideInboundResponseSchema: GenMessage<DecideInboundResponse> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 6);
+  messageDesc(file_plugin_v1_plugin, 7);
 
 /**
  * SendMessageRequest is the request for MessageService.SendMessage: one
@@ -449,7 +510,7 @@ export type SendMessageRequest = Message<"plugin.v1.SendMessageRequest"> & {
  * Use `create(SendMessageRequestSchema)` to create a new message.
  */
 export const SendMessageRequestSchema: GenMessage<SendMessageRequest> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 7);
+  messageDesc(file_plugin_v1_plugin, 8);
 
 /**
  * SendMessageResponse is the response for MessageService.SendMessage.
@@ -484,7 +545,7 @@ export type SendMessageResponse = Message<"plugin.v1.SendMessageResponse"> & {
  * Use `create(SendMessageResponseSchema)` to create a new message.
  */
 export const SendMessageResponseSchema: GenMessage<SendMessageResponse> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 8);
+  messageDesc(file_plugin_v1_plugin, 9);
 
 /**
  * ListAdaptersRequest is the request for MessageService.ListAdapters.
@@ -505,7 +566,7 @@ export type ListAdaptersRequest = Message<"plugin.v1.ListAdaptersRequest"> & {
  * Use `create(ListAdaptersRequestSchema)` to create a new message.
  */
 export const ListAdaptersRequestSchema: GenMessage<ListAdaptersRequest> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 9);
+  messageDesc(file_plugin_v1_plugin, 10);
 
 /**
  * ListAdaptersResponse is the response for MessageService.ListAdapters.
@@ -524,7 +585,7 @@ export type ListAdaptersResponse = Message<"plugin.v1.ListAdaptersResponse"> & {
  * Use `create(ListAdaptersResponseSchema)` to create a new message.
  */
 export const ListAdaptersResponseSchema: GenMessage<ListAdaptersResponse> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 10);
+  messageDesc(file_plugin_v1_plugin, 11);
 
 /**
  * AdapterDescriptor is one adapter instance a plugin drives.
@@ -568,7 +629,7 @@ export type AdapterDescriptor = Message<"plugin.v1.AdapterDescriptor"> & {
  * Use `create(AdapterDescriptorSchema)` to create a new message.
  */
 export const AdapterDescriptorSchema: GenMessage<AdapterDescriptor> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 11);
+  messageDesc(file_plugin_v1_plugin, 12);
 
 /**
  * AdapterConversation is one addressable conversation on an adapter.
@@ -603,7 +664,7 @@ export type AdapterConversation = Message<"plugin.v1.AdapterConversation"> & {
  * Use `create(AdapterConversationSchema)` to create a new message.
  */
 export const AdapterConversationSchema: GenMessage<AdapterConversation> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 12);
+  messageDesc(file_plugin_v1_plugin, 13);
 
 /**
  * AdapterSendRequest is the request for MessageService.SendMessage.
@@ -653,7 +714,7 @@ export type AdapterSendRequest = Message<"plugin.v1.AdapterSendRequest"> & {
  * Use `create(AdapterSendRequestSchema)` to create a new message.
  */
 export const AdapterSendRequestSchema: GenMessage<AdapterSendRequest> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 13);
+  messageDesc(file_plugin_v1_plugin, 14);
 
 /**
  * AdapterSendResponse is the response for MessageService.SendMessage.
@@ -688,7 +749,7 @@ export type AdapterSendResponse = Message<"plugin.v1.AdapterSendResponse"> & {
  * Use `create(AdapterSendResponseSchema)` to create a new message.
  */
 export const AdapterSendResponseSchema: GenMessage<AdapterSendResponse> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 14);
+  messageDesc(file_plugin_v1_plugin, 15);
 
 /**
  * PluginPermission is a plugin's declared permission set, mirrored from its
@@ -739,11 +800,11 @@ export type PluginPermission = Message<"plugin.v1.PluginPermission"> & {
  * Use `create(PluginPermissionSchema)` to create a new message.
  */
 export const PluginPermissionSchema: GenMessage<PluginPermission> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 15);
+  messageDesc(file_plugin_v1_plugin, 16);
 
 /**
  * PluginMessages is a plugin's declared chat-messaging permission set.
- *
+ * 
  * Read and send are separate grants on purpose: "read the user's QQ" and "speak
  * as the bot" are different powers, and a plugin that only wants to react to
  * mentions should not also be able to broadcast.
@@ -753,7 +814,7 @@ export const PluginPermissionSchema: GenMessage<PluginPermission> = /*@__PURE__*
 export type PluginMessages = Message<"plugin.v1.PluginMessages"> & {
   /**
    * read_mode selects how much inbound traffic the plugin may receive:
-   *
+   * 
    *   "none"  (default, also the meaning of an empty string)
    *           — no inbound delivery at all.
    *   "wake"  — only messages that already matched a wake rule on the adapter
@@ -762,7 +823,7 @@ export type PluginMessages = Message<"plugin.v1.PluginMessages"> & {
    *             to answer, so a plugin on "wake" sees exactly the traffic the
    *             bot was going to act on anyway, and nothing else.
    *   "all"   — every message on the adapters listed in read_adapters.
-   *
+   * 
    * "all" is a privacy-sensitive grant: it exposes conversations the user never
    * addressed to the bot. Core still requires the adapters and conversations to
    * be named explicitly (read_adapters / read_conversations) unless the plugin
@@ -813,7 +874,7 @@ export type PluginMessages = Message<"plugin.v1.PluginMessages"> & {
    * the default assistant (L.I.F.E) processes them. Core calls the plugin's
    * MessageService.DecideInbound for every message its read scope covers, and
    * the returned verdict decides whether L.I.F.E runs its reply pipeline.
-   *
+   * 
    * A gate is consulted only for messages the plugin could read, so it needs a
    * read_mode other than "none". Gate "wake" to arbitrate exactly the traffic
    * L.I.F.E would have answered; gate "all" to also be able to force a message
@@ -827,7 +888,7 @@ export type PluginMessages = Message<"plugin.v1.PluginMessages"> & {
    * gate_on_error is the verdict Core assumes when this plugin cannot be
    * reached or misses the decision deadline: "abstain" (the default) or
    * "deny".
-   *
+   * 
    * The default is deliberately fail-open. A gate that crashes must not be able
    * to mute the assistant indefinitely — but a moderation gate genuinely wants
    * the opposite, so it can declare "deny" and keep its veto even while down.
@@ -842,7 +903,7 @@ export type PluginMessages = Message<"plugin.v1.PluginMessages"> & {
  * Use `create(PluginMessagesSchema)` to create a new message.
  */
 export const PluginMessagesSchema: GenMessage<PluginMessages> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 16);
+  messageDesc(file_plugin_v1_plugin, 17);
 
 /**
  * SettingsField is one declarative form field inside a settings section.
@@ -898,7 +959,7 @@ export type SettingsField = Message<"plugin.v1.SettingsField"> & {
  * Use `create(SettingsFieldSchema)` to create a new message.
  */
 export const SettingsFieldSchema: GenMessage<SettingsField> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 17);
+  messageDesc(file_plugin_v1_plugin, 18);
 
 /**
  * SettingsSection is a settings tab contributed by a plugin.
@@ -954,7 +1015,7 @@ export type SettingsSection = Message<"plugin.v1.SettingsSection"> & {
  * Use `create(SettingsSectionSchema)` to create a new message.
  */
 export const SettingsSectionSchema: GenMessage<SettingsSection> = /*@__PURE__*/
-  messageDesc(file_plugin_v1_plugin, 18);
+  messageDesc(file_plugin_v1_plugin, 19);
 
 /**
  * PluginType categorizes the plugin's role in the system.
@@ -1092,7 +1153,7 @@ export const ToolService: GenService<{
  * routes an outbound send to the adapter's owning plugin here — the plugin that
  * claimed the adapter via CoreService.PublishInboundMessage or advertised it
  * with ListAdapters.
- *
+ * 
  * Naming note: `SendMessageRequest` / `ListAdaptersRequest` also exist in
  * `core.v1`, because the same verb is seen from two directions. The package
  * says which side you are on — `plugin.v1` is the adapter receiving a delivery,
@@ -1130,7 +1191,7 @@ export const MessageService: GenService<{
    * DecideInbound arbitrates one inbound message before the default assistant
    * processes it. Core calls this only on plugins that declared
    * permissions.messages.gate, and only for messages their read scope covers.
-   *
+   * 
    * Optional in practice: a plugin without `gate` is never called, and one that
    * declares it but leaves this unimplemented answers Unimplemented, which Core
    * treats as "abstain".

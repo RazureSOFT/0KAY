@@ -280,6 +280,7 @@
   <string name="page.restore">Restore</string>
   <string name="page.restoreToChat">Restore the session to continue chatting</string>
   <string name="page.run">Run</string>
+  <string name="page.planDiagram">Flow</string>
   <string name="page.planReady">Plan ready</string>
   <string name="page.planSteps">{n} steps</string>
   <string name="page.planBuild">Build plan</string>

@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/subtle"
 	"log"
+	"net"
 	"strings"
 
 	"0kay/core/internal/registry"
@@ -45,7 +46,19 @@ func (s *PluginServiceServer) Register(ctx context.Context, req *corev1.Register
 			registrationToken = strings.TrimPrefix(values[0], "Bearer ")
 		}
 	}
-	pluginID, err := s.registry.RegisterAuthenticated(req.PluginInfo, req.Capabilities, req.Address, registrationToken)
+	// A plugin may ask Core for a loopback port instead of hard-coding one.
+	// Zero is the old behaviour (the plugin bound its own address), so every
+	// existing plugin takes the second branch and nothing changes for it.
+	address := strings.TrimSpace(req.Address)
+	assigned := ""
+	if address == "" && req.RequestPort != 0 {
+		if listener, listenErr := net.Listen("tcp", "127.0.0.1:0"); listenErr == nil {
+			assigned = listener.Addr().String()
+			_ = listener.Close()
+			address = assigned
+		}
+	}
+	pluginID, err := s.registry.RegisterAuthenticated(req.PluginInfo, req.Capabilities, address, registrationToken)
 	if err != nil {
 		if _, ok := status.FromError(err); ok {
 			return nil, err
@@ -53,7 +66,7 @@ func (s *PluginServiceServer) Register(ctx context.Context, req *corev1.Register
 		return nil, status.Errorf(codes.Internal, "failed to register plugin: %v", err)
 	}
 	if pairing.Default != nil {
-		pairing.Default.Bind(ctx, req.Address)
+		pairing.Default.Bind(ctx, address)
 	}
 
 	if s.settings != nil {
@@ -100,10 +113,11 @@ func (s *PluginServiceServer) Register(ctx context.Context, req *corev1.Register
 		message = "registered; waiting for dependencies: " + strings.Join(missing, ", ")
 	}
 	return &corev1.RegisterResponse{
-		Success:      true,
-		PluginId:     pluginID,
-		Message:      message,
-		ServiceToken: s.registry.Token(pluginID),
+		Success:         true,
+		PluginId:        pluginID,
+		Message:         message,
+		ServiceToken:    s.registry.Token(pluginID),
+		AssignedAddress: assigned,
 	}, nil
 }
 

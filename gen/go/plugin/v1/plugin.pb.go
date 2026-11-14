@@ -174,7 +174,18 @@ type PluginInfo struct {
 	// tools lists tool descriptors this plugin contributes to Agent and/or
 	// L.I.F.E. Core publishes them in its tool catalog; calls are routed back to
 	// the plugin's ToolService.
-	Tools         []*PluginTool `protobuf:"bytes,7,rep,name=tools,proto3" json:"tools,omitempty"`
+	Tools []*PluginTool `protobuf:"bytes,7,rep,name=tools,proto3" json:"tools,omitempty"`
+	// api_version is the plugin API version this plugin was built against.
+	// Empty means "1.0": Core does not require it, and only refuses a plugin that
+	// declares a major version it does not understand.
+	ApiVersion string `protobuf:"bytes,8,opt,name=api_version,json=apiVersion,proto3" json:"api_version,omitempty"`
+	// http_endpoint is the base URL of the plugin's own HTTP surface, when it has
+	// one (e.g. "http://127.0.0.1:50055"). Empty means "no HTTP surface": Core
+	// keeps using its configured endpoints and never routes by capability.
+	HttpEndpoint string `protobuf:"bytes,9,opt,name=http_endpoint,json=httpEndpoint,proto3" json:"http_endpoint,omitempty"`
+	// checks are the plugin's own health checks, reported with every heartbeat.
+	// Empty means the plugin does not self-check and health stays heartbeat-only.
+	Checks        []*PluginCheck `protobuf:"bytes,10,rep,name=checks,proto3" json:"checks,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -258,6 +269,91 @@ func (x *PluginInfo) GetTools() []*PluginTool {
 	return nil
 }
 
+func (x *PluginInfo) GetApiVersion() string {
+	if x != nil {
+		return x.ApiVersion
+	}
+	return ""
+}
+
+func (x *PluginInfo) GetHttpEndpoint() string {
+	if x != nil {
+		return x.HttpEndpoint
+	}
+	return ""
+}
+
+func (x *PluginInfo) GetChecks() []*PluginCheck {
+	if x != nil {
+		return x.Checks
+	}
+	return nil
+}
+
+// PluginCheck is one self-reported health check.
+type PluginCheck struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// id names the check ("database", "model", "upstream").
+	Id string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// ok is the check's verdict.
+	Ok bool `protobuf:"varint,2,opt,name=ok,proto3" json:"ok,omitempty"`
+	// detail explains a failure; empty when ok.
+	Detail        string `protobuf:"bytes,3,opt,name=detail,proto3" json:"detail,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PluginCheck) Reset() {
+	*x = PluginCheck{}
+	mi := &file_plugin_v1_plugin_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PluginCheck) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PluginCheck) ProtoMessage() {}
+
+func (x *PluginCheck) ProtoReflect() protoreflect.Message {
+	mi := &file_plugin_v1_plugin_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PluginCheck.ProtoReflect.Descriptor instead.
+func (*PluginCheck) Descriptor() ([]byte, []int) {
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *PluginCheck) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *PluginCheck) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+func (x *PluginCheck) GetDetail() string {
+	if x != nil {
+		return x.Detail
+	}
+	return ""
+}
+
 // PluginTool is a tool a plugin contributes to Agent / L.I.F.E.
 type PluginTool struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -277,7 +373,7 @@ type PluginTool struct {
 
 func (x *PluginTool) Reset() {
 	*x = PluginTool{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[1]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -289,7 +385,7 @@ func (x *PluginTool) String() string {
 func (*PluginTool) ProtoMessage() {}
 
 func (x *PluginTool) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[1]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -302,7 +398,7 @@ func (x *PluginTool) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PluginTool.ProtoReflect.Descriptor instead.
 func (*PluginTool) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{1}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *PluginTool) GetName() string {
@@ -357,7 +453,7 @@ type CallToolRequest struct {
 
 func (x *CallToolRequest) Reset() {
 	*x = CallToolRequest{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[2]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -369,7 +465,7 @@ func (x *CallToolRequest) String() string {
 func (*CallToolRequest) ProtoMessage() {}
 
 func (x *CallToolRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[2]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -382,7 +478,7 @@ func (x *CallToolRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CallToolRequest.ProtoReflect.Descriptor instead.
 func (*CallToolRequest) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{2}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *CallToolRequest) GetCallerId() string {
@@ -428,7 +524,7 @@ type CallToolResponse struct {
 
 func (x *CallToolResponse) Reset() {
 	*x = CallToolResponse{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[3]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -440,7 +536,7 @@ func (x *CallToolResponse) String() string {
 func (*CallToolResponse) ProtoMessage() {}
 
 func (x *CallToolResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[3]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -453,7 +549,7 @@ func (x *CallToolResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CallToolResponse.ProtoReflect.Descriptor instead.
 func (*CallToolResponse) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{3}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *CallToolResponse) GetSuccess() bool {
@@ -524,7 +620,7 @@ type InboundMessage struct {
 
 func (x *InboundMessage) Reset() {
 	*x = InboundMessage{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[4]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -536,7 +632,7 @@ func (x *InboundMessage) String() string {
 func (*InboundMessage) ProtoMessage() {}
 
 func (x *InboundMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[4]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -549,7 +645,7 @@ func (x *InboundMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use InboundMessage.ProtoReflect.Descriptor instead.
 func (*InboundMessage) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{4}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *InboundMessage) GetAdapterId() string {
@@ -663,7 +759,7 @@ type DecideInboundRequest struct {
 
 func (x *DecideInboundRequest) Reset() {
 	*x = DecideInboundRequest{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[5]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -675,7 +771,7 @@ func (x *DecideInboundRequest) String() string {
 func (*DecideInboundRequest) ProtoMessage() {}
 
 func (x *DecideInboundRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[5]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -688,7 +784,7 @@ func (x *DecideInboundRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecideInboundRequest.ProtoReflect.Descriptor instead.
 func (*DecideInboundRequest) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{5}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *DecideInboundRequest) GetCallerId() string {
@@ -715,13 +811,13 @@ type DecideInboundResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// action is the verdict:
 	//
-	//	"abstain" — no opinion; fall through to the publisher's own decision.
-	//	"allow"   — the assistant should process this message. This can force a
-	//	            message the publisher's wake rule would have skipped, so it
-	//	            only reaches a plugin that gated with read_mode "all".
-	//	"deny"    — the assistant must not process this message. The gate is
-	//	            taking responsibility for it (answering itself, or dropping
-	//	            it). Hard veto.
+	//   "abstain" — no opinion; fall through to the publisher's own decision.
+	//   "allow"   — the assistant should process this message. This can force a
+	//               message the publisher's wake rule would have skipped, so it
+	//               only reaches a plugin that gated with read_mode "all".
+	//   "deny"    — the assistant must not process this message. The gate is
+	//               taking responsibility for it (answering itself, or dropping
+	//               it). Hard veto.
 	//
 	// An empty value means "abstain".
 	Action string `protobuf:"bytes,1,opt,name=action,proto3" json:"action,omitempty"`
@@ -734,7 +830,7 @@ type DecideInboundResponse struct {
 
 func (x *DecideInboundResponse) Reset() {
 	*x = DecideInboundResponse{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[6]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -746,7 +842,7 @@ func (x *DecideInboundResponse) String() string {
 func (*DecideInboundResponse) ProtoMessage() {}
 
 func (x *DecideInboundResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[6]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -759,7 +855,7 @@ func (x *DecideInboundResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DecideInboundResponse.ProtoReflect.Descriptor instead.
 func (*DecideInboundResponse) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{6}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *DecideInboundResponse) GetAction() string {
@@ -797,7 +893,7 @@ type SendMessageRequest struct {
 
 func (x *SendMessageRequest) Reset() {
 	*x = SendMessageRequest{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[7]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -809,7 +905,7 @@ func (x *SendMessageRequest) String() string {
 func (*SendMessageRequest) ProtoMessage() {}
 
 func (x *SendMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[7]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -822,7 +918,7 @@ func (x *SendMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendMessageRequest.ProtoReflect.Descriptor instead.
 func (*SendMessageRequest) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{7}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *SendMessageRequest) GetCallerId() string {
@@ -875,7 +971,7 @@ type SendMessageResponse struct {
 
 func (x *SendMessageResponse) Reset() {
 	*x = SendMessageResponse{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[8]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -887,7 +983,7 @@ func (x *SendMessageResponse) String() string {
 func (*SendMessageResponse) ProtoMessage() {}
 
 func (x *SendMessageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[8]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -900,7 +996,7 @@ func (x *SendMessageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendMessageResponse.ProtoReflect.Descriptor instead.
 func (*SendMessageResponse) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{8}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *SendMessageResponse) GetSuccess() bool {
@@ -935,7 +1031,7 @@ type ListAdaptersRequest struct {
 
 func (x *ListAdaptersRequest) Reset() {
 	*x = ListAdaptersRequest{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[9]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -947,7 +1043,7 @@ func (x *ListAdaptersRequest) String() string {
 func (*ListAdaptersRequest) ProtoMessage() {}
 
 func (x *ListAdaptersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[9]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -960,7 +1056,7 @@ func (x *ListAdaptersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAdaptersRequest.ProtoReflect.Descriptor instead.
 func (*ListAdaptersRequest) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{9}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ListAdaptersRequest) GetCallerId() string {
@@ -980,7 +1076,7 @@ type ListAdaptersResponse struct {
 
 func (x *ListAdaptersResponse) Reset() {
 	*x = ListAdaptersResponse{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[10]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -992,7 +1088,7 @@ func (x *ListAdaptersResponse) String() string {
 func (*ListAdaptersResponse) ProtoMessage() {}
 
 func (x *ListAdaptersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[10]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1005,7 +1101,7 @@ func (x *ListAdaptersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAdaptersResponse.ProtoReflect.Descriptor instead.
 func (*ListAdaptersResponse) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{10}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ListAdaptersResponse) GetAdapters() []*AdapterDescriptor {
@@ -1034,7 +1130,7 @@ type AdapterDescriptor struct {
 
 func (x *AdapterDescriptor) Reset() {
 	*x = AdapterDescriptor{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[11]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1046,7 +1142,7 @@ func (x *AdapterDescriptor) String() string {
 func (*AdapterDescriptor) ProtoMessage() {}
 
 func (x *AdapterDescriptor) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[11]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1059,7 +1155,7 @@ func (x *AdapterDescriptor) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdapterDescriptor.ProtoReflect.Descriptor instead.
 func (*AdapterDescriptor) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{11}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *AdapterDescriptor) GetAdapterId() string {
@@ -1105,7 +1201,7 @@ type AdapterConversation struct {
 
 func (x *AdapterConversation) Reset() {
 	*x = AdapterConversation{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[12]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1117,7 +1213,7 @@ func (x *AdapterConversation) String() string {
 func (*AdapterConversation) ProtoMessage() {}
 
 func (x *AdapterConversation) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[12]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1130,7 +1226,7 @@ func (x *AdapterConversation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdapterConversation.ProtoReflect.Descriptor instead.
 func (*AdapterConversation) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{12}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *AdapterConversation) GetConversation() string {
@@ -1174,7 +1270,7 @@ type AdapterSendRequest struct {
 
 func (x *AdapterSendRequest) Reset() {
 	*x = AdapterSendRequest{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[13]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1186,7 +1282,7 @@ func (x *AdapterSendRequest) String() string {
 func (*AdapterSendRequest) ProtoMessage() {}
 
 func (x *AdapterSendRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[13]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1199,7 +1295,7 @@ func (x *AdapterSendRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdapterSendRequest.ProtoReflect.Descriptor instead.
 func (*AdapterSendRequest) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{13}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *AdapterSendRequest) GetCallerId() string {
@@ -1252,7 +1348,7 @@ type AdapterSendResponse struct {
 
 func (x *AdapterSendResponse) Reset() {
 	*x = AdapterSendResponse{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[14]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1264,7 +1360,7 @@ func (x *AdapterSendResponse) String() string {
 func (*AdapterSendResponse) ProtoMessage() {}
 
 func (x *AdapterSendResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[14]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1277,7 +1373,7 @@ func (x *AdapterSendResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AdapterSendResponse.ProtoReflect.Descriptor instead.
 func (*AdapterSendResponse) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{14}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *AdapterSendResponse) GetSuccess() bool {
@@ -1327,7 +1423,7 @@ type PluginPermission struct {
 
 func (x *PluginPermission) Reset() {
 	*x = PluginPermission{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[15]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1339,7 +1435,7 @@ func (x *PluginPermission) String() string {
 func (*PluginPermission) ProtoMessage() {}
 
 func (x *PluginPermission) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[15]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1352,7 +1448,7 @@ func (x *PluginPermission) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PluginPermission.ProtoReflect.Descriptor instead.
 func (*PluginPermission) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{15}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *PluginPermission) GetApiRequires() []string {
@@ -1392,14 +1488,14 @@ type PluginMessages struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// read_mode selects how much inbound traffic the plugin may receive:
 	//
-	//	"none"  (default, also the meaning of an empty string)
-	//	        — no inbound delivery at all.
-	//	"wake"  — only messages that already matched a wake rule on the adapter
-	//	          (@-mention of the bot, a configured keyword, or a continuing
-	//	          topic). This is the same filter L.I.F.E uses to decide whether
-	//	          to answer, so a plugin on "wake" sees exactly the traffic the
-	//	          bot was going to act on anyway, and nothing else.
-	//	"all"   — every message on the adapters listed in read_adapters.
+	//   "none"  (default, also the meaning of an empty string)
+	//           — no inbound delivery at all.
+	//   "wake"  — only messages that already matched a wake rule on the adapter
+	//             (@-mention of the bot, a configured keyword, or a continuing
+	//             topic). This is the same filter L.I.F.E uses to decide whether
+	//             to answer, so a plugin on "wake" sees exactly the traffic the
+	//             bot was going to act on anyway, and nothing else.
+	//   "all"   — every message on the adapters listed in read_adapters.
 	//
 	// "all" is a privacy-sensitive grant: it exposes conversations the user never
 	// addressed to the bot. Core still requires the adapters and conversations to
@@ -1446,7 +1542,7 @@ type PluginMessages struct {
 
 func (x *PluginMessages) Reset() {
 	*x = PluginMessages{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[16]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1458,7 +1554,7 @@ func (x *PluginMessages) String() string {
 func (*PluginMessages) ProtoMessage() {}
 
 func (x *PluginMessages) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[16]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1471,7 +1567,7 @@ func (x *PluginMessages) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PluginMessages.ProtoReflect.Descriptor instead.
 func (*PluginMessages) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{16}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *PluginMessages) GetReadMode() string {
@@ -1544,7 +1640,7 @@ type SettingsField struct {
 
 func (x *SettingsField) Reset() {
 	*x = SettingsField{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[17]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1556,7 +1652,7 @@ func (x *SettingsField) String() string {
 func (*SettingsField) ProtoMessage() {}
 
 func (x *SettingsField) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[17]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1569,7 +1665,7 @@ func (x *SettingsField) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettingsField.ProtoReflect.Descriptor instead.
 func (*SettingsField) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{17}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SettingsField) GetKey() string {
@@ -1635,7 +1731,7 @@ type SettingsSection struct {
 
 func (x *SettingsSection) Reset() {
 	*x = SettingsSection{}
-	mi := &file_plugin_v1_plugin_proto_msgTypes[18]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1647,7 +1743,7 @@ func (x *SettingsSection) String() string {
 func (*SettingsSection) ProtoMessage() {}
 
 func (x *SettingsSection) ProtoReflect() protoreflect.Message {
-	mi := &file_plugin_v1_plugin_proto_msgTypes[18]
+	mi := &file_plugin_v1_plugin_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1660,7 +1756,7 @@ func (x *SettingsSection) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SettingsSection.ProtoReflect.Descriptor instead.
 func (*SettingsSection) Descriptor() ([]byte, []int) {
-	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{18}
+	return file_plugin_v1_plugin_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *SettingsSection) GetId() string {
@@ -1709,7 +1805,7 @@ var File_plugin_v1_plugin_proto protoreflect.FileDescriptor
 
 const file_plugin_v1_plugin_proto_rawDesc = "" +
 	"\n" +
-	"\x16plugin/v1/plugin.proto\x12\tplugin.v1\"\x98\x02\n" +
+	"\x16plugin/v1/plugin.proto\x12\tplugin.v1\"\x8e\x03\n" +
 	"\n" +
 	"PluginInfo\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
@@ -1719,7 +1815,16 @@ const file_plugin_v1_plugin_proto_rawDesc = "" +
 	"\vplugin_type\x18\x05 \x01(\x0e2\x15.plugin.v1.PluginTypeR\n" +
 	"pluginType\x12=\n" +
 	"\vpermissions\x18\x06 \x01(\v2\x1b.plugin.v1.PluginPermissionR\vpermissions\x12+\n" +
-	"\x05tools\x18\a \x03(\v2\x15.plugin.v1.PluginToolR\x05tools\"\xa1\x01\n" +
+	"\x05tools\x18\a \x03(\v2\x15.plugin.v1.PluginToolR\x05tools\x12\x1f\n" +
+	"\vapi_version\x18\b \x01(\tR\n" +
+	"apiVersion\x12#\n" +
+	"\rhttp_endpoint\x18\t \x01(\tR\fhttpEndpoint\x12.\n" +
+	"\x06checks\x18\n" +
+	" \x03(\v2\x16.plugin.v1.PluginCheckR\x06checks\"E\n" +
+	"\vPluginCheck\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x0e\n" +
+	"\x02ok\x18\x02 \x01(\bR\x02ok\x12\x16\n" +
+	"\x06detail\x18\x03 \x01(\tR\x06detail\"\xa1\x01\n" +
 	"\n" +
 	"PluginTool\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
@@ -1864,52 +1969,54 @@ func file_plugin_v1_plugin_proto_rawDescGZIP() []byte {
 }
 
 var file_plugin_v1_plugin_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_plugin_v1_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
+var file_plugin_v1_plugin_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_plugin_v1_plugin_proto_goTypes = []any{
 	(PluginType)(0),               // 0: plugin.v1.PluginType
 	(TaskState)(0),                // 1: plugin.v1.TaskState
 	(*PluginInfo)(nil),            // 2: plugin.v1.PluginInfo
-	(*PluginTool)(nil),            // 3: plugin.v1.PluginTool
-	(*CallToolRequest)(nil),       // 4: plugin.v1.CallToolRequest
-	(*CallToolResponse)(nil),      // 5: plugin.v1.CallToolResponse
-	(*InboundMessage)(nil),        // 6: plugin.v1.InboundMessage
-	(*DecideInboundRequest)(nil),  // 7: plugin.v1.DecideInboundRequest
-	(*DecideInboundResponse)(nil), // 8: plugin.v1.DecideInboundResponse
-	(*SendMessageRequest)(nil),    // 9: plugin.v1.SendMessageRequest
-	(*SendMessageResponse)(nil),   // 10: plugin.v1.SendMessageResponse
-	(*ListAdaptersRequest)(nil),   // 11: plugin.v1.ListAdaptersRequest
-	(*ListAdaptersResponse)(nil),  // 12: plugin.v1.ListAdaptersResponse
-	(*AdapterDescriptor)(nil),     // 13: plugin.v1.AdapterDescriptor
-	(*AdapterConversation)(nil),   // 14: plugin.v1.AdapterConversation
-	(*AdapterSendRequest)(nil),    // 15: plugin.v1.AdapterSendRequest
-	(*AdapterSendResponse)(nil),   // 16: plugin.v1.AdapterSendResponse
-	(*PluginPermission)(nil),      // 17: plugin.v1.PluginPermission
-	(*PluginMessages)(nil),        // 18: plugin.v1.PluginMessages
-	(*SettingsField)(nil),         // 19: plugin.v1.SettingsField
-	(*SettingsSection)(nil),       // 20: plugin.v1.SettingsSection
+	(*PluginCheck)(nil),           // 3: plugin.v1.PluginCheck
+	(*PluginTool)(nil),            // 4: plugin.v1.PluginTool
+	(*CallToolRequest)(nil),       // 5: plugin.v1.CallToolRequest
+	(*CallToolResponse)(nil),      // 6: plugin.v1.CallToolResponse
+	(*InboundMessage)(nil),        // 7: plugin.v1.InboundMessage
+	(*DecideInboundRequest)(nil),  // 8: plugin.v1.DecideInboundRequest
+	(*DecideInboundResponse)(nil), // 9: plugin.v1.DecideInboundResponse
+	(*SendMessageRequest)(nil),    // 10: plugin.v1.SendMessageRequest
+	(*SendMessageResponse)(nil),   // 11: plugin.v1.SendMessageResponse
+	(*ListAdaptersRequest)(nil),   // 12: plugin.v1.ListAdaptersRequest
+	(*ListAdaptersResponse)(nil),  // 13: plugin.v1.ListAdaptersResponse
+	(*AdapterDescriptor)(nil),     // 14: plugin.v1.AdapterDescriptor
+	(*AdapterConversation)(nil),   // 15: plugin.v1.AdapterConversation
+	(*AdapterSendRequest)(nil),    // 16: plugin.v1.AdapterSendRequest
+	(*AdapterSendResponse)(nil),   // 17: plugin.v1.AdapterSendResponse
+	(*PluginPermission)(nil),      // 18: plugin.v1.PluginPermission
+	(*PluginMessages)(nil),        // 19: plugin.v1.PluginMessages
+	(*SettingsField)(nil),         // 20: plugin.v1.SettingsField
+	(*SettingsSection)(nil),       // 21: plugin.v1.SettingsSection
 }
 var file_plugin_v1_plugin_proto_depIdxs = []int32{
 	0,  // 0: plugin.v1.PluginInfo.plugin_type:type_name -> plugin.v1.PluginType
-	17, // 1: plugin.v1.PluginInfo.permissions:type_name -> plugin.v1.PluginPermission
-	3,  // 2: plugin.v1.PluginInfo.tools:type_name -> plugin.v1.PluginTool
-	6,  // 3: plugin.v1.DecideInboundRequest.message:type_name -> plugin.v1.InboundMessage
-	13, // 4: plugin.v1.ListAdaptersResponse.adapters:type_name -> plugin.v1.AdapterDescriptor
-	14, // 5: plugin.v1.AdapterDescriptor.conversations:type_name -> plugin.v1.AdapterConversation
-	18, // 6: plugin.v1.PluginPermission.messages:type_name -> plugin.v1.PluginMessages
-	19, // 7: plugin.v1.SettingsSection.fields:type_name -> plugin.v1.SettingsField
-	4,  // 8: plugin.v1.ToolService.CallTool:input_type -> plugin.v1.CallToolRequest
-	9,  // 9: plugin.v1.MessageService.SendMessage:input_type -> plugin.v1.SendMessageRequest
-	11, // 10: plugin.v1.MessageService.ListAdapters:input_type -> plugin.v1.ListAdaptersRequest
-	7,  // 11: plugin.v1.MessageService.DecideInbound:input_type -> plugin.v1.DecideInboundRequest
-	5,  // 12: plugin.v1.ToolService.CallTool:output_type -> plugin.v1.CallToolResponse
-	10, // 13: plugin.v1.MessageService.SendMessage:output_type -> plugin.v1.SendMessageResponse
-	12, // 14: plugin.v1.MessageService.ListAdapters:output_type -> plugin.v1.ListAdaptersResponse
-	8,  // 15: plugin.v1.MessageService.DecideInbound:output_type -> plugin.v1.DecideInboundResponse
-	12, // [12:16] is the sub-list for method output_type
-	8,  // [8:12] is the sub-list for method input_type
-	8,  // [8:8] is the sub-list for extension type_name
-	8,  // [8:8] is the sub-list for extension extendee
-	0,  // [0:8] is the sub-list for field type_name
+	18, // 1: plugin.v1.PluginInfo.permissions:type_name -> plugin.v1.PluginPermission
+	4,  // 2: plugin.v1.PluginInfo.tools:type_name -> plugin.v1.PluginTool
+	3,  // 3: plugin.v1.PluginInfo.checks:type_name -> plugin.v1.PluginCheck
+	7,  // 4: plugin.v1.DecideInboundRequest.message:type_name -> plugin.v1.InboundMessage
+	14, // 5: plugin.v1.ListAdaptersResponse.adapters:type_name -> plugin.v1.AdapterDescriptor
+	15, // 6: plugin.v1.AdapterDescriptor.conversations:type_name -> plugin.v1.AdapterConversation
+	19, // 7: plugin.v1.PluginPermission.messages:type_name -> plugin.v1.PluginMessages
+	20, // 8: plugin.v1.SettingsSection.fields:type_name -> plugin.v1.SettingsField
+	5,  // 9: plugin.v1.ToolService.CallTool:input_type -> plugin.v1.CallToolRequest
+	10, // 10: plugin.v1.MessageService.SendMessage:input_type -> plugin.v1.SendMessageRequest
+	12, // 11: plugin.v1.MessageService.ListAdapters:input_type -> plugin.v1.ListAdaptersRequest
+	8,  // 12: plugin.v1.MessageService.DecideInbound:input_type -> plugin.v1.DecideInboundRequest
+	6,  // 13: plugin.v1.ToolService.CallTool:output_type -> plugin.v1.CallToolResponse
+	11, // 14: plugin.v1.MessageService.SendMessage:output_type -> plugin.v1.SendMessageResponse
+	13, // 15: plugin.v1.MessageService.ListAdapters:output_type -> plugin.v1.ListAdaptersResponse
+	9,  // 16: plugin.v1.MessageService.DecideInbound:output_type -> plugin.v1.DecideInboundResponse
+	13, // [13:17] is the sub-list for method output_type
+	9,  // [9:13] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_plugin_v1_plugin_proto_init() }
@@ -1923,7 +2030,7 @@ func file_plugin_v1_plugin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_plugin_v1_plugin_proto_rawDesc), len(file_plugin_v1_plugin_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   19,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   2,
 		},

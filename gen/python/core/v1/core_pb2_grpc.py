@@ -264,7 +264,7 @@ class CoreServiceServicer(object):
         """PublishInboundMessage reports one inbound adapter message into Core's
         message bus. Adapter plugins (L.I.F.E for QQ/OneBot, or a third-party
         bridge) call this for every message they observe.
-
+        
         Two things happen: Core records the caller as the adapter's owner — which
         is what later lets SendMessage route back to it — and fans the message out
         to every subscriber whose declared permissions cover it. Requires

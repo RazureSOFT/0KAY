@@ -91,6 +91,11 @@ message RegisterRequest {
   // settings_sections declares UI settings this plugin contributes to the
   // WebUI Settings page (optional).
   repeated plugin.v1.SettingsSection settings_sections = 4;
+
+  // request_port asks Core to allocate a loopback port for this plugin.
+  // Zero means "the plugin already bound its own address", which is the
+  // pre-existing behaviour and stays the default for every old plugin.
+  uint32 request_port = 5;
 }
 
 // RegisterResponse is the response for PluginService.Register.
@@ -108,6 +113,11 @@ message RegisterResponse {
   // The plugin sends it (with its name) on Core HTTP calls and the egress RPC
   // so Core can attribute and authorize the request.
   string service_token = 4;
+
+  // assigned_address is the loopback host:port Core allocated when the request
+  // asked for one (request_port != 0). Empty otherwise, which is what every
+  // plugin that binds its own address sees.
+  string assigned_address = 5;
 }
 
 // HeartbeatRequest is the request for PluginService.Heartbeat.

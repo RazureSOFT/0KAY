@@ -35,6 +35,32 @@ message PluginInfo {
   // L.I.F.E. Core publishes them in its tool catalog; calls are routed back to
   // the plugin's ToolService.
   repeated PluginTool tools = 7;
+
+  // api_version is the plugin API version this plugin was built against.
+  // Empty means "1.0": Core does not require it, and only refuses a plugin that
+  // declares a major version it does not understand.
+  string api_version = 8;
+
+  // http_endpoint is the base URL of the plugin's own HTTP surface, when it has
+  // one (e.g. "http://127.0.0.1:50055"). Empty means "no HTTP surface": Core
+  // keeps using its configured endpoints and never routes by capability.
+  string http_endpoint = 9;
+
+  // checks are the plugin's own health checks, reported with every heartbeat.
+  // Empty means the plugin does not self-check and health stays heartbeat-only.
+  repeated PluginCheck checks = 10;
+}
+
+// PluginCheck is one self-reported health check.
+message PluginCheck {
+  // id names the check ("database", "model", "upstream").
+  string id = 1;
+
+  // ok is the check's verdict.
+  bool ok = 2;
+
+  // detail explains a failure; empty when ok.
+  string detail = 3;
 }
 
 // PluginTool is a tool a plugin contributes to Agent / L.I.F.E.

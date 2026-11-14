@@ -92,8 +92,12 @@ type RegisterRequest struct {
 	// settings_sections declares UI settings this plugin contributes to the
 	// WebUI Settings page (optional).
 	SettingsSections []*v1.SettingsSection `protobuf:"bytes,4,rep,name=settings_sections,json=settingsSections,proto3" json:"settings_sections,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// request_port asks Core to allocate a loopback port for this plugin.
+	// Zero means "the plugin already bound its own address", which is the
+	// pre-existing behaviour and stays the default for every old plugin.
+	RequestPort   uint32 `protobuf:"varint,5,opt,name=request_port,json=requestPort,proto3" json:"request_port,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *RegisterRequest) Reset() {
@@ -154,6 +158,13 @@ func (x *RegisterRequest) GetSettingsSections() []*v1.SettingsSection {
 	return nil
 }
 
+func (x *RegisterRequest) GetRequestPort() uint32 {
+	if x != nil {
+		return x.RequestPort
+	}
+	return 0
+}
+
 // RegisterResponse is the response for PluginService.Register.
 type RegisterResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -166,9 +177,13 @@ type RegisterResponse struct {
 	// service_token is the plugin's per-identity bearer token, issued by Core.
 	// The plugin sends it (with its name) on Core HTTP calls and the egress RPC
 	// so Core can attribute and authorize the request.
-	ServiceToken  string `protobuf:"bytes,4,opt,name=service_token,json=serviceToken,proto3" json:"service_token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ServiceToken string `protobuf:"bytes,4,opt,name=service_token,json=serviceToken,proto3" json:"service_token,omitempty"`
+	// assigned_address is the loopback host:port Core allocated when the request
+	// asked for one (request_port != 0). Empty otherwise, which is what every
+	// plugin that binds its own address sees.
+	AssignedAddress string `protobuf:"bytes,5,opt,name=assigned_address,json=assignedAddress,proto3" json:"assigned_address,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *RegisterResponse) Reset() {
@@ -225,6 +240,13 @@ func (x *RegisterResponse) GetMessage() string {
 func (x *RegisterResponse) GetServiceToken() string {
 	if x != nil {
 		return x.ServiceToken
+	}
+	return ""
+}
+
+func (x *RegisterResponse) GetAssignedAddress() string {
+	if x != nil {
+		return x.AssignedAddress
 	}
 	return ""
 }
@@ -2582,18 +2604,20 @@ var File_core_v1_core_proto protoreflect.FileDescriptor
 
 const file_core_v1_core_proto_rawDesc = "" +
 	"\n" +
-	"\x12core/v1/core.proto\x12\acore.v1\x1a\x16plugin/v1/plugin.proto\"\xd0\x01\n" +
+	"\x12core/v1/core.proto\x12\acore.v1\x1a\x16plugin/v1/plugin.proto\"\xf3\x01\n" +
 	"\x0fRegisterRequest\x126\n" +
 	"\vplugin_info\x18\x01 \x01(\v2\x15.plugin.v1.PluginInfoR\n" +
 	"pluginInfo\x12\"\n" +
 	"\fcapabilities\x18\x02 \x03(\tR\fcapabilities\x12\x18\n" +
 	"\aaddress\x18\x03 \x01(\tR\aaddress\x12G\n" +
-	"\x11settings_sections\x18\x04 \x03(\v2\x1a.plugin.v1.SettingsSectionR\x10settingsSections\"\x88\x01\n" +
+	"\x11settings_sections\x18\x04 \x03(\v2\x1a.plugin.v1.SettingsSectionR\x10settingsSections\x12!\n" +
+	"\frequest_port\x18\x05 \x01(\rR\vrequestPort\"\xb3\x01\n" +
 	"\x10RegisterResponse\x12\x18\n" +
 	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x1b\n" +
 	"\tplugin_id\x18\x02 \x01(\tR\bpluginId\x12\x18\n" +
 	"\amessage\x18\x03 \x01(\tR\amessage\x12#\n" +
-	"\rservice_token\x18\x04 \x01(\tR\fserviceToken\"\xa8\x01\n" +
+	"\rservice_token\x18\x04 \x01(\tR\fserviceToken\x12)\n" +
+	"\x10assigned_address\x18\x05 \x01(\tR\x0fassignedAddress\"\xa8\x01\n" +
 	"\x10HeartbeatRequest\x12\x1b\n" +
 	"\tplugin_id\x18\x01 \x01(\tR\bpluginId\x12-\n" +
 	"\x06status\x18\x02 \x01(\x0e2\x15.core.v1.PluginStatusR\x06status\x12!\n" +

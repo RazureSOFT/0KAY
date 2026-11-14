@@ -141,6 +141,43 @@ func (r *Registry) tokenLocked(pluginID string) string {
 	return hex.EncodeToString(mac.Sum(nil))
 }
 
+// FirstWithCapability returns a healthy, non-builtin plugin that declares
+// `capability`, chosen by name so the answer is stable across calls.
+//
+// An empty HTTPEndpoint is not a match: a plugin without an HTTP surface cannot
+// serve a request that Core would route to it, and falling back to the
+// configured endpoint is the honest answer.
+func (r *Registry) FirstWithCapability(capability string) (*PluginInstance, bool) {
+	if capability == "" {
+		return nil, false
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	var matches []*PluginInstance
+	for _, p := range r.plugins {
+		if p == nil || p.Builtin || p.Info == nil {
+			continue
+		}
+		if p.Status != corev1.PluginStatus_PLUGIN_STATUS_HEALTHY {
+			continue
+		}
+		if strings.TrimSpace(p.Info.HttpEndpoint) == "" {
+			continue
+		}
+		for _, c := range p.Capabilities {
+			if c == capability {
+				matches = append(matches, p)
+				break
+			}
+		}
+	}
+	if len(matches) == 0 {
+		return nil, false
+	}
+	sort.Slice(matches, func(i, j int) bool { return matches[i].Info.Name < matches[j].Info.Name })
+	return matches[0], true
+}
+
 func (r *Registry) FindByName(name string) (*PluginInstance, bool) {
 	if name == "" {
 		return nil, false
@@ -287,6 +324,15 @@ func (r *Registry) Register(info *pluginv1.PluginInfo, capabilities []string, ad
 	}
 	if info.Name == "" {
 		return "", status.Error(codes.InvalidArgument, "plugin name is required")
+	}
+	// An empty api_version means "1.x": old plugins never declared one, and
+	// requiring it would turn a compatible plugin into a failed registration.
+	if declared := strings.TrimSpace(info.ApiVersion); declared != "" {
+		major := strings.SplitN(declared, ".", 2)[0]
+		if major != "1" {
+			return "", status.Errorf(codes.FailedPrecondition,
+				"plugin %s declares api_version %s; this Core speaks 1.x", info.Name, declared)
+		}
 	}
 
 	r.mu.Lock()
