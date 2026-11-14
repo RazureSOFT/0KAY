@@ -390,6 +390,14 @@ input[type="checkbox"]{width:auto;accent-color:var(--md-primary)}
 .plan-review-dims i{font-style:normal;color:var(--md-on-surface-variant)}
 .plan-review-revision{margin:0;padding:6px 8px;border-radius:8px;background:var(--md-surface-container-high,var(--md-surface-container-lowest));font-size:11px;line-height:1.5}
 .plan-review-error{margin:0;font-size:11px;color:var(--md-error)}
+.task-perm{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.task-perm-btn{display:flex;flex-direction:column;gap:2px;text-align:left;border:1px solid var(--md-outline-variant);border-radius:8px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);padding:6px 8px;cursor:pointer;font-family:inherit}
+.task-perm-btn b{font-size:12px;font-weight:700}
+.task-perm-btn i{font-size:10px;font-style:normal;color:var(--md-on-surface-variant);line-height:1.3}
+.task-perm-btn.active{border-color:var(--md-primary);box-shadow:inset 0 0 0 1px var(--md-primary)}
+.task-perm-btn.active b{color:var(--md-primary)}
+.task-perm-btn.danger.active{border-color:var(--md-error);box-shadow:inset 0 0 0 1px var(--md-error)}
+.task-perm-btn.danger.active b{color:var(--md-error)}
 .task-kind-switch{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
 .task-kind-btn{display:flex;flex-direction:column;gap:2px;text-align:left;border:1px solid var(--md-outline-variant);border-radius:8px;background:var(--md-surface-container-lowest);color:var(--md-on-surface);padding:6px 8px;cursor:pointer;font-family:inherit}
 .task-kind-btn b{font-size:12px;font-weight:700}
@@ -1202,3 +1210,4 @@ body.resizing-sidebar *{cursor:col-resize!important}
 .plan-diagram figcaption { font-size: 11px; color: var(--md-on-surface-variant); margin-bottom: 4px; }
 .plan-diagram pre { margin: 0; padding: 8px 10px; background: var(--md-surface-container-lowest); border: 1px solid var(--md-outline-variant); border-radius: 6px; font-size: 11px; overflow: auto; }
 .plan-questions { margin: 8px 0 0; padding-left: 18px; color: var(--md-on-surface-variant); font-size: 12px; }
+.recon-badge.perm{color:var(--md-error);border-color:var(--md-error)}

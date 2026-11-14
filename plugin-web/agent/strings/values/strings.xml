@@ -270,6 +270,7 @@
   <string name="page.taskRetestStatus_running">running</string>
   <string name="page.taskRetestStatus_failed">failed</string>
   <string name="page.taskRetestStatus_stopped">stopped</string>
+  <string name="page.taskRetestNoRecord">No retest record is attached to this session.</string>
   <string name="page.taskRetestNote">A retest runs the same probe again and records what it saw. inconclusive means the evidence was not there, not that the finding is wrong.</string>
   <string name="page.taskMainEmpty">No messages yet. Anything you write here reaches the planner on its next wake-up.</string>
   <string name="page.taskMainYou">You</string>
@@ -291,6 +292,11 @@
   <string name="page.taskUntested">Untested</string>
   <string name="page.taskAllow">Allow</string>
   <string name="page.taskDeny">Deny</string>
+  <string name="page.taskPermission">Permissions</string>
+  <string name="page.taskPermNormal">Ask first</string>
+  <string name="page.taskPermNormalDesc">Dangerous tools wait for approval.</string>
+  <string name="page.taskPermFull">Full access</string>
+  <string name="page.taskPermFullDesc">Workers run without asking. The choice sticks to this task.</string>
   <string name="page.taskModel">Model</string>
   <string name="page.taskModelAuto">Auto (executor default)</string>
   <string name="page.taskSearchPlaceholder">Search description / objective / ID</string>

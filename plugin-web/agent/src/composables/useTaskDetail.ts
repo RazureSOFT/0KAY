@@ -11,6 +11,8 @@ export interface ReconTaskRow {
   id: string;
   /** Missing on tasks created before engineering mode existed; means recon. */
   kind?: 'recon' | 'engineering';
+  /** Missing means normal, which is what every task created before this field was. */
+  permissionMode?: 'normal' | 'full_access';
   objective: string;
   status: string;
   createdAt: string;
@@ -71,6 +73,11 @@ export function useTaskDetail(options: {
   const taskCreating = ref(false);
   const taskError = ref('');
   const newTaskKind = ref<'recon' | 'engineering'>('recon');
+  /**
+   * Sticky like the kind: a person who starts one task under full access usually
+   * wants the next one the same way, and re-choosing it every time is friction.
+   */
+  const newTaskPermission = ref<'normal' | 'full_access'>('normal');
   const newTaskObjective = ref('');
   const newTaskTargets = ref('');
   const newTaskCoverage = ref('');
@@ -162,6 +169,7 @@ export function useTaskDetail(options: {
       const created = await runAssessments({
         action: 'create',
         ...(newTaskKind.value === 'engineering' ? { kind: 'engineering' } : {}),
+        ...(newTaskPermission.value === 'full_access' ? { permission_mode: 'full_access' } : {}),
         objective,
         targets,
         ...(newTaskCoverage.value ? { coverage: Number(newTaskCoverage.value) } : {}),
@@ -208,6 +216,7 @@ export function useTaskDetail(options: {
     taskCreating,
     taskError,
     newTaskKind,
+    newTaskPermission,
     newTaskObjective,
     newTaskTargets,
     newTaskCoverage,

@@ -1035,7 +1035,7 @@ const {
 // The task pane lives in a composable; the markup and styles stay here.
 const {
   taskDetail, taskSelectedId, taskShowNew, taskCreating, taskError,
-  newTaskKind, newTaskObjective, newTaskTargets, newTaskCoverage, newTaskRounds, newTaskIntents, newTaskConcurrency, newTaskModel, hintDraft,
+  newTaskKind, newTaskPermission, newTaskObjective, newTaskTargets, newTaskCoverage, newTaskRounds, newTaskIntents, newTaskConcurrency, newTaskModel, hintDraft,
   taskDetailTab, runAssessments, loadTaskDetail, closeTask, openTask,
   controlTask, sendHint, createTask, deleteTask, taskPercent, taskReviews,
 } = useTaskDetail({
@@ -1671,7 +1671,7 @@ watch(() => store.toasts.length, () => {
 // A background assessment must be visible even with the panel closed: the dock
 // button carries a count while one runs, and finishing one — done, failed or
 // cancelled — raises a toast, whichever tab or panel state you are in.
-const assessmentRows = ref<Array<{ id: string; objective: string; status: string; createdAt: string; endedAt?: string; stopped?: string; error?: string; goalProgress?: { met: number; total: number }; findingsCount?: number }>>([])
+const assessmentRows = ref<Array<{ id: string; objective: string; status: string; createdAt: string; endedAt?: string; stopped?: string; error?: string; goalProgress?: { met: number; total: number }; findingsCount?: number; permissionMode?: string }>>([])
 const assessmentRowsFiltered = computed(() => {
   const q = taskSearch.value.trim().toLowerCase()
   const status = taskStatusFilter.value
@@ -1690,7 +1690,7 @@ async function pollAssessments() {
   // selected, which reads as data loss. `all` asks for every session's tasks.
   try {
     const payload = await runAssessments({ action: 'list', all: true })
-    const rows: Array<{ id: string; objective: string; status: string; createdAt: string; endedAt?: string; stopped?: string; error?: string; goalProgress?: { met: number; total: number }; findingsCount?: number }> = Array.isArray(payload?.tasks) ? payload.tasks : []
+    const rows: Array<{ id: string; objective: string; status: string; createdAt: string; endedAt?: string; stopped?: string; error?: string; goalProgress?: { met: number; total: number }; findingsCount?: number; permissionMode?: string }> = Array.isArray(payload?.tasks) ? payload.tasks : []
     for (const row of rows) {
       const before = assessmentPrev.get(row.id)
       if (before === 'running' && row.status !== 'running') {
@@ -2447,6 +2447,19 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             <label>{{ t('agent.page.taskConcurrency') }}<input v-model="newTaskConcurrency" type="number" min="1" max="6" :placeholder="t('agent.page.taskAuto')" /></label>
           </div>
           <label>{{ t('agent.page.taskModel') }}<AppSelect v-model="newTaskModel" :options="[{ value: '', label: t('agent.page.taskModelAuto') }, ...modelSelectOptions]" /></label>
+          <!-- Permission is a task property, not a session one: the task keeps
+               running after the conversation moves on, so the choice has to
+               belong to the task and survive a resume. -->
+          <div class="task-perm" role="group" :aria-label="t('agent.page.taskPermission')">
+            <button type="button" class="task-perm-btn" :class="{ active: newTaskPermission === 'normal' }" :aria-pressed="newTaskPermission === 'normal'" @click="newTaskPermission = 'normal'">
+              <b>{{ t('agent.page.taskPermNormal') }}</b>
+              <i>{{ t('agent.page.taskPermNormalDesc') }}</i>
+            </button>
+            <button type="button" class="task-perm-btn" :class="{ active: newTaskPermission === 'full_access', danger: true }" :aria-pressed="newTaskPermission === 'full_access'" @click="newTaskPermission = 'full_access'">
+              <b>{{ t('agent.page.taskPermFull') }}</b>
+              <i>{{ t('agent.page.taskPermFullDesc') }}</i>
+            </button>
+          </div>
           <button type="submit" :disabled="taskCreating || !selectedId || !newTaskObjective.trim() || !newTaskTargets.trim()">{{ t('agent.page.taskCreate') }}</button>
         </form>
         <button type="button" class="recon-newtask-btn task-new-btn" @click="taskShowNew = !taskShowNew">{{ taskShowNew ? '✕' : '＋' }} {{ t('agent.page.taskNew') }}</button>
@@ -2454,6 +2467,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
           <li v-for="row in assessmentRowsFiltered" :key="row.id" class="recon-taskrow" :class="{ picked: row.id === taskSelectedId }" @click="openTask(row.id)">
             <div class="recon-taskrow-top">
               <span class="recon-badge" :class="row.status"><i class="recon-pillardot"></i>{{ t('agent.page.taskStatus_' + row.status) }}</span>
+              <span v-if="row.permissionMode === 'full_access'" class="recon-badge perm" :title="t('agent.page.taskPermFull')">{{ t('agent.page.taskPermFull') }}</span>
             </div>
             <p>{{ row.objective }}</p>
             <div class="recon-taskrow-meta">

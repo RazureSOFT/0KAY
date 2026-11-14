@@ -270,6 +270,7 @@
   <string name="page.taskRetestStatus_running">進行中</string>
   <string name="page.taskRetestStatus_failed">失敗</string>
   <string name="page.taskRetestStatus_stopped">已停止</string>
+  <string name="page.taskRetestNoRecord">這個會話沒有關聯的複測紀錄。</string>
   <string name="page.taskRetestNote">複測會重做一次同樣的驗證並記錄實際看到什麼。無法確認表示證據不足，不代表漏洞判斷有誤。</string>
   <string name="page.taskMainEmpty">還沒有訊息。你在這裡寫的會被規劃器在下次喚醒時讀到。</string>
   <string name="page.taskMainYou">你</string>
@@ -291,6 +292,11 @@
   <string name="page.taskUntested">未測</string>
   <string name="page.taskAllow">允許</string>
   <string name="page.taskDeny">拒絕</string>
+  <string name="page.taskPermission">權限</string>
+  <string name="page.taskPermNormal">先詢問</string>
+  <string name="page.taskPermNormalDesc">危險工具需要你批准。</string>
+  <string name="page.taskPermFull">完全存取</string>
+  <string name="page.taskPermFullDesc">worker 不再詢問。這個選擇固定在本任務上。</string>
   <string name="page.taskModel">模型</string>
   <string name="page.taskModelAuto">自動（執行器當前模型）</string>
   <string name="page.taskSearchPlaceholder">搜尋描述 / 目標 / ID</string>

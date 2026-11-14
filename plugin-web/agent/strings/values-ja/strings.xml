@@ -270,6 +270,7 @@
   <string name="page.taskRetestStatus_running">実行中</string>
   <string name="page.taskRetestStatus_failed">失敗</string>
   <string name="page.taskRetestStatus_stopped">停止</string>
+  <string name="page.taskRetestNoRecord">このセッションに紐づく再検証の記録はありません。</string>
   <string name="page.taskRetestNote">再検証は同じ検証をやり直し、実際に見たことを記録します。判断不可は証拠が足りないという意味で、検出内容が誤りという意味ではありません。</string>
   <string name="page.taskMainEmpty">まだメッセージはありません。ここに書いた内容は次回の起動時にプランナーが読みます。</string>
   <string name="page.taskMainYou">あなた</string>
@@ -291,6 +292,11 @@
   <string name="page.taskUntested">未テスト</string>
   <string name="page.taskAllow">許可</string>
   <string name="page.taskDeny">拒否</string>
+  <string name="page.taskPermission">権限</string>
+  <string name="page.taskPermNormal">確認する</string>
+  <string name="page.taskPermNormalDesc">危険なツールは承認を待ちます。</string>
+  <string name="page.taskPermFull">フルアクセス</string>
+  <string name="page.taskPermFullDesc">worker は確認なしで実行します。この設定はタスクに固定されます。</string>
   <string name="page.taskModel">モデル</string>
   <string name="page.taskModelAuto">自動（実行者の既定）</string>
   <string name="page.taskSearchPlaceholder">説明 / 目標 / ID を検索</string>
