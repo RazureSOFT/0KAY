@@ -185,21 +185,27 @@ async function buildWebui() {
  */
 async function buildAgent() {
   const target = path.join(out, 'agent')
+  // @0kay/mcp is a file: dependency (file:../mcp); the payload needs it beside
+  // agent/ or `npm ci` cannot resolve it and tsc fails on the import.
+  await copyDir(path.join(repo, 'mcp'), path.join(out, 'mcp'), { required: true })
   await copyDir(path.join(repo, 'agent'), target, {
     required: true,
-    exclude: [/^dist\//, /^data\//, /\.test\.ts$/, /^tsconfig\.json$/],
+    // tsconfig.json is needed by `npm run build` (tsc); only dist/ and tests
+    // are build output. Excluding it made the build print tsc's help and exit 1.
+    exclude: [/^dist\//, /^data\//, /\.test\.ts$/],
   })
   if (skipBuild) {
     log('skip agent build (--skip-build)')
     return
   }
-  log('installing agent production dependencies')
-  await runNpm(['ci', '--omit=dev', '--no-audit', '--no-fund'], target)
-  // The launcher spawns `dist/index.js`, which the package's own `build` script
-  // produces. Without this step the payload has the sources and no entry point,
-  // and the launcher reports every service missing.
+  // Build with dev dependencies, then prune: `tsc` is a devDependency, so
+  // `ci --omit=dev` followed by `npm run build` fails with "tsc not found".
+  log('installing agent dependencies')
+  await runNpm(['ci', '--no-audit', '--no-fund'], target)
   log('building the agent entry point')
   await runNpm(['run', 'build'], target)
+  log('pruning agent dev dependencies')
+  await runNpm(['prune', '--omit=dev', '--no-audit', '--no-fund'], target)
 }
 
 /** The Python plugin, with a virtualenv built on this machine. */
