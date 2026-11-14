@@ -218,6 +218,11 @@
   <string name="page.taskObjective">目標</string>
   <string name="page.taskTargets">対象アセット（1 行に 1 つ）</string>
   <string name="page.taskCoverageGate">カバレッジゲート（%）</string>
+  <string name="page.taskKindLabel">タスク種別</string>
+  <string name="page.taskKindRecon">偵察</string>
+  <string name="page.taskKindReconDesc">対象の事実を立証する：ポート、サービス、脆弱性。</string>
+  <string name="page.taskKindEngineering">エンジニアリング</string>
+  <string name="page.taskKindEngineeringDesc">コードベースや配備済みシステムを改修する。</string>
   <string name="page.taskRounds">ラウンド上限</string>
   <string name="page.taskIntents">インテント上限</string>
   <string name="page.taskConcurrency">並列数</string>

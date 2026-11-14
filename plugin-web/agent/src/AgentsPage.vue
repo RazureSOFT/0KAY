@@ -56,6 +56,11 @@ const kindChoices = computed(() => [
   { value: 'agent' as const, label: 'Agent', tag: t('agent.page.kindAgentTag'), desc: t('agent.page.kindAgentDesc') },
   { value: 'work' as const, label: 'Work', tag: t('agent.page.kindWorkTag'), desc: t('agent.page.kindWorkDesc') },
 ])
+/** Which kind of assessment a new task is. */
+const taskKindChoices = computed(() => [
+  { value: 'recon' as const, label: t('agent.page.taskKindRecon'), desc: t('agent.page.taskKindReconDesc') },
+  { value: 'engineering' as const, label: t('agent.page.taskKindEngineering'), desc: t('agent.page.taskKindEngineeringDesc') },
+])
 const subKindOptions = computed(() => [
   { value: 'general', label: t('agent.page.modeGeneral') },
   { value: 'code', label: t('agent.page.modeCode') },
@@ -1030,7 +1035,7 @@ const {
 // The task pane lives in a composable; the markup and styles stay here.
 const {
   taskDetail, taskSelectedId, taskShowNew, taskCreating, taskError,
-  newTaskObjective, newTaskTargets, newTaskCoverage, newTaskRounds, newTaskIntents, newTaskConcurrency, newTaskModel, hintDraft,
+  newTaskKind, newTaskObjective, newTaskTargets, newTaskCoverage, newTaskRounds, newTaskIntents, newTaskConcurrency, newTaskModel, hintDraft,
   taskDetailTab, runAssessments, loadTaskDetail, closeTask, openTask,
   controlTask, sendHint, createTask, deleteTask, taskPercent,
 } = useTaskDetail({
@@ -2254,6 +2259,12 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
              task list in both states: with nothing selected it is the full
              list, and with a task open it is the same list with a marker. -->
         <form v-if="taskShowNew" class="recon-taskform task-new-form" @submit.prevent="createTask">
+          <div class="task-kind-switch" role="group" :aria-label="t('agent.page.taskKindLabel')">
+            <button v-for="choice in taskKindChoices" :key="choice.value" type="button" class="task-kind-btn" :class="{ active: newTaskKind === choice.value }" :aria-pressed="newTaskKind === choice.value" @click="newTaskKind = choice.value">
+              <b>{{ choice.label }}</b>
+              <i>{{ choice.desc }}</i>
+            </button>
+          </div>
           <label>{{ t('agent.page.taskObjective') }}<textarea v-model="newTaskObjective" rows="2"></textarea></label>
           <label>{{ t('agent.page.taskTargets') }}<textarea v-model="newTaskTargets" rows="3" placeholder="https://a.example&#10;10.0.0.0/24"></textarea></label>
           <div class="task-opt-grid">

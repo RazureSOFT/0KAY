@@ -9,6 +9,8 @@ import { computed, ref, type Ref } from 'vue';
 
 export interface ReconTaskRow {
   id: string;
+  /** Missing on tasks created before engineering mode existed; means recon. */
+  kind?: 'recon' | 'engineering';
   objective: string;
   status: string;
   createdAt: string;
@@ -50,6 +52,7 @@ export function useTaskDetail(options: {
   const taskShowNew = ref(false);
   const taskCreating = ref(false);
   const taskError = ref('');
+  const newTaskKind = ref<'recon' | 'engineering'>('recon');
   const newTaskObjective = ref('');
   const newTaskTargets = ref('');
   const newTaskCoverage = ref('');
@@ -138,6 +141,7 @@ export function useTaskDetail(options: {
     try {
       const created = await runAssessments({
         action: 'create',
+        ...(newTaskKind.value === 'engineering' ? { kind: 'engineering' } : {}),
         objective,
         targets,
         ...(newTaskCoverage.value ? { coverage: Number(newTaskCoverage.value) } : {}),
@@ -177,6 +181,7 @@ export function useTaskDetail(options: {
     taskShowNew,
     taskCreating,
     taskError,
+    newTaskKind,
     newTaskObjective,
     newTaskTargets,
     newTaskCoverage,

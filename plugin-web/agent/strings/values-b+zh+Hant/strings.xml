@@ -218,6 +218,11 @@
   <string name="page.taskObjective">目標</string>
   <string name="page.taskTargets">目標資產（每行一個）</string>
   <string name="page.taskCoverageGate">覆蓋率門檻（%）</string>
+  <string name="page.taskKindLabel">任務類型</string>
+  <string name="page.taskKindRecon">偵察</string>
+  <string name="page.taskKindReconDesc">針對目標取證：連接埠、服務、漏洞。</string>
+  <string name="page.taskKindEngineering">工程</string>
+  <string name="page.taskKindEngineeringDesc">改造程式碼或已部署的系統。</string>
   <string name="page.taskRounds">輪次上限</string>
   <string name="page.taskIntents">意圖上限</string>
   <string name="page.taskConcurrency">並行</string>
