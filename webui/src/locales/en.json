@@ -289,6 +289,7 @@
   },
   "mcp": {
     "env": "Environment (KEY=VALUE per line)",
+    "githubLogin": "Sign in with GitHub",
     "githubToken": "GitHub token",
     "addGithub": "Add GitHub",
     "githubHint": "Adds the GitHub MCP server; the token is stored in the server env, not on the command line.",

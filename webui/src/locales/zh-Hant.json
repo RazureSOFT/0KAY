@@ -289,6 +289,7 @@
   },
   "mcp": {
     "env": "環境變數（每行 KEY=VALUE）",
+    "githubLogin": "用 GitHub 登入",
     "githubToken": "GitHub token",
     "addGithub": "新增 GitHub",
     "githubHint": "新增 GitHub MCP 伺服器；token 存在伺服器環境變數裡。",

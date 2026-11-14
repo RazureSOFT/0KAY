@@ -289,6 +289,7 @@
   },
   "mcp": {
     "env": "環境変数（1 行に KEY=VALUE）",
+    "githubLogin": "GitHub でログイン",
     "githubToken": "GitHub トークン",
     "addGithub": "GitHub を追加",
     "githubHint": "GitHub MCP サーバーを追加します。トークンは環境変数に保存されます。",
