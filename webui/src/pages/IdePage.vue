@@ -11,6 +11,8 @@ import { computed, onBeforeUnmount, onMounted, ref, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { parseRefs, refFor, resolveRefs, refsForModel } from '../stores/attachment-refs'
 import { latestPlan } from '../stores/plan-card'
+import GitPanel from '../components/GitPanel.vue'
+import ArchitecturePanel from '../components/ArchitecturePanel.vue'
 
 type Entry = { name: string; path: string }
 type Row = {
@@ -146,6 +148,26 @@ function renderTurn(row: Row): { role: 'you' | 'her'; text: string } | null {
 const activePlan = computed(() => latestPlan(turns.value))
 
 const planOpen = ref(false)
+
+/**
+ * The right-hand pane: talk to the agent, look at git, look at the map.
+ *
+ * Three views of one workspace rather than three pages, because they are used
+ * together — you ask for a change, read the diff, and check it did not reshape
+ * the architecture. Splitting them across routes would mean losing the thread
+ * each time.
+ */
+type SideTab = 'agent' | 'git' | 'map'
+const sideTab = ref<SideTab>('agent')
+const sideTabs = computed<Array<{ id: SideTab; label: string }>>(() => [
+  { id: 'agent', label: t('ide.tabAgent') },
+  { id: 'git', label: t('ide.tabGit') },
+  { id: 'map', label: t('ide.tabArchitecture') },
+])
+
+/** Git wants a repository root; the workspace root is the best guess until the
+ * panel reports otherwise, and a non-repo answers with an offer to create one. */
+const repoPath = computed(() => rootPath.value)
 
 // Building a plan is a new task whose prompt is the plan itself — the agent
 // that wrote it is gone by now, so the plan has to carry everything the build
@@ -401,7 +423,24 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <section class="ide-chat" :aria-label="t('ide.agent')">
+      <section class="ide-side" :aria-label="t('ide.agent')">
+        <nav class="side-tabs" role="tablist">
+          <button
+            v-for="tab in sideTabs"
+            :key="tab.id"
+            type="button"
+            role="tab"
+            class="side-tab"
+            :class="{ active: sideTab === tab.id }"
+            :aria-selected="sideTab === tab.id"
+            @click="sideTab = tab.id"
+          >{{ tab.label }}</button>
+        </nav>
+
+        <GitPanel v-if="sideTab === 'git'" :path="repoPath" @changed="loadTurns" />
+        <ArchitecturePanel v-else-if="sideTab === 'map'" :path="rootPath" />
+
+        <div v-else class="ide-chat">
         <div class="chat-log">
           <p v-for="(line, index) in conversation" :key="index" :class="['turn', line.role]">{{ line.text }}</p>
           <p v-if="!conversation.length" class="hint">{{ t('ide.askAnything') }}</p>
@@ -483,6 +522,7 @@ onBeforeUnmount(() => {
             </button>
           </div>
         </form>
+        </div>
       </section>
     </div>
   </div>
@@ -494,10 +534,19 @@ onBeforeUnmount(() => {
 .ide-bar strong { font-size: 13px; letter-spacing: .02em; }
 .ide-bar .path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--md-on-surface-variant); font-size: 12px; }
 
-.ide-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 220px minmax(0, 1fr) 340px; }
+/* Wider than the chat-only layout: a diff needs columns and a map needs names,
+   and both are unreadable at the width one line of chat was happy with. */
+.ide-body { flex: 1; min-height: 0; display: grid; grid-template-columns: 210px minmax(0, 1fr) minmax(300px, 420px); }
 .ide-tree { border-right: 1px solid var(--md-outline-variant); overflow: auto; padding: 8px; font-size: 12.5px; }
 .ide-code { overflow: hidden; display: flex; flex-direction: column; min-width: 0; }
-.ide-chat { border-left: 1px solid var(--md-outline-variant); display: flex; flex-direction: column; min-height: 0; }
+.ide-chat { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+/* The side pane is a tab host: the border belongs to the pane, not to whichever
+   view happens to be selected, so switching tabs does not move the edge. */
+.ide-side { border-left: 1px solid var(--md-outline-variant); display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.side-tabs { display: flex; gap: 2px; padding: 5px 6px 0; border-bottom: 1px solid var(--md-outline-variant); flex: none; }
+.side-tab { border: 0; background: transparent; padding: 4px 9px; font-size: 11.5px; cursor: pointer; color: var(--md-on-surface-variant); border-bottom: 2px solid transparent; border-radius: 6px 6px 0 0; }
+.side-tab:hover { color: var(--md-on-surface); }
+.side-tab.active { color: var(--md-primary); border-bottom-color: var(--md-primary); }
 
 .tree-roots { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
 .chip { border: 1px solid var(--md-outline-variant); background: transparent; border-radius: 7px; padding: 2px 7px; font-size: 11.5px; cursor: pointer; color: var(--md-on-surface-variant); }
