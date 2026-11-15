@@ -6,6 +6,7 @@
  * a different scope id and the scoped CSS would stop applying.
  */
 import { computed, ref, type Ref } from 'vue';
+import type { CraftDetail } from './useCraftProject';
 
 export interface ReconTaskRow {
   id: string;
@@ -55,9 +56,11 @@ export interface TaskDetail {
     sessions: Array<{ id: string; kind: string; refId?: string; title?: string; text?: string; status?: string; round?: number }>;
     usage?: { inTokens?: number; outTokens?: number; llmCalls?: number };
   };
+  /** Craft tasks only: the live four-stage project read from craft.json. */
+  craft?: CraftDetail | null;
 }
 
-export type TaskDetailTab = 'sessions' | 'overview' | 'plans' | 'graph' | 'board' | 'findings' | 'assets' | 'approvals' | 'report';
+export type TaskDetailTab = 'sessions' | 'overview' | 'plans' | 'graph' | 'board' | 'findings' | 'assets' | 'approvals' | 'craft' | 'report';
 
 export function useTaskDetail(options: {
   selectedId: Ref<string>;
@@ -89,6 +92,8 @@ export function useTaskDetail(options: {
   const newTaskConcurrency = ref('');
   const hintDraft = ref('');
   const taskDetailTab = ref<TaskDetailTab>('overview');
+  /** Only the first detail read of a craft task jumps to its own tab. */
+  let craftTabPending = false;
 
   async function runAssessments(args: Record<string, any>): Promise<any> {
     // A cross-session read needs no session: refusing it when nothing is selected
@@ -97,7 +102,10 @@ export function useTaskDetail(options: {
     // Polls fail fast so a gated or stale agent cannot stack hung requests.
     // create/report run the goals phase / render a file first and legitimately
     // take longer, so they get their own budget.
-    const long = args.action === 'create' || args.action === 'report';
+    // A craft study/check renders six full pages; an 8s budget would cut it off
+    // halfway and leave the project mid-round.
+    const long = args.action === 'create' || args.action === 'report'
+      || (args.action === 'craft' && (args.operation === 'study' || args.operation === 'check'));
     const response = await fetch('/api/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -112,12 +120,19 @@ export function useTaskDetail(options: {
   async function loadTaskDetail() {
     if (!taskSelectedId.value) return;
     taskDetail.value = await runAssessments({ action: 'get', id: taskSelectedId.value });
+    // A craft task opens on its own pane; a later poll must not drag the user
+    // back from whichever tab they chose to read.
+    if (craftTabPending && taskDetail.value?.state.kind === 'craft' && taskDetail.value?.craft) {
+      taskDetailTab.value = 'craft';
+    }
+    craftTabPending = false;
   }
 
   /** Leave the task pane and go back to the conversation it was opened from. */
   function closeTask(): void {
     taskSelectedId.value = null;
     taskDetail.value = null;
+    craftTabPending = false;
   }
 
   async function openTask(id: string) {
@@ -126,6 +141,7 @@ export function useTaskDetail(options: {
     hintDraft.value = '';
     taskShowNew.value = false;
     taskDetailTab.value = 'overview';
+    craftTabPending = true;
     await loadTaskDetail().catch(() => {});
   }
 

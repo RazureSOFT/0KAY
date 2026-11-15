@@ -1,5 +1,6 @@
 import { reactive } from 'vue'
 import { i18n } from '@0kay/host'
+import { steerReply } from './composerMode'
 
 export interface AgentInfo {
   plugin_id: string
@@ -20,6 +21,21 @@ export interface AgentInfo {
     memory_available_bytes?: number
     workdir?: string
   } | null
+}
+
+/** One interjection waiting in the agent's queue. */
+export interface SteerEntry {
+  id: string
+  text: string
+  createdAt?: number
+}
+
+export interface SteerReply {
+  queued: number
+  pending?: SteerEntry[]
+  id?: string
+  removed?: boolean
+  reason?: string
 }
 
 export interface TaskRow {
@@ -301,7 +317,8 @@ function createStore() {
    * the text is queued. A 409 means the task finished in the meantime, which is
    * a fact the caller should show rather than hide.
    */
-  async function steerTask(task_id: string, text: string, session_id = ''): Promise<{ queued: number }> {
+  /** One instruction waiting at the agent's next tool boundary. */
+  async function steerTask(task_id: string, text: string, session_id = ''): Promise<SteerReply> {
     const response = await fetch(`/api/tasks/${encodeURIComponent(task_id)}/steer`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -313,14 +330,83 @@ function createStore() {
       try { message = JSON.parse(body).message || body } catch { }
       throw new Error(message)
     }
-    try { return JSON.parse(body) } catch { return { queued: 0 } }
+    return steerReply(body)
   }
 
+  /**
+   * What the agent still has queued for a task.
+   *
+   * The list comes from the executor, not from a local copy of what this tab
+   * sent: the queue is the agent's, and another window or the task itself may
+   * have changed it since.
+   */
+  async function steerQueue(task_id: string): Promise<SteerReply> {
+    const response = await fetch(`/api/tasks/${encodeURIComponent(task_id)}/steer`, { signal: AbortSignal.timeout(8000) })
+    const body = await response.text()
+    if (!response.ok) {
+      let message = body
+      try { message = JSON.parse(body).message || body } catch { }
+      throw new Error(message)
+    }
+    return steerReply(body)
+  }
+
+  /** Take back one queued instruction, before the drain delivers it. */
+  async function unsteerTask(task_id: string, id: string): Promise<SteerReply> {
+    const response = await fetch(`/api/tasks/${encodeURIComponent(task_id)}/steer`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+    const body = await response.text()
+    if (!response.ok) {
+      let message = body
+      try { message = JSON.parse(body).message || body } catch { }
+      throw new Error(message)
+    }
+    return steerReply(body)
+  }
+
+  /**
+   * One pull that does not depend on the event stream being healthy.
+   *
+   * Kept incremental (no reset) so stopping does not clear the transcript
+   * cache or move the reader's scroll position.
+   */
+  async function pullTasks(): Promise<void> {
+    try {
+      const response = await fetch(`/api/tasks?incremental=1&cursor=${encodeURIComponent(taskCursor)}`, { signal: AbortSignal.timeout(8000) })
+      if (response.ok) applyTasks(await response.json())
+    } catch {
+      // The next poll or the stream will catch up.
+    }
+  }
+
+  /**
+   * Stop a task and show it stopped on the same tick as the click.
+   *
+   * The stream is normally the source of task state, but a click is a promise
+   * to the person who clicked: waiting for a round trip and a later stream tick
+   * makes the button look dead. Mark the row cancelled locally first, then ask
+   * the server, then read the real state back. A failed request rolls back by
+   * reading rather than by guessing what the server still thinks.
+   */
   async function cancelTask(task_id: string) {
-    const response = await fetch('/api/tasks/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task_id }) })
-    if (!response.ok) throw new Error(await response.text())
-    const body = await response.json()
-    if (!body.success) throw new Error(body.message)
+    const row = taskCache.get(task_id)
+    if (row) {
+      taskCache.set(task_id, { ...row, state: 'cancelled' })
+      recompute()
+    }
+    try {
+      const response = await fetch('/api/tasks/cancel', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task_id }) })
+      if (!response.ok) throw new Error(await response.text())
+      const body = await response.json()
+      if (!body.success) throw new Error(body.message)
+    } catch (error) {
+      await pullTasks()
+      throw error
+    }
+    await pullTasks()
     await fetchAgents()
   }
 
@@ -334,6 +420,8 @@ function createStore() {
     sendTask,
     cancelTask,
     steerTask,
+    steerQueue,
+    unsteerTask,
     ensureSessionTurns,
     reloadTasks,
     olderSessionTurns,

@@ -328,44 +328,95 @@ func (g *Gateway) cancelTask(w http.ResponseWriter, r *http.Request, taskID stri
 // call returns, which is the only point where the previous result is known and
 // the next step has not been chosen yet. That is why this returns 202 with a
 // queue depth instead of pretending the agent has already reacted.
+// handleTaskSteer queues a user instruction for a task that is already running.
+//
+// The task is not interrupted. The agent drains the queue after its current tool
+// call returns, which is the only point where the previous result is known and
+// the next step has not been chosen yet. That is why this returns 202 with a
+// queue depth instead of pretending the agent has already reacted.
+//
+// GET lists what is still waiting, so the browser renders the queue the agent
+// holds rather than a local guess that drifts when another window types.
+// POST appends one instruction.
+// DELETE drops one by id, for the case where the user typed faster than the
+// agent moved and wants a line back before it is delivered.
 func (g *Gateway) handleTaskSteer(w http.ResponseWriter, r *http.Request) {
 	taskID := r.PathValue("task_id")
 	if taskID == "" {
 		badRequest(w, "task_id required")
 		return
 	}
-	var body struct {
-		Text       string `json:"text"`
-		SessionID  string `json:"session_id"`
-		ExecutorID string `json:"executor_id"`
-	}
-	if !decodeBody(w, r, &body, maxSmallBody) {
-		return
-	}
-	if strings.TrimSpace(body.Text) == "" {
-		badRequest(w, "text required")
-		return
-	}
-	for _, agent := range g.registry.GetAgents(true) {
-		if body.ExecutorID != "" && agent.PluginID != body.ExecutorID {
-			continue
+	switch r.Method {
+	case http.MethodGet:
+		g.steerForward(w, r, taskID, "task_steer_status", map[string]any{"task_id": taskID}, "")
+	case http.MethodPost:
+		var body struct {
+			Text       string `json:"text"`
+			SessionID  string `json:"session_id"`
+			ExecutorID string `json:"executor_id"`
 		}
-		conn, err := g.dial(agent.Address)
-		if err != nil {
-			continue
+		if !decodeBody(w, r, &body, maxSmallBody) {
+			return
 		}
-		payload, _ := json.Marshal(map[string]any{
+		if strings.TrimSpace(body.Text) == "" {
+			badRequest(w, "text required")
+			return
+		}
+		g.steerForward(w, r, taskID, "task_steer", map[string]any{
 			"task_id":    taskID,
 			"session_id": body.SessionID,
 			"text":       body.Text,
-		})
+		}, body.ExecutorID)
+	case http.MethodDelete:
+		var body struct {
+			ID         string `json:"id"`
+			ExecutorID string `json:"executor_id"`
+		}
+		if !decodeBody(w, r, &body, maxSmallBody) {
+			return
+		}
+		if strings.TrimSpace(body.ID) == "" {
+			badRequest(w, "id required")
+			return
+		}
+		g.steerForward(w, r, taskID, "task_steer_cancel", map[string]any{
+			"task_id": taskID,
+			"id":      body.ID,
+		}, body.ExecutorID)
+	default:
+		allowMethod(w, r, http.MethodGet, http.MethodPost, http.MethodDelete)
+	}
+}
+
+// steerForward delivers one task_steer* direct call to the executor that owns
+// the task.
+//
+// Every one of them answers with the queue as the agent holds it, so the caller
+// never has to merge its own copy with the server's. `executor` pins the call to
+// one plugin when the browser knows which executor runs the task; otherwise the
+// first healthy one that accepts it wins, which is the same rule the rest of the
+// gateway uses.
+func (g *Gateway) steerForward(w http.ResponseWriter, r *http.Request, taskID, tool string, args map[string]any, executor string) {
+	payload, err := json.Marshal(args)
+	if err != nil {
+		badRequest(w, "invalid arguments")
+		return
+	}
+	for _, agent := range g.registry.GetAgents(true) {
+		if executor != "" && agent.PluginID != executor {
+			continue
+		}
+		conn, dialErr := g.dial(agent.Address)
+		if dialErr != nil {
+			continue
+		}
 		ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
-		result, err := agentv1.NewAgentServiceClient(conn).RunDirect(
+		result, callErr := agentv1.NewAgentServiceClient(conn).RunDirect(
 			pairing.CallbackContext(ctx, agent.Address),
-			&agentv1.RunDirectRequest{Tool: "task_steer", Args: string(payload)},
+			&agentv1.RunDirectRequest{Tool: tool, Args: string(payload)},
 		)
 		cancel()
-		if err != nil {
+		if callErr != nil {
 			continue
 		}
 		if !result.Success {
@@ -374,11 +425,18 @@ func (g *Gateway) handleTaskSteer(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusConflict, "conflict", result.Error)
 			return
 		}
-		var queued struct {
-			Queued int `json:"queued"`
+		var reply map[string]any
+		_ = json.Unmarshal([]byte(result.Result), &reply)
+		if reply == nil {
+			reply = map[string]any{}
 		}
-		_ = json.Unmarshal([]byte(result.Result), &queued)
-		writeJSON(w, http.StatusAccepted, map[string]any{"ok": true, "queued": queued.Queued, "executor_id": agent.PluginID})
+		reply["ok"] = true
+		reply["executor_id"] = agent.PluginID
+		status := http.StatusOK
+		if tool == "task_steer" {
+			status = http.StatusAccepted
+		}
+		writeJSON(w, status, reply)
 		return
 	}
 	writeErr(w, http.StatusServiceUnavailable, "unavailable", "no healthy executor to deliver the message")

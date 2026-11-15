@@ -142,6 +142,42 @@ func TestTaskDeltaResetIsLightweight(t *testing.T) {
 	}
 }
 
+func TestTaskDeltaKeepsChangedRowWithoutSessionHeader(t *testing.T) {
+	// Cancelling one task is the smallest delta there is: a single agent row
+	// and no session header. limitTaskRows is a full-list policy — it keeps
+	// only rows whose session header is in the same payload — and applying it
+	// to a delta dropped that row. The browser then kept showing "running"
+	// until the user refreshed and the reset pulled the whole list.
+	s := &CoreServiceServer{tasks: map[string]*TaskInfo{}}
+	session, err := s.CreateAgentSession("cancel-me")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = s.RecordTask(TaskEvent{TaskID: "work", SessionID: session, Kind: "agent", Prompt: "count", State: "running"}); err != nil {
+		t.Fatal(err)
+	}
+	cursor, _ := s.TaskDelta("")["cursor"].(string)
+	if cursor == "" {
+		t.Fatal("reset produced no cursor")
+	}
+
+	// Exactly what CancelAgent does after the executor acknowledges the stop.
+	s.mu.Lock()
+	s.tasks["work"].State = "cancelled"
+	s.markTaskDirtyLocked("work")
+	s.persistTasksLocked()
+	s.mu.Unlock()
+
+	delta := s.TaskDelta(cursor)
+	rows, _ := delta["tasks"].([]map[string]interface{})
+	for _, row := range rows {
+		if row["task_id"] == "work" && row["state"] == "cancelled" {
+			return
+		}
+	}
+	t.Fatalf("delta dropped the cancelled task: %d rows, cursor %q -> %q", len(rows), cursor, delta["cursor"])
+}
+
 func TestSessionTurnsPageAndPersistenceAcrossRestart(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "tasks.json")
 	t.Setenv("TASKS_PATH", path)

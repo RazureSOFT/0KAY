@@ -1078,13 +1078,21 @@ button.subagent-card-head>strong{font-weight:700}
   background:color-mix(in srgb,#2e7d52 14%,transparent);color:#1f5c3c;overflow-wrap:anywhere}
 .run-banner:hover{background:color-mix(in srgb,#2e7d52 20%,transparent)}
 
-/* Messages typed while the agent is answering: visible but clearly not sent yet. */
+/* Messages typed while the agent is answering: visible but clearly not sent yet.
+   Two kinds share the strip — an amendment the agent will apply at its next
+   step boundary, and the message that will start the next turn. They read
+   differently on purpose: the amendment is an aside, the next message is the
+   next thing, and only the amendment can still be taken back. */
 .queued{list-style:none;margin:0 0 8px;padding:0;display:flex;flex-direction:column;gap:6px}
 .queued li{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:10px;font-size:12.5px;
   background:color-mix(in srgb,var(--md-primary) 9%,transparent);border:1px dashed color-mix(in srgb,var(--md-primary) 40%,transparent)}
+.queued li.steer{background:color-mix(in srgb,var(--md-tertiary,var(--md-primary)) 10%,transparent);
+  border-color:color-mix(in srgb,var(--md-tertiary,var(--md-primary)) 46%,transparent)}
 .queued-n{flex:none;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;
   background:var(--md-primary);color:var(--md-on-primary)}
+.queued-n.steer{background:var(--md-tertiary,var(--md-primary));font-size:12px}
 .queued-text{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.9}
+.queued-kind{flex:none;font-size:10.5px;font-weight:650;letter-spacing:.02em;text-transform:uppercase;opacity:.62}
 .queued button{flex:none;border:0;background:transparent;cursor:pointer;padding:2px 4px;border-radius:6px;color:var(--md-on-surface-variant);font-size:12px}
 .queued button:hover{background:color-mix(in srgb,var(--md-on-surface) 10%,transparent)}
 
@@ -1113,12 +1121,12 @@ button.subagent-card-head>strong{font-weight:700}
 body.resizing-sidebar{cursor:col-resize;user-select:none}
 body.resizing-sidebar *{cursor:col-resize!important}
 
-/* ---- steer: talking to a task that is already running ---------------------- */
-.steer-row{display:flex;align-items:center;gap:8px;margin:0 0 6px;padding:4px 4px 4px 10px;border-radius:12px;background:color-mix(in srgb,var(--md-primary) 7%,var(--md-surface-container-low));border:1px dashed color-mix(in srgb,var(--md-primary) 34%,transparent)}
-.steer-input{flex:1;min-width:0;border:0;background:transparent;padding:6px 2px;font-size:13px;color:var(--md-on-surface)}
-.steer-input:focus{outline:none;box-shadow:none}
-.steer-send{flex:none;height:28px;padding:0 12px;border:0;border-radius:999px;background:var(--md-primary);color:var(--md-on-primary);font-size:12.5px;font-weight:650}
-.steer-send:disabled{opacity:.42}
+/* ---- steer: the textarea itself, while a run is in flight ----------------
+   There is no separate input any more: the composer does this job when a task
+   is running. The only visual change is a left rule, so the box reads as a
+   comment on the run in progress rather than as the start of a new turn. */
+.composer-input textarea.steering{border-left:2px solid color-mix(in srgb,var(--md-primary) 58%,transparent);
+  padding-left:10px;border-radius:4px 12px 12px 4px}
 .steer-notice{margin:0 0 6px;padding:6px 10px;border-radius:10px;font-size:12px;background:var(--md-surface-container-high);color:var(--md-on-surface-variant)}
 
 /* ---- task pane -------------------------------------------------------------
@@ -1211,3 +1219,64 @@ body.resizing-sidebar *{cursor:col-resize!important}
 .plan-diagram pre { margin: 0; padding: 8px 10px; background: var(--md-surface-container-lowest); border: 1px solid var(--md-outline-variant); border-radius: 6px; font-size: 11px; overflow: auto; }
 .plan-questions { margin: 8px 0 0; padding-left: 18px; color: var(--md-on-surface-variant); font-size: 12px; }
 .recon-badge.perm{color:var(--md-error);border-color:var(--md-error)}
+
+/* ---- craft project pane ----------------------------------------------------
+   Study → Build → Check → Ready, the per-width check list, the mismatch list
+   and the change-request inbox. The pane lives in the wide right column, so
+   the 284px task-tab button overrides above still apply and are tightened here. */
+.craft-pane{display:flex;flex-direction:column;gap:12px;padding:4px 0 24px}
+.craft-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.craft-headline{display:flex;align-items:center;gap:8px;min-width:0}
+.craft-headline strong{font-size:13px;font-weight:700;color:var(--md-on-surface);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.craft-mode{flex:none;padding:2px 8px;border-radius:999px;border:1px solid var(--md-outline-variant);font-size:10px;font-weight:700;color:var(--md-on-surface-variant)}
+.craft-mode.deep{color:var(--md-error);border-color:var(--md-error)}
+.craft-stages{display:flex;align-items:center;gap:0;margin:0;padding:0;list-style:none}
+.craft-stages li{position:relative;display:flex;flex:1;align-items:center;gap:6px;min-width:0;padding:0 6px 0 0;font-size:11.5px;font-weight:650;color:var(--md-on-surface-variant)}
+.craft-stages li:not(:last-child)::after{content:"";flex:1;height:1px;min-width:8px;background:var(--md-outline-variant);margin-left:4px}
+.craft-stages li.done{color:var(--md-primary)}
+.craft-stages li.active{color:var(--md-primary);font-weight:800}
+.craft-stage-dot{flex:none;width:9px;height:9px;border-radius:50%;border:2px solid var(--md-outline-variant);background:var(--md-surface)}
+.craft-stages li.done .craft-stage-dot{background:var(--md-primary);border-color:var(--md-primary)}
+.craft-stages li.active .craft-stage-dot{box-shadow:0 0 0 3px color-mix(in srgb,var(--md-primary) 22%,transparent);border-color:var(--md-primary)}
+.craft-scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(116px,1fr));gap:8px}
+.craft-score{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:14px;background:var(--md-surface-container-low);border:1px solid color-mix(in srgb,var(--md-outline-variant) 45%,transparent)}
+.craft-score small{font-size:10.5px;color:var(--md-on-surface-variant)}
+.craft-score b{font-size:20px;font-weight:750;font-variant-numeric:tabular-nums;color:var(--md-on-surface)}
+.craft-score.good b{color:var(--md-primary)}
+.craft-score.warn b{color:var(--md-tertiary,var(--md-primary))}
+.craft-score.bad b{color:var(--md-error)}
+.craft-block{margin:0!important}
+.craft-checks,.craft-diffs,.craft-inbox,.craft-artifacts{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.craft-checks li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:7px 10px;border-radius:11px;background:var(--md-surface-container-low);font-size:11.5px}
+.craft-checks li.pass{background:color-mix(in srgb,var(--md-primary) 9%,var(--md-surface-container-low))}
+.craft-width{font-weight:750;font-variant-numeric:tabular-nums}
+.craft-mini{color:var(--md-on-surface-variant)}
+.craft-verdict{margin-left:auto;font-weight:700;color:var(--md-error)}
+.craft-checks li.pass .craft-verdict{color:var(--md-primary)}
+.craft-diffs li{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:6px 9px;border-radius:10px;background:var(--md-surface-container-low);font-size:11px}
+.craft-diff-width{flex:none;color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums}
+.craft-diff-path{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--md-primary)}
+.craft-diff-values{color:var(--md-on-surface-variant);overflow-wrap:anywhere}
+.craft-form{display:flex;gap:6px;margin-bottom:8px}
+.craft-form input{flex:1;min-width:0}
+.craft-inbox li{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:10px;background:var(--md-surface-container-low);font-size:11.5px}
+.craft-inbox li span{flex:1;min-width:0}
+.craft-inbox li small{color:var(--md-on-surface-variant)}
+.craft-actions{display:flex;flex-wrap:wrap;align-items:flex-end;gap:6px;margin-bottom:8px}
+.craft-actions label{display:flex;flex-direction:column;gap:3px;min-width:150px;font-size:10.5px;color:var(--md-on-surface-variant)}
+.craft-actions label.grow{flex:1}
+.craft-actions label input{width:100%;min-width:0}
+.craft-mode-switch{display:flex;gap:3px;padding:3px;border-radius:999px;background:var(--md-surface-container-high)}
+.craft-mode-switch button{min-height:0;padding:4px 10px;border:0;border-radius:999px;background:transparent;color:var(--md-on-surface-variant);font-size:11px;font-weight:650}
+.craft-mode-switch button.active{background:var(--md-surface-container-lowest);color:var(--md-primary)}
+.craft-artifacts li{display:flex;align-items:center;gap:8px;padding:5px 9px;border-radius:9px;background:var(--md-surface-container-low);font-size:11px}
+.craft-art-kind{flex:none;min-width:70px;color:var(--md-on-surface-variant);font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+.craft-artifacts code{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--md-on-surface)}
+.craft-artifacts small{flex:none;color:var(--md-on-surface-variant);font-variant-numeric:tabular-nums}
+.craft-limits .recon-item{font-size:11px;color:var(--md-on-surface-variant)}
+#app .workspace .task-tab .craft-form button,
+#app .workspace .task-tab .craft-actions button,
+#app .workspace .task-tab .craft-inbox button,
+#app .workspace .task-tab .craft-artifacts button,
+#app .workspace .task-tab .craft-mode-switch button{min-height:0;padding:5px 10px;border-radius:8px;font-size:11px}
+#app .workspace .task-tab .craft-artifacts button{padding:3px 8px}

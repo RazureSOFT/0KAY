@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref, watch, type ComponentPublicInstance } from 'vue'
-import { useAgentsStore, type TaskRow } from './store'
+import { useAgentsStore, type TaskRow, type SteerEntry } from './store'
 import MarkdownContent from './MarkdownContent.vue'
 import ToolStepCard from './ToolStepCard.vue'
 import DirectoryDialog from './DirectoryDialog.vue'
@@ -11,10 +11,12 @@ import { useReconCanvas } from './composables/useReconCanvas'
 import { usePlanCard } from './composables/usePlanCard'
 import { useSessionList, type WorkspaceRow } from './composables/useSessionList'
 import { useTaskDetail } from './composables/useTaskDetail'
+import { useCraftProject, type CraftDetail } from './composables/useCraftProject'
 import { useComposer } from './composables/useComposer'
 import ThinkChain from './ThinkChain.vue'
 import IntentStrip from './IntentStrip.vue'
 import { agentTree, focusChain } from './agentTree'
+import { canSend, composerMode, composerPlaceholder, deliveredIds, queuedRows, type QueuedRow } from './composerMode'
 import { AppSelect, useConfirm, i18n } from '@0kay/host'
 import { locale, syncLocale } from './locale'
 const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {})
@@ -1048,6 +1050,27 @@ const {
   pollAssessments: () => pollAssessments(),
 })
 
+// The craft pane reads the project summary that `get()` carries on a craft
+// task. Every action goes back through the same assessments tool, so the panel
+// and the planner always see the same craft.json.
+const craft = computed<CraftDetail | null>(() => taskDetail.value?.craft || null)
+const {
+  craftBusy, craftError, craftStudyUrl, craftBuildNote, craftRequestText,
+  craftThresholdDraft,
+  craftStages, craftLatest, craftChecklist, craftDifferences, craftDifferenceTotal,
+  craftInbox, craftLimitations, craftArtifacts, craftHasStudy, craftCanCheck,
+  craftStudy, craftBuild, craftCheck, craftRequest, craftApply, craftReady,
+  craftSetMode, craftSetThreshold, craftRefresh,
+  craftOpen, craftOpenApp, craftOpenReport, craftTone, craftBytes, craftPercent,
+} = useCraftProject({
+  taskId: taskSelectedId,
+  craft,
+  runAssessments,
+  reload: () => loadTaskDetail(),
+  // openFilePreview is declared above this block, so no TDZ here.
+  openPath: (file) => openFilePreview(file, { confirmDiscard: true }),
+})
+
 const taskLayout = computed(() => computeReconLayout(reconNodes.value, reconEdges.value, expandedDigests.value))
 
 const taskAssets = computed(() => {
@@ -1984,36 +2007,125 @@ function turnIntents(turn: TaskRow): { intents: any[]; rate: number; approach: s
   }
 }
 
-/** The turn a steer message belongs to: the running one, or the last one. */
+/**
+ * The task a steer message belongs to: the running one.
+ *
+ * Steering only means something while a task is in flight — the agent drains
+ * the queue at its next tool boundary, so a finished task would never read it.
+ * Returning null when nothing runs is what lets the composer fall back to
+ * "start the next turn" instead of offering an amendment nobody will apply.
+ */
 const steerTarget = computed<TaskRow | null>(() => {
-  const rows = store.tasks.filter(item => item.session_id === selectedId.value && (item.kind === 'agent' || item.kind === 'agent_session'))
-  if (!rows.length) return null
-  const running = rows.find(item => item.state === 'running' || item.state === 'pending')
-  if (running) return running
-  return [...rows].sort((a, b) => (b.started_at || '').localeCompare(a.started_at || ''))[0] || null
+  return store.tasks.find(item => item.session_id === selectedId.value
+    && (item.kind === 'agent' || item.kind === 'agent_session')
+    && (item.state === 'running' || item.state === 'pending')) || null
 })
 
-const steerText = ref('')
+/** What the box does right now: a comment on the run, or the next message. */
+const composerKind = computed(() => composerMode(!!steerTarget.value))
+
 const steerBusy = ref(false)
 const steerNotice = ref('')
+/** The queue as the executor reports it, not as this tab remembers sending it. */
+const steerEntries = ref<SteerEntry[]>([])
+/** Polling the agent's queue while a run is in flight. */
+let steerTimer: ReturnType<typeof setInterval> | null = null
 
-async function sendSteer(): Promise<void> {
+/**
+ * Re-read the agent's queue.
+ *
+ * Called on a timer while a task runs, because the drain is the agent's decision:
+ * a queued line disappears from its queue when it is applied, and the strip has
+ * to stop showing it at that moment rather than after the next send.
+ */
+async function refreshSteerQueue(): Promise<void> {
   const target = steerTarget.value
-  const text = steerText.value.trim()
-  if (!target || !text) return
+  if (!target) {
+    if (steerEntries.value.length) steerEntries.value = []
+    return
+  }
+  try {
+    const reply = await store.steerQueue(target.task_id)
+    const next = Array.isArray(reply.pending) ? reply.pending : []
+    // Entries that left the queue were delivered: say so once, so the reader
+    // knows the amendment landed instead of wondering where their line went.
+    if (deliveredIds(steerEntries.value, next).length && !steerNotice.value) {
+      steerNotice.value = t('agent.page.steerApplied')
+      window.setTimeout(() => { steerNotice.value = '' }, 4000)
+    }
+    steerEntries.value = next
+  } catch {
+    // A 409/503 means the task moved to another executor or ended. The next
+    // tick will see it; there is nothing to show the reader here.
+  }
+}
+
+/**
+ * Send one amendment.
+ *
+ * The button calls this with no argument, so it has to read the merged composer
+ * (`draft`). Enter goes through `send()`, which has already cleared the box and
+ * passes the text explicitly. Keeping those two paths distinct also avoids
+ * erasing anything the user typed while the request was in flight.
+ */
+async function sendSteer(text?: string): Promise<void> {
+  const target = steerTarget.value
+  const fromBox = text === undefined
+  const line = (text ?? draft.value).trim()
+  if (!target || !line) return
+  if (fromBox) draft.value = ''
   steerBusy.value = true
   steerNotice.value = ''
   try {
-    await store.steerTask(target.task_id, text, target.session_id || '')
-    steerText.value = ''
+    const reply = await store.steerTask(target.task_id, line, target.session_id || '')
+    steerEntries.value = Array.isArray(reply.pending) ? reply.pending : []
     steerNotice.value = t('agent.page.steerQueued')
     window.setTimeout(() => { steerNotice.value = '' }, 4000)
   } catch (error: any) {
+    // A task that ended between the click and the request is a fact, not a
+    // failure: say it finished and put the line back so it can be sent as a
+    // normal message instead of being lost. Do not overwrite newer typing.
+    if (!draft.value.trim()) draft.value = line
     steerNotice.value = error?.message || String(error)
+    void store.reloadTasks().catch(() => {})
   } finally {
     steerBusy.value = false
   }
 }
+
+/** Withdraw one queued instruction, while it is still waiting. */
+async function withdrawSteer(id: string): Promise<void> {
+  const target = steerTarget.value
+  if (!target || !id) return
+  try {
+    const reply = await store.unsteerTask(target.task_id, id)
+    steerEntries.value = Array.isArray(reply.pending) ? reply.pending : []
+  } catch (error: any) {
+    steerNotice.value = error?.message || String(error)
+  }
+}
+
+/** Everything waiting above the box: amendments first, then the next message. */
+const queuedStrip = computed<QueuedRow[]>(() => queuedRows(steerEntries.value, queuedMessages.value))
+
+// A different conversation is a different queue. Carrying entries across would
+// put another session's instruction under this one's textarea.
+watch(selectedId, () => { steerEntries.value = [] })
+
+// When the run ends the agent closes its queue, and anything still in it is
+// dropped rather than applied to the next task in the session — the queue is
+// per task, and a finished task has nothing left to amend. Say how many were
+// dropped instead of letting the entry look as if it is still pending.
+watch(steerTarget, (next, previous) => {
+  if (next?.task_id === previous?.task_id) return
+  const dropped = steerEntries.value
+  steerEntries.value = []
+  if (!next && dropped.length) {
+    steerNotice.value = t('agent.page.steerDropped', { n: dropped.length })
+    window.setTimeout(() => { steerNotice.value = '' }, 6000)
+  }
+})
+
 const turnStateIcon = (state: string) => ({ done: '✓', cancelled: '⊘', failed: '✕' } as Record<string, string>)[state] || '•'
 function turnDuration(turn: TaskRow): string {
   const start = Date.parse(turn.started_at || '')
@@ -2228,6 +2340,33 @@ async function create() {
  * what the composer promises — "the agent is busy, your message is next".
  */
 
+/*
+ * The composer is one control with two jobs.
+ *
+ * While a run is in flight the textarea is an amendment to that run: `send()`
+ * routes it to the steer queue, and the placeholder says when it will be
+ * applied. When nothing runs it starts the next turn, and a message typed during
+ * a run waits here as `queuedMessages` before being sent.
+ *
+ * The two used to be separate rows above the box, which made the composer look
+ * like it had two personalities. Wording each mode is the whole difference.
+ */
+
+/** The placeholder, which names what a send will do rather than the agent's state. */
+const composerHint = computed(() => composerPlaceholder(composerKind.value, {
+  idle: t('agent.page.composerPlaceholder'),
+  steer: t('agent.page.steerPlaceholder'),
+  closed: t('agent.page.restoreToChat'),
+  archived: session.value?.state === 'archived',
+}))
+
+/** Whether the send button does anything: one rule for both modes. */
+const canSendNow = computed(() => canSend(composerKind.value, draft.value, {
+  busy: busy.value,
+  archived: session.value?.state === 'archived',
+  attachments: attachments.value.length,
+}))
+
 /** Append a message to the queue; `flushQueue` sends it when the run ends. */
 function queueMessage(text: string): void {
   const trimmed = text.trim()
@@ -2241,7 +2380,12 @@ async function flushQueue(): Promise<void> {
   const [next, ...rest] = queuedMessages.value
   if (!next) return
   queuedMessages.value = rest
-  await send(next, [])
+  // Files were attached when the line was queued, not when it is drained. Pass
+  // them explicitly and clear them here: send() only clears the box for a
+  // direct send, so leaving them behind would attach them twice.
+  const files = attachments.value
+  attachments.value = []
+  await send(next, files)
 }
 
 // The queue drains itself the moment the answer lands — no extra click.
@@ -2255,8 +2399,21 @@ async function send(override?: string, overrideAttachments?: Array<{ name: strin
   if (override === undefined && text.trim()==='/compact') {await compact();return}
   const outgoing = overrideAttachments ?? attachments.value
   const hasAttachments = outgoing.length > 0
-  // Typing while a run is in flight queues instead of being refused.
-  if (override === undefined && (busy.value || active.value) && (text.trim() || hasAttachments)) {
+  // While a task is in flight the box is an amendment, not a new turn: it goes
+  // to the agent's queue and is applied at its next tool boundary. Refusing it
+  // (the old behaviour) made the box look broken the moment work started.
+  //
+  // An attachment cannot be an amendment — the running task already collected
+  // its files — so a send that carries one waits for the next turn instead of
+  // losing it. Steering only ever sends the text.
+  if (override === undefined && composerKind.value === 'steer' && text.trim() && !hasAttachments) {
+    draft.value = ''
+    await sendSteer(text)
+    return
+  }
+  // Typing while a request of this tab's own is in flight queues instead of
+  // being refused: the next turn starts the moment this one lands.
+  if (override === undefined && (busy.value || (composerKind.value === 'steer' && hasAttachments)) && (text.trim() || hasAttachments)) {
     queueMessage(text)
     draft.value = ''
     return
@@ -2294,8 +2451,12 @@ async function send(override?: string, overrideAttachments?: Array<{ name: strin
   finally { busy.value = false }
 }
 async function stop() {
-  if (!active.value || active.value.kind!=='agent') return
-  try { await store.cancelTask(active.value.task_id) } catch (e: any) { error.value = e.message }
+  // The button is rendered whenever the composer is in steer mode, so use that
+  // same source for the target. Checking only `active` (which also requires a
+  // specific kind) could show a stop button whose click did nothing at all.
+  const target = active.value || steerTarget.value
+  if (!target) return
+  try { await store.cancelTask(target.task_id) } catch (e: any) { error.value = e.message }
 }
 async function stopAll() {
   const ids = runningTasks.value.map(item => item.task_id)
@@ -2409,8 +2570,14 @@ watch(executorId,()=>{hostUsage.value=null;workdir.value='';closeBrowser();fetch
 watch(hostOpen,fetchHost)
 watch(selectedId,()=>{compactNotice.value=''})
 watch([selectedId, () => store.resetToken], ([id]) => { if (id) void store.ensureSessionTurns(id) }, { immediate: true })
-onMounted(() => { syncLocale(); store.connect(); loadOptions(); fetchModels();void fetchWorkspaces();hostTimer=setInterval(fetchHost,5000);workspaceTimer=setInterval(()=>{if(!document.hidden)void fetchWorkspaces()},5000);void fetchBrowserStatus();browserTimer=setInterval(()=>{if(!document.hidden)void fetchBrowserStatus()},5000);window.addEventListener('keydown',onEscape);loadSuperseded(selectedId.value);void pollAssessments();assessmentTimer=setInterval(()=>{if(!document.hidden)void pollAssessments()},6000) })
-onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrowser();store.disconnect();if(hostTimer) clearInterval(hostTimer);if(workspaceTimer) clearInterval(workspaceTimer);if(browserTimer) clearInterval(browserTimer);if(browserViewTimer) clearInterval(browserViewTimer);if(browserStreamRetry) clearTimeout(browserStreamRetry);if(treeRefreshTimer) clearTimeout(treeRefreshTimer);if(searchTimer) clearTimeout(searchTimer);if(toastTimer) clearTimeout(toastTimer);if(ctxTimer) clearTimeout(ctxTimer);if(assessmentTimer) clearInterval(assessmentTimer);if(tasksTimer) clearInterval(tasksTimer);window.removeEventListener('keydown',onEscape)})
+onMounted(() => { syncLocale(); store.connect(); loadOptions(); fetchModels();void fetchWorkspaces();hostTimer=setInterval(fetchHost,5000);workspaceTimer=setInterval(()=>{if(!document.hidden)void fetchWorkspaces()},5000);void fetchBrowserStatus();browserTimer=setInterval(()=>{if(!document.hidden)void fetchBrowserStatus()},5000);window.addEventListener('keydown',onEscape);loadSuperseded(selectedId.value);void pollAssessments();assessmentTimer=setInterval(()=>{if(!document.hidden)void pollAssessments()},6000);
+  // The steer strip follows the agent's own queue, so it has to be read while
+  // the run moves: the drain is the agent's decision, and the entry disappears
+  // there, not when this tab next sends something.
+  void refreshSteerQueue();
+  steerTimer = setInterval(() => { if (!document.hidden && steerTarget.value) void refreshSteerQueue(); /* @steer-timer */ }, 2000)
+})
+onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrowser();store.disconnect();if(hostTimer) clearInterval(hostTimer);if(workspaceTimer) clearInterval(workspaceTimer);if(browserTimer) clearInterval(browserTimer);if(browserViewTimer) clearInterval(browserViewTimer);if(browserStreamRetry) clearTimeout(browserStreamRetry);if(treeRefreshTimer) clearTimeout(treeRefreshTimer);if(searchTimer) clearTimeout(searchTimer);if(toastTimer) clearTimeout(toastTimer);if(ctxTimer) clearTimeout(ctxTimer);if(assessmentTimer) clearInterval(assessmentTimer);if(steerTimer) clearInterval(steerTimer);if(tasksTimer) clearInterval(tasksTimer);window.removeEventListener('keydown',onEscape)})
 </script>
 
 <template>
@@ -2625,6 +2792,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
               <button type="button" :class="{ active: taskDetailTab === 'findings' }" @click="taskDetailTab = 'findings'">{{ t('agent.page.taskTabFindings') }}</button>
               <button type="button" :class="{ active: taskDetailTab === 'assets' }" @click="taskDetailTab = 'assets'">{{ t('agent.page.taskTabAssets') }}</button>
               <button type="button" :class="{ active: taskDetailTab === 'approvals' }" @click="taskDetailTab = 'approvals'">{{ t('agent.page.taskTabApprovals') }}</button>
+              <button v-if="taskDetail.state.kind === 'craft'" type="button" :class="{ active: taskDetailTab === 'craft' }" @click="taskDetailTab = 'craft'">{{ t('agent.page.craftTab') }}</button>
               <button type="button" :class="{ active: taskDetailTab === 'report' }" @click="taskDetailTab = 'report'">{{ t('agent.page.taskTabReport') }}</button>
             </div>
             <!-- 会话：the conversation tree — planner rounds, worker intents, system events -->
@@ -2912,6 +3080,126 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
                 </li>
               </ul>
             </template>
+            <!-- 复刻项目：Study → Build → Check → Ready。
+                 阶段、三宽度检查、差异清单、变更请求、留档都来自任务自己的
+                 craft.json，和规划器每轮读到的是同一份状态。 -->
+            <template v-else-if="taskDetailTab === 'craft'">
+              <div class="craft-pane">
+                <p v-if="craftError" class="recon-error">{{ craftError }}</p>
+                <div class="craft-head">
+                  <div class="craft-headline">
+                    <strong>{{ craft?.objective || taskDetail.state.objective }}</strong>
+                    <span class="craft-mode" :class="craft?.mode">{{ craft?.mode === 'deep' ? t('agent.page.craftModeDeep') : t('agent.page.craftModeClean') }}</span>
+                  </div>
+                  <div class="recon-task-controls">
+                    <button type="button" :disabled="craftBusy" @click="craftRefresh()">⟳ {{ t('agent.page.refresh') }}</button>
+                    <button type="button" :disabled="!craft?.paths.report" @click="craftOpenReport()">{{ t('agent.page.craftReport') }}</button>
+                    <button type="button" :disabled="!craft?.paths.entry" @click="craftOpenApp()">{{ t('agent.page.craftPreviewApp') }}</button>
+                  </div>
+                </div>
+
+                <ol class="craft-stages">
+                  <li v-for="stage in craftStages" :key="stage.id" :class="{ active: stage.active, done: stage.done }">
+                    <i class="craft-stage-dot" />
+                    <span>{{ t('agent.page.craftStage_' + stage.id) }}</span>
+                  </li>
+                </ol>
+
+                <div class="craft-scores">
+                  <div class="craft-score" :class="craftTone(craftLatest?.overall)"><small>{{ t('agent.page.craftOverall') }}</small><b>{{ craftPercent(craftLatest?.overall) }}</b></div>
+                  <div class="craft-score"><small>{{ t('agent.page.craftElementScore') }}</small><b>{{ craftPercent(craftLatest?.element) }}</b></div>
+                  <div class="craft-score"><small>{{ t('agent.page.craftPixelScore') }}</small><b>{{ craftPercent(craftLatest?.pixel) }}</b></div>
+                  <div class="craft-score"><small>{{ t('agent.page.craftRound') }}</small><b>{{ craft?.round ?? 0 }}</b></div>
+                  <div class="craft-score"><small>{{ t('agent.page.craftThreshold') }}</small><b>{{ craft?.threshold ?? 95 }}%</b></div>
+                  <div class="craft-score"><small>{{ t('agent.page.craftConfidence') }}</small><b>{{ craftPercent(craftLatest?.confidence) }}</b></div>
+                </div>
+
+                <section class="recon-block craft-block">
+                  <h4>{{ t('agent.page.craftWidths') }} <b>{{ craftChecklist.length }}</b></h4>
+                  <p v-if="!craftHasStudy" class="tree-msg">{{ t('agent.page.craftEmpty') }}</p>
+                  <ul v-else class="craft-checks">
+                    <li v-for="row in craftChecklist" :key="row.width" :class="{ pass: row.pass }">
+                      <span class="craft-width">{{ row.width }} px</span>
+                      <span class="craft-mini">{{ t('agent.page.craftElementScore') }} <b>{{ row.element }}%</b></span>
+                      <span class="craft-mini">{{ t('agent.page.craftPixelScore') }} <b>{{ craftPercent(row.pixel) }}</b></span>
+                      <span class="craft-mini">{{ t('agent.page.craftDifferences') }} <b>{{ row.differences }}</b></span>
+                      <span class="craft-verdict">{{ row.pass ? t('agent.page.craftPass') : t('agent.page.craftFail') }}</span>
+                    </li>
+                  </ul>
+                  <p v-if="craftHasStudy && !craftChecklist.length" class="tree-msg">{{ t('agent.page.craftNoCheckYet') }}</p>
+                </section>
+
+                <section class="recon-block craft-block">
+                  <h4>{{ t('agent.page.craftDifferences') }} <b>{{ craftDifferenceTotal }}</b></h4>
+                  <p v-if="!craftDifferences.length" class="tree-msg">{{ t('agent.page.craftNoDifferences') }}</p>
+                  <ul v-else class="craft-diffs">
+                    <li v-for="(diff, index) in craftDifferences.slice(0, 40)" :key="index">
+                      <span class="recon-badge intent">{{ diff.kind }}</span>
+                      <span class="craft-diff-width">{{ diff.width }}px</span>
+                      <code class="craft-diff-path">{{ diff.path }}</code>
+                      <span class="craft-diff-values">{{ diff.original || '—' }} → {{ diff.rebuilt || '—' }}<i v-if="diff.delta != null"> ({{ diff.delta }}px)</i></span>
+                    </li>
+                    <li v-if="craftDifferenceTotal > 40" class="tree-msg">{{ t('agent.page.craftMore', { n: craftDifferenceTotal - 40 }) }}</li>
+                  </ul>
+                </section>
+
+                <section class="recon-block craft-block">
+                  <h4>{{ t('agent.page.craftInbox') }} <b>{{ craftInbox.length }}</b></h4>
+                  <form class="craft-form" @submit.prevent="craftRequest()">
+                    <input v-model="craftRequestText" :placeholder="t('agent.page.craftInboxPlaceholder')" :disabled="craftBusy" />
+                    <button type="submit" :disabled="craftBusy || !craftRequestText.trim()">{{ t('agent.page.craftSendRequest') }}</button>
+                  </form>
+                  <ul class="craft-inbox">
+                    <li v-for="item in craftInbox" :key="item.id">
+                      <span>{{ item.text }}</span>
+                      <small>#{{ item.round }}</small>
+                      <button type="button" :disabled="craftBusy" @click="craftApply(item.id)">{{ t('agent.page.craftApply') }}</button>
+                    </li>
+                  </ul>
+                </section>
+
+                <section class="recon-block craft-block">
+                  <h4>{{ t('agent.page.craftActions') }}</h4>
+                  <div class="craft-actions">
+                    <label><span>{{ t('agent.page.craftStudyUrl') }}</span><input v-model="craftStudyUrl" :placeholder="craft?.target || 'https://…'" /></label>
+                    <div class="craft-mode-switch">
+                      <button type="button" :class="{ active: craft?.mode !== 'deep' }" :disabled="craftBusy" @click="craftSetMode('clean_room')">{{ t('agent.page.craftModeClean') }}</button>
+                      <button type="button" :class="{ active: craft?.mode === 'deep' }" :disabled="craftBusy" @click="craftSetMode('deep')">{{ t('agent.page.craftModeDeep') }}</button>
+                    </div>
+                    <button type="button" :disabled="craftBusy" @click="craftStudy()">{{ t('agent.page.craftStudyBtn') }}</button>
+                  </div>
+                  <div class="craft-actions">
+                    <label class="grow"><span>{{ t('agent.page.craftBuildNote') }}</span><input v-model="craftBuildNote" :placeholder="t('agent.page.craftBuildNote')" /></label>
+                    <button type="button" :disabled="craftBusy || !craftHasStudy" @click="craftBuild()">{{ t('agent.page.craftBuildBtn') }}</button>
+                    <button type="button" class="primary" :disabled="craftBusy || !craftCanCheck" @click="craftCheck()">{{ t('agent.page.craftCheckBtn') }}</button>
+                  </div>
+                  <div class="craft-actions">
+                    <label><span>{{ t('agent.page.craftThreshold') }}</span><input v-model="craftThresholdDraft" type="number" min="0" max="100" :placeholder="String(craft?.threshold ?? 95)" /></label>
+                    <button type="button" :disabled="craftBusy" @click="craftSetThreshold()">{{ t('agent.page.craftThresholdBtn') }}</button>
+                    <button type="button" :disabled="craftBusy" @click="craftReady()">{{ t('agent.page.craftReadyBtn') }}</button>
+                  </div>
+                </section>
+
+                <section class="recon-block craft-block">
+                  <h4>{{ t('agent.page.craftArtifacts') }} <b>{{ craftArtifacts.length }}</b></h4>
+                  <ul class="craft-artifacts">
+                    <li v-for="row in craftArtifacts.slice(0, 60)" :key="row.file">
+                      <span class="craft-art-kind">{{ row.kind }}</span>
+                      <code>{{ row.file }}</code>
+                      <small>{{ craftBytes(row.bytes) }}</small>
+                      <button type="button" @click="craftOpen(row)">{{ t('agent.page.craftOpen') }}</button>
+                    </li>
+                  </ul>
+                </section>
+
+                <section v-if="craftLimitations.length" class="recon-block craft-block">
+                  <h4>{{ t('agent.page.craftLimitations') }}</h4>
+                  <ul class="recon-items craft-limits">
+                    <li v-for="(line, index) in craftLimitations.slice(-8)" :key="index" class="recon-item"><i class="recon-dot" />{{ line }}</li>
+                  </ul>
+                </section>
+              </div>
+            </template>
             <!-- 报告 -->
             <template v-else>
               <div class="recon-task-controls">
@@ -3145,11 +3433,12 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
         </div>
       </section>
       <form v-if="!showingTask && !activeSub" class="composer" :class="{ dropping }" @submit.prevent="send()" @dragenter="onDragEnter" @dragover="onDragOver" @dragleave="onDragLeave" @drop="onDropFiles">
-        <ul v-if="queuedMessages.length" class="queued" :aria-label="t('agent.page.queuedTitle')">
-          <li v-for="(item, index) in queuedMessages" :key="index">
-            <span class="queued-n">{{ index + 1 }}</span>
-            <span class="queued-text">{{ item }}</span>
-            <button type="button" :title="t('agent.page.queuedRemove')" :aria-label="t('agent.page.queuedRemove')" @click="dropQueued(index)">✕</button>
+        <ul v-if="queuedStrip.length" class="queued" :aria-label="t('agent.page.queuedTitle')">
+          <li v-for="row in queuedStrip" :key="row.key" :class="row.kind">
+            <span class="queued-n" :class="row.kind">{{ row.kind === 'steer' ? '↩' : row.n }}</span>
+            <span class="queued-text">{{ row.text }}</span>
+            <span class="queued-kind">{{ row.kind === 'steer' ? t('agent.page.queuedSteer') : t('agent.page.queuedNext') }}</span>
+            <button type="button" :title="t('agent.page.queuedRemove')" :aria-label="t('agent.page.queuedRemove')" @click="row.kind === 'steer' ? withdrawSteer(row.id || '') : dropQueued(Number(row.n) - 1)">✕</button>
           </li>
         </ul>
         <div v-if="dropping" class="drop-veil" aria-hidden="true">
@@ -3199,29 +3488,22 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             <span v-if="attachError" class="attach-error">{{ attachError }}</span>
           </div>
           <div v-if="steerNotice" class="steer-notice" role="status">{{ steerNotice }}</div>
-          <div v-if="active?.kind === 'agent'" class="steer-row">
-            <input
-              v-model="steerText"
-              class="steer-input"
-              :placeholder="t('agent.page.steerPlaceholder')"
-              :aria-label="t('agent.page.steerPlaceholder')"
-              maxlength="4000"
-              @keydown.enter.exact.prevent="sendSteer"
-            />
-            <button type="button" class="steer-send" :disabled="steerBusy || !steerText.trim()" @click="sendSteer">{{ t('agent.page.steerSend') }}</button>
-          </div>
-          <textarea ref="composerArea" v-model="draft" :disabled="busy || session?.state === 'archived'" :placeholder="session?.state === 'archived' ? t('agent.page.restoreToChat') : t('agent.page.composerPlaceholder')" :aria-label="t('agent.page.composerAria')" @keydown="onComposerKey" @paste="onPaste" />
+          <textarea ref="composerArea" v-model="draft" :disabled="busy || session?.state === 'archived'" :placeholder="composerHint" :aria-label="t('agent.page.composerAria')" :class="{ steering: composerKind === 'steer' }" @keydown="onComposerKey" @paste="onPaste" />
           <div class="composer-actions">
             <button type="button" class="attach-fly" :disabled="!!active || busy || uploading || session?.state === 'archived'" :aria-label="t('agent.page.addAttachment')" :title="uploading ? t('agent.page.uploading') : t('agent.page.attachHint')" @click="pickFiles">
               <span v-if="uploading" class="tree-spin small" aria-hidden="true"></span>
               <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
               <span class="hint right"><b>{{ t('agent.page.addAttachment') }}</b><i>{{ uploading ? t('agent.page.uploading') : t('agent.page.attachHint') }}</i></span>
             </button>
-            <button v-if="active?.kind !== 'agent'" type="submit" class="send-fly" :disabled="busy || !!active || (!draft.trim() && !attachments.length) || session?.state === 'archived'" :aria-label="t('agent.page.send')" :title="t('agent.page.send')">
+            <button v-if="composerKind === 'steer'" type="button" class="send-fly" :disabled="steerBusy || !canSendNow" :aria-label="t('agent.page.steerSend')" :title="t('agent.page.steerSend')" @click="sendSteer()">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21.5 2.5 10.8 13.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M21.5 2.5 14.5 21.5l-3.7-8.3-8.3-3.7 19-7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+              <span class="hint right"><b>{{ t('agent.page.steerSend') }}</b><i>{{ t('agent.page.tipSteer') }}</i></span>
+            </button>
+            <button v-else type="submit" class="send-fly" :disabled="!canSendNow" :aria-label="t('agent.page.send')" :title="t('agent.page.send')">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21.5 2.5 10.8 13.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M21.5 2.5 14.5 21.5l-3.7-8.3-8.3-3.7 19-7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
               <span class="hint right"><b>{{ t('agent.page.send') }}</b><i>{{ t('agent.page.tipSend') }}</i></span>
             </button>
-            <button v-else type="button" class="send-fly stop" @click="stop" :aria-label="t('agent.page.stop')" :title="t('agent.page.stop')">
+            <button v-if="composerKind === 'steer'" type="button" class="send-fly stop" @click="stop" :aria-label="t('agent.page.stop')" :title="t('agent.page.stop')">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>
             </button>
             <button v-if="runningTasks.length > 1" type="button" class="send-fly stop-all" @click="stopAll" :aria-label="t('agent.page.stopAll')" :title="t('agent.page.stopAll')">

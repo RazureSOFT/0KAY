@@ -74,6 +74,14 @@ func (s *CoreServiceServer) TaskDelta(cursor string) map[string]interface{} {
 	}
 	s.mu.RUnlock()
 	sortTaskRows(result)
-	result = limitTaskRows(result)
+	// limitTaskRows is a *full list* policy: it keeps a row only when that row's
+	// session header is in the same payload. A delta carries only what changed —
+	// one cancelled task arrives with no header at all — so applying the policy
+	// here dropped the change. The stream then reported a new cursor with no
+	// rows, and the browser kept showing "running" until a reload forced a
+	// reset. Only a reset is a full list; cap that one and leave deltas intact.
+	if !valid {
+		result = limitTaskRows(result)
+	}
 	return map[string]interface{}{"tasks": result, "removed": removed, "reset": !valid, "cursor": fmt.Sprintf("%s:%d", generation, revision)}
 }
