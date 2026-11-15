@@ -112,6 +112,26 @@ function createStore() {
     return kept
   }
 
+  /**
+   * Pull every task from scratch.
+   *
+   * The incremental cursor is what keeps the stream cheap, but a cursor only
+   * carries what changed since it was issued. A conversation created after the
+   * cursor was set is invisible to it until the stream happens to mention it, so
+   * a send into a new conversation showed nothing: the transcript stayed empty
+   * and the session had no row. Clearing the cursor forces a full page.
+   */
+  async function reloadTasks(): Promise<void> {
+    taskCursor = ''
+    try {
+      const response = await fetch('/api/tasks?incremental=1&cursor=', { signal: AbortSignal.timeout(8000) })
+      if (!response.ok) return
+      applyTasks(await response.json())
+    } catch {
+      // A failed reload leaves the last known state; the stream will catch up.
+    }
+  }
+
   function recompute() {
     const rows = [...taskCache.values()].sort((a, b) => (b.started_at || '').localeCompare(a.started_at || '') || a.task_id.localeCompare(b.task_id))
     s.tasks = rows.filter((task) => task.kind !== 'agent_session')
@@ -228,8 +248,17 @@ function createStore() {
     return { more: !!data.more, next: data.next || '' }
   }
 
-  async function ensureSessionTurns(session_id: string): Promise<void> {
-    if (!session_id || turnsLoaded.has(session_id)) return
+  /**
+   * Load a session's turns, once.
+   *
+   * `reload` exists because "once" is wrong after a send: the cache was keeping
+   * the pre-send page forever, so a conversation that gained its first turn still
+   * rendered empty until a reload. The cache is right for navigation and wrong
+   * for a mutation, and the caller knows which it is.
+   */
+  async function ensureSessionTurns(session_id: string, reload = false): Promise<void> {
+    if (!session_id) return
+    if (!reload && turnsLoaded.has(session_id)) return
     turnsLoaded.add(session_id)
     turnsPending[session_id] = true
     try {
@@ -306,6 +335,7 @@ function createStore() {
     cancelTask,
     steerTask,
     ensureSessionTurns,
+    reloadTasks,
     olderSessionTurns,
     hasOlderTurns,
     turnsPending,

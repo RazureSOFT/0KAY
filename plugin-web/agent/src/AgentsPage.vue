@@ -2212,7 +2212,10 @@ async function create() {
     // every time it was clicked without sending anything.
     const empty = [...store.sessions].reverse().find((session) =>
       session.prompt === t('agent.page.newChat') && session.state === 'done' && !store.sessionHasTurns(session.task_id))
-    if (empty) { rememberEditor(); choose(empty.task_id); showArchived.value = false; return }
+    // `choose` takes a session id, and a session row's `task_id` is the id of the
+    // row itself, not of the conversation. Passing the wrong one selected nothing,
+    // which is why a click on 新对话 sometimes left the previous conversation open.
+    if (empty?.session_id) { rememberEditor(); choose(empty.session_id); showArchived.value = false; return }
     const id=await store.createSession(t('agent.page.newChat'));rememberEditor();selectedId.value=id;localStorage.setItem('0kay.agent.selected',id);showArchived.value=false
   } catch (e: any) { error.value = e.message }
   finally { busy.value = false }
@@ -2279,10 +2282,13 @@ async function send(override?: string, overrideAttachments?: Array<{ name: strin
       attachError.value = ''
     }
     rememberEditor(target);followLatest.value=true
-    // Pull this session's turns now. Without it a brand-new conversation renders
-    // an empty transcript right after a successful send — the stream fills it
-    // eventually, but a person reads that silence as "it did not go through".
-    await store.ensureSessionTurns(target).catch(() => {})
+    // Two reads, because a send changes two things at once: the task page (so the
+    // conversation list gains its row) and this session's turns (so the transcript
+    // shows the message). The incremental cursor does not carry a conversation
+    // created after it was issued, and the turns cache held the pre-send page —
+    // which is why neither appeared on its own.
+    await store.reloadTasks().catch(() => {})
+    await store.ensureSessionTurns(target, true).catch(() => {})
     await scrollBottom()
   } catch (e: any) { error.value = e.message }
   finally { busy.value = false }
