@@ -60,6 +60,7 @@ const kindChoices = computed(() => [
 const taskKindChoices = computed(() => [
   { value: 'recon' as const, label: t('agent.page.taskKindRecon'), desc: t('agent.page.taskKindReconDesc') },
   { value: 'engineering' as const, label: t('agent.page.taskKindEngineering'), desc: t('agent.page.taskKindEngineeringDesc') },
+  { value: 'craft' as const, label: t('agent.page.taskKindCraft'), desc: t('agent.page.taskKindCraftDesc') },
 ])
 const subKindOptions = computed(() => [
   { value: 'general', label: t('agent.page.modeGeneral') },
@@ -1187,6 +1188,18 @@ watch(sidebarTab, (tab) => {
 })
 
 // ---- 会话 tab: the grouped session tree with trace expansion ----------------
+/**
+ * Whether the task can be started again.
+ *
+ * Running is excluded (it is already going) and paused is excluded (Resume is the
+ * right verb there). Everything else — done, cancelled, failed — means the run
+ * is over and starting it again is a legitimate wish.
+ */
+const canRestartTask = computed(() => {
+  const status = taskDetail.value?.state.status
+  return status === 'done' || status === 'cancelled' || status === 'failed'
+})
+
 interface OpenedSession {
   id: string
   kind: 'main' | 'planner' | 'worker' | 'retest'
@@ -1334,6 +1347,27 @@ const newTaskPlaceholder = computed(() =>
     ? 'src/analysis' + String.fromCharCode(10) + 'core/internal/gateway'
     : 'https://a.example' + String.fromCharCode(10) + '10.0.0.0/24',
 )
+
+/**
+ * A planner round as a conversation.
+ *
+ * Activity is a flat log with a round number on each entry, so filtering by round
+ * gives one round's transcript: what the planner decided and what the workers
+ * brought back before it decided again.
+ */
+const taskPlannerTurns = computed(() => {
+  const round = openedSession.value?.round
+  const activity = (taskDetail.value?.state?.activity || []) as Array<{ at: string; round: number; kind: string; text: string }>
+  return activity
+    .filter((entry) => (round == null ? true : entry.round === round))
+    .filter((entry) => entry.kind === 'operator' || entry.kind === 'planner' || entry.kind === 'fact' || entry.kind === 'finding' || entry.kind === 'intent')
+    .slice(-60)
+    .map((entry) => ({
+      at: entry.at,
+      from: entry.kind === 'operator' ? ('operator' as const) : ('agent' as const),
+      text: entry.text,
+    }))
+})
 
 const taskMainTurns = computed(() => {
   const activity = (taskDetail.value?.state?.activity || []) as Array<{ at: string; round: number; kind: string; text: string }>
@@ -2522,12 +2556,14 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
               <span class="recon-usage-item">{{ t('agent.page.taskUsageOut') }} <b>{{ fmtTokens(taskDetail.live?.usage?.outTokens || 0) }}</b></span>
               <span class="recon-usage-item">{{ t('agent.page.taskUsageCalls') }} <b>{{ taskDetail.live?.usage?.llmCalls || 0 }}</b></span>
             </div>
-            <div v-if="taskDetail.state.status === 'running' || taskDetail.state.status === 'paused'" class="recon-task-controls">
+            <!-- Every status has a forward move. A stopped task used to offer only
+                 Delete: no way to start it again without retyping the objective, so
+                 the panel dead-ended exactly when a person most wants to retry. -->
+            <div class="recon-task-controls">
               <button v-if="taskDetail.state.status === 'running'" type="button" @click="controlTask('pause')">{{ t('agent.page.taskPause') }}</button>
               <button v-if="taskDetail.state.status === 'paused'" type="button" @click="controlTask('resume')">{{ t('agent.page.taskResume') }}</button>
-              <button type="button" class="danger" @click="controlTask('cancel')">{{ t('agent.page.taskStop') }}</button>
-            </div>
-            <div v-else class="recon-task-controls">
+              <button v-if="canRestartTask" type="button" class="primary" @click="controlTask('restart')">{{ t('agent.page.taskRestart') }}</button>
+              <button v-if="taskDetail.state.status === 'running' || taskDetail.state.status === 'paused'" type="button" class="danger" @click="controlTask('cancel')">{{ t('agent.page.taskStop') }}</button>
               <button type="button" class="danger" @click="deleteTask(taskDetail.state.id)">{{ t('agent.page.taskDelete') }}</button>
             </div>
             <form class="recon-hintform" @submit.prevent="sendHint">
@@ -2625,11 +2661,20 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
                 </div>
 
                 <div v-else-if="openedSession.kind === 'planner'" class="session-view-body">
-                  <ul class="recon-items">
-                    <li v-for="(row, i) in taskBoard.filter((item) => item.kind === 'planner' || item.kind === 'fact' || item.kind === 'finding').slice(0, 40)" :key="i" class="recon-item">
-                      <i class="recon-dot" :class="row.kind" />{{ row.text }}
-                    </li>
-                  </ul>
+                  <!-- The same console shape as the main agent: a planner round is a
+                       conversation with the model that wrote that round's plan, so a
+                       person can read it and steer it the same way. -->
+                  <div class="main-console">
+                    <p v-if="!taskPlannerTurns.length" class="muted">{{ t('agent.page.taskPlannerEmpty') }}</p>
+                    <div v-for="(turn, i) in taskPlannerTurns" :key="i" class="main-turn" :class="'from-' + turn.from">
+                      <span class="main-turn-who">{{ turn.from === 'operator' ? t('agent.page.taskMainYou') : t('agent.page.taskMainAgent') }}</span>
+                      <p>{{ turn.text }}</p>
+                    </div>
+                  </div>
+                  <form class="main-composer" @submit.prevent="sendHint">
+                    <textarea v-model="hintDraft" rows="2" :placeholder="t('agent.page.taskPlannerPlaceholder')" @keydown.enter.exact.prevent="sendHint" />
+                    <button type="submit" :disabled="!hintDraft.trim()">{{ t('agent.page.taskSend') }}</button>
+                  </form>
                 </div>
 
                 <div v-else class="session-view-body">
@@ -2656,6 +2701,14 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
                       </template>
                     </li>
                   </ul>
+                  <!-- A worker lane takes input too. What a person types here reaches
+                       the task as a whole (the same channel as the main console), so
+                       the composer says so rather than implying it addresses one
+                       worker alone. -->
+                  <form class="main-composer" @submit.prevent="sendHint">
+                    <textarea v-model="hintDraft" rows="2" :placeholder="t('agent.page.taskWorkerPlaceholder')" @keydown.enter.exact.prevent="sendHint" />
+                    <button type="submit" :disabled="!hintDraft.trim()">{{ t('agent.page.taskSend') }}</button>
+                  </form>
                 </div>
               </template>
             </template>

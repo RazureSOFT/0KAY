@@ -222,6 +222,11 @@
   <string name="page.taskKindLabel">任务类型</string>
   <string name="page.taskKindRecon">侦察</string>
   <string name="page.taskKindReconDesc">针对目标取证：端口、服务、漏洞。</string>
+  <string name="page.taskKindCraft">复刻</string>
+  <string name="page.taskKindCraftDesc">观察原样、重做一遍，再逐项比对、反复收敛。</string>
+  <string name="page.taskPlannerEmpty">这一轮规划还没有记录。</string>
+  <string name="page.taskPlannerPlaceholder">对这一轮说点什么…</string>
+  <string name="page.taskWorkerPlaceholder">告诉任务一些事（下一轮规划会读到）…</string>
   <string name="page.taskKindEngineering">工程</string>
   <string name="page.taskKindEngineeringDesc">改造代码或已部署的系统。</string>
   <string name="page.taskRounds">轮次上限</string>
@@ -231,6 +236,7 @@
   <string name="page.taskMoreOptions">更多选项</string>
   <string name="page.taskCreate">开始</string>
   <string name="page.taskPause">暂停</string>
+  <string name="page.taskRestart">重新开始</string>
   <string name="page.taskResume">继续</string>
   <string name="page.taskStop">终止</string>
   <string name="page.taskDelete">删除</string>

@@ -222,6 +222,11 @@
   <string name="page.taskKindLabel">Task type</string>
   <string name="page.taskKindRecon">Recon</string>
   <string name="page.taskKindReconDesc">Prove facts about targets: ports, services, vulnerabilities.</string>
+  <string name="page.taskKindCraft">Craft</string>
+  <string name="page.taskKindCraftDesc">Study something observable, rebuild it, then compare and refine.</string>
+  <string name="page.taskPlannerEmpty">This planner round has no transcript yet.</string>
+  <string name="page.taskPlannerPlaceholder">Steer this round…</string>
+  <string name="page.taskWorkerPlaceholder">Tell the task something (reaches the next planning round)…</string>
   <string name="page.taskKindEngineering">Engineering</string>
   <string name="page.taskKindEngineeringDesc">Change something: a code base or a deployed system.</string>
   <string name="page.taskRounds">Rounds</string>
@@ -231,6 +236,7 @@
   <string name="page.taskMoreOptions">More options</string>
   <string name="page.taskCreate">Start</string>
   <string name="page.taskPause">Pause</string>
+  <string name="page.taskRestart">Start again</string>
   <string name="page.taskResume">Resume</string>
   <string name="page.taskStop">Stop</string>
   <string name="page.taskDelete">Delete</string>

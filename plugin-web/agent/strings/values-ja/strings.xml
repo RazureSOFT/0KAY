@@ -222,6 +222,11 @@
   <string name="page.taskKindLabel">タスク種別</string>
   <string name="page.taskKindRecon">偵察</string>
   <string name="page.taskKindReconDesc">対象の事実を立証する：ポート、サービス、脆弱性。</string>
+  <string name="page.taskKindCraft">再現</string>
+  <string name="page.taskKindCraftDesc">観察して作り直し、差異を突き合わせて収束させます。</string>
+  <string name="page.taskPlannerEmpty">このラウンドの記録はまだありません。</string>
+  <string name="page.taskPlannerPlaceholder">このラウンドに指示する…</string>
+  <string name="page.taskWorkerPlaceholder">タスクに伝える（次の計画で読み込まれます）…</string>
   <string name="page.taskKindEngineering">エンジニアリング</string>
   <string name="page.taskKindEngineeringDesc">コードベースや配備済みシステムを改修する。</string>
   <string name="page.taskRounds">ラウンド上限</string>
@@ -231,6 +236,7 @@
   <string name="page.taskMoreOptions">詳細オプション</string>
   <string name="page.taskCreate">開始</string>
   <string name="page.taskPause">一時停止</string>
+  <string name="page.taskRestart">もう一度開始</string>
   <string name="page.taskResume">再開</string>
   <string name="page.taskStop">停止</string>
   <string name="page.taskDelete">削除</string>

@@ -10,7 +10,7 @@ import { computed, ref, type Ref } from 'vue';
 export interface ReconTaskRow {
   id: string;
   /** Missing on tasks created before engineering mode existed; means recon. */
-  kind?: 'recon' | 'engineering';
+  kind?: 'recon' | 'engineering' | 'craft';
   /** Missing means normal, which is what every task created before this field was. */
   permissionMode?: 'normal' | 'full_access';
   objective: string;
@@ -72,7 +72,7 @@ export function useTaskDetail(options: {
   const taskShowNew = ref(false);
   const taskCreating = ref(false);
   const taskError = ref('');
-  const newTaskKind = ref<'recon' | 'engineering'>('recon');
+  const newTaskKind = ref<'recon' | 'engineering' | 'craft'>('recon');
   /**
    * Sticky like the kind: a person who starts one task under full access usually
    * wants the next one the same way, and re-choosing it every time is friction.
@@ -169,6 +169,7 @@ export function useTaskDetail(options: {
       const created = await runAssessments({
         action: 'create',
         ...(newTaskKind.value === 'engineering' ? { kind: 'engineering' } : {}),
+        ...(newTaskKind.value === 'craft' ? { kind: 'craft' } : {}),
         ...(newTaskPermission.value === 'full_access' ? { permission_mode: 'full_access' } : {}),
         objective,
         targets,
