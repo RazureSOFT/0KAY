@@ -2136,6 +2136,40 @@ function turnArtifacts(turn: TaskRow): Array<{ path: string; description: string
   }
   return [...found.values()]
 }
+/**
+ * Delete one conversation from its row.
+ *
+ * `manage()` acts on `selectedId`, so calling it from a row would delete
+ * whichever conversation happened to be open. This takes the id explicitly and
+ * only touches the selection if the deleted one was open.
+ */
+async function deleteSessionRow(item: TaskRow) {
+  if (busy.value) return
+  const id = item.session_id
+  if (!id) return
+  const ok = await confirm({
+    title: t('agent.page.deleteSession'),
+    message: t('agent.page.deleteSessionMessage'),
+    confirmLabel: t('agent.page.deletePermanently'),
+    danger: true,
+  })
+  if (!ok) return
+  busy.value = true
+  try {
+    await store.manageSession(id, 'delete')
+    localStorage.removeItem(`0kay.agent.editor:${id}`)
+    localStorage.removeItem(`0kay.agent.options:${id}`)
+    if (selectedId.value === id) {
+      selectedId.value = ''
+      localStorage.removeItem('0kay.agent.selected')
+    }
+  } catch (e: any) {
+    error.value = e?.message || String(e)
+  } finally {
+    busy.value = false
+  }
+}
+
 async function manage(action: 'archive' | 'restore' | 'delete') {
   if (!session.value || busy.value) return
   if (action === 'delete') {
@@ -2244,7 +2278,12 @@ async function send(override?: string, overrideAttachments?: Array<{ name: strin
       attachments.value = []
       attachError.value = ''
     }
-    rememberEditor(target);followLatest.value=true;await scrollBottom()
+    rememberEditor(target);followLatest.value=true
+    // Pull this session's turns now. Without it a brand-new conversation renders
+    // an empty transcript right after a successful send — the stream fills it
+    // eventually, but a person reads that silence as "it did not go through".
+    await store.ensureSessionTurns(target).catch(() => {})
+    await scrollBottom()
   } catch (e: any) { error.value = e.message }
   finally { busy.value = false }
 }
@@ -2400,6 +2439,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
               <span class="row-actions">
                 <button type="button" :disabled="busy" :title="t('agent.page.forkSession')" :aria-label="t('agent.page.forkSession')" @click.stop="forkSession(item)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="6" cy="6" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="6" cy="18" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="8" r="2.4" stroke="currentColor" stroke-width="1.7"/><path d="M6 8.4v7.2M18 10.4c0 2.4-2 4.3-4.4 4.3H8.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></button>
                 <select :disabled="busy || !workspaces.length" :aria-label="t('agent.page.moveToWorkspace')" :title="t('agent.page.moveToWorkspace')" @click.stop @change="onMoveChange(item, $event)"><option value="">{{ t('agent.page.moveSelect') }}</option><option v-for="ws in workspaces" :key="ws.id" :value="ws.id">{{ ws.title }}</option></select>
+                <button type="button" class="danger" :disabled="busy" :title="t('agent.page.deleteSession')" :aria-label="t('agent.page.deleteSession')" @click.stop="deleteSessionRow(item)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M10 7V5h4v2M8 7l1 12h6l1-12" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
               </span>
             </div>
             <p v-if="!searchResults.length" class="muted ws-empty">{{ t('agent.page.noMatches') }}</p>
