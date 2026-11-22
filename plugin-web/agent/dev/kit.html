@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>MD3 kit — agent plugin</title>
+
+  <style>
+    body { margin: 0; padding: 24px; background: var(--md-surface); color: var(--md-on-surface); }
+    section { margin-bottom: 36px; }
+    h2 { font: var(--md-type-title-medium-font); margin: 0 0 12px; }
+    .row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+    .swatch { border: 1px solid var(--md-outline-variant); border-radius: var(--md-shape-medium); padding: 12px; }
+    .tag { font: var(--md-type-label-small-font); color: var(--md-on-surface-variant); }
+    /* A column for stacked previews. ToolStepCard is a block that expects a transcript's
+       width, so it needs one: in a plain flex row it would stretch to the viewport and
+       every measurement taken from here would be wrong. 720px is close to the real
+       transcript's inner width. */
+    .col { display: flex; flex-direction: column; gap: 6px; inline-size: 720px; max-inline-size: 100%; }
+  </style>
+</head>
+<body>
+  <h1 class="md-type-title-large" style="margin-top:0">MD3 kit</h1>
+  <p class="md-type-body-medium">Agent 插件的自建组件预览页。用 <code>npm run dev:kit</code> 打开。</p>
+  <div id="app"><div id="mount"></div></div>
+  <script type="module" src="./dev-kit.ts"></script>
+</body>
+</html>

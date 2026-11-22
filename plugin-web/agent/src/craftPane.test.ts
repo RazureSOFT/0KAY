@@ -17,8 +17,11 @@ const composable = readFileSync(resolve(here, 'composables/useCraftProject.ts'),
 
 describe('craft pane', () => {
   it('is a tab that only a craft task offers', () => {
-    expect(page).toContain(`v-if="taskDetail.state.kind === 'craft'"`)
-    expect(page).toContain(`taskDetailTab = 'craft'`)
+    /* The condition moved from a `v-if` in the button row into the `taskTabs` computed
+       when the tab bar became a MD3 Tabs component. What matters is unchanged: the craft
+       tab is gated on the task kind, and its panel is gated on the selected tab. */
+    expect(page).toContain(`taskDetail.value?.state.kind === 'craft'`)
+    expect(page).toContain(`id: 'craft'`)
     expect(page).toContain(`v-else-if="taskDetailTab === 'craft'"`)
   })
 

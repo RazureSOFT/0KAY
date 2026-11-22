@@ -129,8 +129,15 @@ onUnmounted(()=>{document.removeEventListener('pointerdown',outside,true);window
 .app-select-search{position:sticky;top:-8px;z-index:1;display:flex;align-items:center;gap:10px;margin:-8px -8px 8px;padding:13px 16px;background:var(--md-surface-container-low);border-bottom:1px solid color-mix(in srgb,var(--md-outline-variant) 55%,transparent);border-radius:24px 24px 0 0;color:var(--md-on-surface-variant)}
 .app-select-search input{flex:1;min-width:0;border:0;background:transparent;padding:0;font:inherit;color:var(--md-on-surface);outline:none}
 .app-select-empty{padding:18px;color:var(--md-on-surface-variant);text-align:center;font-size:13px}
-.select-menu-enter-active{transition:opacity var(--duration-short) var(--ease-out),transform var(--duration-medium) var(--ease-spring)}
-.select-menu-leave-active{transition:opacity var(--duration-short) var(--ease-out),transform var(--duration-short) var(--ease-out)}
+/* Split by property kind, not by "one transition for everything".
+ *
+ * `transform` moves the menu, so it takes a spatial spring and may overshoot a
+ * little. `opacity` must not — a critically damped effects spring approaches its
+ * target without crossing it, which is what stops the panel from flickering past
+ * fully-opaque and back. The old version used one spring-named bezier for both,
+ * so the fade overshot by 3%. */
+.select-menu-enter-active{transition:opacity var(--md-spring-expressive-fast-effects-dur, 101ms) var(--md-spring-flat, ease-out),transform var(--md-spring-expressive-fast-spatial-dur, 366ms) var(--md-spring-bounce, ease-out)}
+.select-menu-leave-active{transition:opacity var(--md-spring-expressive-fast-effects-dur, 101ms) var(--md-spring-flat, ease-out),transform var(--md-spring-expressive-fast-spatial-dur, 366ms) var(--md-spring-bounce, ease-out)}
 .select-menu-enter-from,.select-menu-leave-to{opacity:0;transform:translateY(-6px) scale(.97)}
 @media (prefers-reduced-motion: reduce){
  .app-select-chevron,.app-select-chevron svg,.app-select-option{transition:none}

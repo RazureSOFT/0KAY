@@ -6,7 +6,9 @@
   "scripts": {
     "build": "vite build",
     "test": "vitest run",
-    "check:layout": "node scripts/verify-empty-layout.mjs"
+    "check:layout": "node scripts/verify-empty-layout.mjs",
+    "check:tokens": "node scripts/verify-design-tokens.mjs",
+    "dev:kit": "vite --config vite.dev.config.js"
   },
   "dependencies": {
     "docx-preview": "^0.4.1",

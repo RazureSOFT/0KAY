@@ -1,10 +1,52 @@
-.hint{position:absolute;bottom:calc(100% + 9px);left:0;z-index:var(--z-popover,5000);display:flex;flex-direction:column;gap:3px;min-width:190px;max-width:270px;padding:9px 11px;border-radius:11px;background:var(--md-inverse-surface,#1f242b);color:var(--md-inverse-on-surface,#f4f6fb);text-align:left;font-size:11.5px;font-weight:500;line-height:1.45;letter-spacing:0;text-transform:none;white-space:normal;opacity:0;visibility:hidden;pointer-events:none;box-shadow:0 10px 26px #0b12204d;transition:opacity 70ms var(--ease-out)}
+/* Positioning: fixed, not absolute.
+ *
+ * These hints open ~64px above their button, and the agent view lives inside
+ * three nested `overflow: hidden` ancestors (.conversation, .route-view,
+ * .app-main). An absolutely-positioned hint is therefore clipped by whichever of
+ * them is nearest — it was painted but invisible even once its `visibility`
+ * resolved.
+ *
+ * `position: fixed` escapes every clipping ancestor. The coordinates are written
+ * onto the element by `installHintPositioning()` on hover/focus, because a tooltip
+ * that opens upward must know where the button is; `translate` keeps that write
+ * off the layout path. `--hint-gap` keeps the 9px gap in one place. */
+.hint{
+  --hint-gap: 9px;
+  position:fixed;
+  top:0;left:0;
+  z-index:var(--z-popover,5000);
+  display:flex;flex-direction:column;gap:3px;
+  min-width:190px;max-width:270px;padding:9px 11px;border-radius:11px;
+  background:var(--md-inverse-surface,#1f242b);color:var(--md-inverse-on-surface,#f4f6fb);
+  text-align:left;font-size:11px;font-weight:500;line-height:1.45;
+  letter-spacing:0;text-transform:none;white-space:normal;
+  opacity:0;visibility:hidden;pointer-events:none;
+  box-shadow:0 10px 26px #0b12204d;
+  transition:opacity 70ms var(--ease-out);
+  /* `translate` is animated by the reveal handler; see agents-page.ts. */
+}
+/* Appearance only. Every hint is positioned by `installHintPositioning()`, which
+ * writes `translate` on hover/focus; the `.left` / `.right` variants only choose
+ * which edge the runtime aligns to, so they carry no geometry here. */
 .hint b{font-size:12px;font-weight:700}
 .hint i{font-style:normal;opacity:.78}
-.hint.right{left:auto;right:0}
-
-.hint.left{left:auto;right:calc(100% + 10px);top:50%;bottom:auto;transform:translateY(-50%)}
-.mode-btn:hover .hint,.mode-btn:focus-visible .hint,.ct:hover .hint,.ct:focus-visible .hint,.dock-btn:hover .hint,.dock-btn:focus-visible .hint,#app .workspace .mtp-trigger:hover .hint,#app .workspace .mtp-trigger:focus-visible .hint{opacity:1;visibility:visible}
+/* Reveal rule, written once for every control that carries a hint.
+ *
+ * This used to name four classes (.mode-btn, .ct, .dock-btn, .mtp-trigger), so
+ * the composer's attach and send buttons — which also render a `.hint` — were
+ * never revealed: their tooltip was in the DOM, styled, translated into Chinese,
+ * and permanently `visibility: hidden`. A list of names has to be updated every
+ * time a control is added, and it was not. A structural rule cannot go stale:
+ * any button that directly contains a hint shows it on hover or keyboard focus.
+ *
+ * `> .hint` (direct child) on purpose: a button that nests a whole toolbar must
+ * not activate every descendant tooltip at once. */
+button:hover > .hint,
+button:focus-visible > .hint,
+[role="button"]:hover > .hint,
+[role="button"]:focus-visible > .hint,
+.nav-item:hover > .hint,
+.nav-item:focus-visible > .hint { opacity:1; visibility:visible }
 @media (prefers-reduced-motion: reduce){.hint{transition:none}}
 
 html[data-theme="dark"] #app .tree-icon.dir{color:#e5bd6a}

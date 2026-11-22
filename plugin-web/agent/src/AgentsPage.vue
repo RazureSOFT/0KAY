@@ -10,7 +10,13 @@ import GitPanel from './GitPanel.vue'
 import { useReconCanvas } from './composables/useReconCanvas'
 import { usePlanCard } from './composables/usePlanCard'
 import { useSessionList, type WorkspaceRow } from './composables/useSessionList'
-import { useTaskDetail } from './composables/useTaskDetail'
+import { useTaskDetail, type TaskDetailTab } from './composables/useTaskDetail'
+/* MD3 kit. Replaced the hand-written copies of these controls one at a time; see
+   docs/AGENT-UI-REWRITE-PLAN.md for why the page had eight implementations of a
+   segmented control before. */
+import ButtonGroup from './md/ButtonGroup.vue'
+import IconButton from './md/IconButton.vue'
+import Tabs from './md/Tabs.vue'
 import { useCraftProject, type CraftDetail } from './composables/useCraftProject'
 import { useComposer } from './composables/useComposer'
 import ThinkChain from './ThinkChain.vue'
@@ -19,6 +25,7 @@ import { agentTree, focusChain } from './agentTree'
 import { canSend, composerMode, composerPlaceholder, deliveredIds, queuedRows, type QueuedRow } from './composerMode'
 import { AppSelect, useConfirm, i18n } from '@0kay/host'
 import { locale, syncLocale } from './locale'
+import { installHintPositioning } from './hintPositioning'
 const t = (key: string, named?: Record<string, unknown>) => i18n.global.t(key, named ?? {})
 const { confirm } = useConfirm()
 
@@ -49,6 +56,19 @@ function toggleDock() {
 function dismissError() { error.value = ''; store.error = '' }
 const search = ref('')
 const source = ref('all')
+
+/** Items for the source filter. Same three ids and labels the nav had before. */
+/** Items for the manual/recent order toggle. */
+const orderModeItems = computed(() => [
+  { id: 'manual', label: t('agent.page.manual'), tone: 'ghost' as const },
+  { id: 'recent', label: t('agent.page.recent'), tone: 'ghost' as const },
+])
+
+const sourceItems = computed(() => [
+  { id: 'all', label: t('agent.page.all'), tone: 'ghost' as const },
+  { id: 'life', label: t('agent.page.fromLife'), tone: 'ghost' as const },
+  { id: 'user', label: t('agent.page.myChats'), tone: 'ghost' as const },
+])
 const taskKind = ref<'plan' | 'agent' | 'work'>('agent')
 const agentSubKind = ref('general')
 const duetMode = ref<'on' | 'off'>('off')
@@ -64,6 +84,25 @@ const taskKindChoices = computed(() => [
   { value: 'engineering' as const, label: t('agent.page.taskKindEngineering'), desc: t('agent.page.taskKindEngineeringDesc') },
   { value: 'craft' as const, label: t('agent.page.taskKindCraft'), desc: t('agent.page.taskKindCraftDesc') },
 ])
+/**
+ * ButtonGroup items for the three execution strategies.
+ *
+ * `kindChoices` above still carries the long descriptions for other callers; this list
+ * is what the control itself renders, with the active description shown as a hint line
+ * so it is not hidden behind a hover.
+ */
+const kindChoiceItems = computed(() =>
+  kindChoices.value.map((choice) => ({
+    id: choice.value,
+    label: choice.label,
+    tone: 'ghost' as const,
+    disabled: busy.value,
+  })),
+)
+const activeKindHint = computed(
+  () => kindChoices.value.find((choice) => choice.value === taskKind.value)?.desc || '',
+)
+
 const subKindOptions = computed(() => [
   { value: 'general', label: t('agent.page.modeGeneral') },
   { value: 'code', label: t('agent.page.modeCode') },
@@ -321,6 +360,26 @@ function onBrowserStreamError() {
   if (browserStreamRetry) clearTimeout(browserStreamRetry)
   browserStreamRetry = setTimeout(() => { void fetchBrowserStatus(); refreshBrowserStream() }, 1200)
 }
+/**
+ * Drag + resize + persist for a floating panel.
+ *
+ * One factory for every panel: six of them already use it, and the browser was the last
+ * copy that carried its own pointer handlers. `posKey` / `sizeKey` are the localStorage
+ * keys, so each panel still remembers its own geometry.
+ */
+function makeWindowHandlers(posRef: any, sizeRef: any, posKey: string, sizeKey: string) {
+  let drag: { dx: number; dy: number } | null = null
+  let rs: { sx: number; sy: number; w: number; h: number } | null = null
+  const onMove = (e: PointerEvent) => { if (drag) posRef.value = { x: clampv(e.clientX - drag.dx, 0, window.innerWidth - 120), y: clampv(e.clientY - drag.dy, 0, window.innerHeight - 48) } }
+  const onUp = () => { drag = null; window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); try { localStorage.setItem(posKey, JSON.stringify(posRef.value)) } catch { } }
+  const onResizeMove = (e: PointerEvent) => { if (rs) sizeRef.value = { w: clampv(rs.w + (e.clientX - rs.sx), 320, 1600), h: clampv(rs.h + (e.clientY - rs.sy), 240, 1000) } }
+  const onResizeUp = () => { rs = null; window.removeEventListener('pointermove', onResizeMove); window.removeEventListener('pointerup', onResizeUp); try { localStorage.setItem(sizeKey, JSON.stringify(sizeRef.value)) } catch { } }
+  return {
+    down: (e: PointerEvent) => { if ((e.target as HTMLElement).closest('button,input,form,a')) return; drag = { dx: e.clientX - posRef.value.x, dy: e.clientY - posRef.value.y }; window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp) },
+    rdown: (e: PointerEvent) => { e.preventDefault(); e.stopPropagation(); rs = { sx: e.clientX, sy: e.clientY, w: sizeRef.value.w, h: sizeRef.value.h }; window.addEventListener('pointermove', onResizeMove); window.addEventListener('pointerup', onResizeUp) },
+  }
+}
+
 const browserUrlInput = ref('')
 const browserUrlFocused = ref(false)
 const browserBusyAction = ref(false)
@@ -353,31 +412,11 @@ function loadBrowserSize() {
 }
 const browserPos = ref(loadBrowserPos())
 const browserSize = ref(loadBrowserSize())
+const browserHandlers = makeWindowHandlers(browserPos, browserSize, '0kay.agent.browser.pos', '0kay.agent.browser.size')
+const onToolbarDown = browserHandlers.down
+const onResizeDown = browserHandlers.rdown
 const panelStyle = computed(() => ({ translate: `${browserPos.value.x}px ${browserPos.value.y}px`, width: `${browserSize.value.w}px`, height: `${browserSize.value.h}px` }))
-let dragState: { dx: number; dy: number } | null = null
-let resizeState: { sx: number; sy: number; w: number; h: number } | null = null
-function onToolbarDown(event: PointerEvent) {
-  if ((event.target as HTMLElement).closest('button,input,form,a')) return
-  dragState = { dx: event.clientX - browserPos.value.x, dy: event.clientY - browserPos.value.y }
-  window.addEventListener('pointermove', onDragMove)
-  window.addEventListener('pointerup', onDragEnd)
-}
-function onDragMove(event: PointerEvent) {
-  if (!dragState) return
-  browserPos.value = { x: clampv(event.clientX - dragState.dx, 0, window.innerWidth - 120), y: clampv(event.clientY - dragState.dy, 0, window.innerHeight - 48) }
-}
-function onDragEnd() { dragState = null; window.removeEventListener('pointermove', onDragMove); window.removeEventListener('pointerup', onDragEnd); try { localStorage.setItem('0kay.agent.browser.pos', JSON.stringify(browserPos.value)) } catch { } }
-function onResizeDown(event: PointerEvent) {
-  event.preventDefault(); event.stopPropagation()
-  resizeState = { sx: event.clientX, sy: event.clientY, w: browserSize.value.w, h: browserSize.value.h }
-  window.addEventListener('pointermove', onResizeMove)
-  window.addEventListener('pointerup', onResizeEnd)
-}
-function onResizeMove(event: PointerEvent) {
-  if (!resizeState) return
-  browserSize.value = { w: clampv(resizeState.w + (event.clientX - resizeState.sx), 340, 1600), h: clampv(resizeState.h + (event.clientY - resizeState.sy), 260, 1000) }
-}
-function onResizeEnd() { resizeState = null; window.removeEventListener('pointermove', onResizeMove); window.removeEventListener('pointerup', onResizeEnd); try { localStorage.setItem('0kay.agent.browser.size', JSON.stringify(browserSize.value)) } catch { } }
+
 const browserImg = ref<HTMLImageElement | null>(null)
 function sendBrowserInput(payload: Record<string, any>) {
   const body = { ...payload, ...(executor.value?.plugin_id ? { executor_id: executor.value.plugin_id } : {}) }
@@ -425,18 +464,6 @@ function onViewKey(event: KeyboardEvent) {
   if (key.length === 1 && !event.ctrlKey && !event.metaKey) sendBrowserInput({ action: 'type', text: key })
   else if (key !== 'Shift' && key !== 'Control' && key !== 'Alt' && key !== 'Meta') sendBrowserInput({ action: 'press', key: key === ' ' ? 'space' : key })
   event.preventDefault()
-}
-function makeWindowHandlers(posRef: any, sizeRef: any, posKey: string, sizeKey: string) {
-  let drag: { dx: number; dy: number } | null = null
-  let rs: { sx: number; sy: number; w: number; h: number } | null = null
-  const onMove = (e: PointerEvent) => { if (drag) posRef.value = { x: clampv(e.clientX - drag.dx, 0, window.innerWidth - 120), y: clampv(e.clientY - drag.dy, 0, window.innerHeight - 48) } }
-  const onUp = () => { drag = null; window.removeEventListener('pointermove', onMove); window.removeEventListener('pointerup', onUp); try { localStorage.setItem(posKey, JSON.stringify(posRef.value)) } catch { } }
-  const onResizeMove = (e: PointerEvent) => { if (rs) sizeRef.value = { w: clampv(rs.w + (e.clientX - rs.sx), 320, 1600), h: clampv(rs.h + (e.clientY - rs.sy), 240, 1000) } }
-  const onResizeUp = () => { rs = null; window.removeEventListener('pointermove', onResizeMove); window.removeEventListener('pointerup', onResizeUp); try { localStorage.setItem(sizeKey, JSON.stringify(sizeRef.value)) } catch { } }
-  return {
-    down: (e: PointerEvent) => { if ((e.target as HTMLElement).closest('button,input,form,a')) return; drag = { dx: e.clientX - posRef.value.x, dy: e.clientY - posRef.value.y }; window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp) },
-    rdown: (e: PointerEvent) => { e.preventDefault(); e.stopPropagation(); rs = { sx: e.clientX, sy: e.clientY, w: sizeRef.value.w, h: sizeRef.value.h }; window.addEventListener('pointermove', onResizeMove); window.addEventListener('pointerup', onResizeUp) },
-  }
 }
 const gitOpen = ref(false)
 const gitRoot = computed(() => (workdir.value.trim() || executor.value?.host?.workdir || ''))
@@ -1121,8 +1148,50 @@ const taskReportBusy = ref(false)
 
 // ---- task list: search + status filter + count ------------------
 const taskSearch = ref('')
+
+/**
+ * The ten task tabs.
+ *
+ * Derived rather than hand-written so two things stay in one place: the craft tab only
+ * exists for craft tasks (it used to be a `v-if` in the middle of the button row), and the
+ * finding / approval counts come from the same arrays the panels render.
+ */
+const taskTabs = computed(() => {
+  const base: Array<{ id: TaskDetailTab; label: string; badge?: number | string }> = [
+    { id: 'sessions', label: t('agent.page.taskTabSessions') },
+    { id: 'overview', label: t('agent.page.taskTabOverview') },
+    { id: 'plans', label: t('agent.page.taskTabPlans') },
+    { id: 'graph', label: t('agent.page.taskTabGraph') },
+    { id: 'board', label: t('agent.page.taskTabBoard') },
+    { id: 'findings', label: t('agent.page.taskTabFindings'), badge: taskFindings.value.length || undefined },
+    { id: 'assets', label: t('agent.page.taskTabAssets') },
+    { id: 'approvals', label: t('agent.page.taskTabApprovals'), badge: taskApprovals.value.length || undefined },
+  ]
+  if (taskDetail.value?.state.kind === 'craft') {
+    base.push({ id: 'craft', label: t('agent.page.craftTab') })
+  }
+  base.push({ id: 'report', label: t('agent.page.taskTabReport') })
+  return base
+})
 const taskStatusFilter = ref('')
 const sidebarTab = ref<'sessions' | 'tasks'>('sessions')
+
+/**
+ * Items for the sidebar switch.
+ *
+ * Same shape `ButtonGroup` takes everywhere else, with the running-task count carried in
+ * `badge`. It used to be an absolutely-positioned span inside a hand-written nav, which
+ * meant the badge could not participate in the item's layout.
+ */
+const sidebarTabItems = computed(() => [
+  { id: 'sessions', label: t('agent.page.sidebarChats'), tone: 'ghost' as const },
+  {
+    id: 'tasks',
+    label: t('agent.page.tasksTitle'),
+    tone: 'ghost' as const,
+    badge: reconRunningCount.value ? (reconRunningCount.value > 9 ? '9+' : reconRunningCount.value) : undefined,
+  },
+])
 
 /**
  * Is the right pane showing a task instead of a conversation?
@@ -1739,6 +1808,7 @@ const assessmentRowsFiltered = computed(() => {
   })
 })
 const assessmentPrev = new Map<string, string>()
+let disposeHintPositioning: (() => void) | null = null
 let assessmentTimer: ReturnType<typeof setInterval> | null = null
 const reconRunningCount = computed(() => assessmentRows.value.filter((row) => row.status === 'running').length)
 async function pollAssessments() {
@@ -2576,28 +2646,62 @@ onMounted(() => { syncLocale(); store.connect(); loadOptions(); fetchModels();vo
   // there, not when this tab next sends something.
   void refreshSteerQueue();
   steerTimer = setInterval(() => { if (!document.hidden && steerTarget.value) void refreshSteerQueue(); /* @steer-timer */ }, 2000)
+  // Tooltips are position:fixed (the view is nested in overflow:hidden), so their
+  // coordinates come from one delegated listener instead of per-control CSS.
+  disposeHintPositioning = installHintPositioning()
 })
-onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrowser();store.disconnect();if(hostTimer) clearInterval(hostTimer);if(workspaceTimer) clearInterval(workspaceTimer);if(browserTimer) clearInterval(browserTimer);if(browserViewTimer) clearInterval(browserViewTimer);if(browserStreamRetry) clearTimeout(browserStreamRetry);if(treeRefreshTimer) clearTimeout(treeRefreshTimer);if(searchTimer) clearTimeout(searchTimer);if(toastTimer) clearTimeout(toastTimer);if(ctxTimer) clearTimeout(ctxTimer);if(assessmentTimer) clearInterval(assessmentTimer);if(steerTimer) clearInterval(steerTimer);if(tasksTimer) clearInterval(tasksTimer);window.removeEventListener('keydown',onEscape)})
+onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrowser();store.disconnect();if(hostTimer) clearInterval(hostTimer);if(workspaceTimer) clearInterval(workspaceTimer);if(browserTimer) clearInterval(browserTimer);if(browserViewTimer) clearInterval(browserViewTimer);if(browserStreamRetry) clearTimeout(browserStreamRetry);if(treeRefreshTimer) clearTimeout(treeRefreshTimer);if(searchTimer) clearTimeout(searchTimer);if(toastTimer) clearTimeout(toastTimer);if(ctxTimer) clearTimeout(ctxTimer);if(assessmentTimer) clearInterval(assessmentTimer);if(steerTimer) clearInterval(steerTimer);if(tasksTimer) clearInterval(tasksTimer);disposeHintPositioning?.();disposeHintPositioning=null;window.removeEventListener('keydown',onEscape)})
 </script>
 
 <template>
   <main class="workspace">
     <aside class="sessions" :style="{ width: sidebarWidth + 'px' }">
-      <header><h1>Agent</h1><button @click="create" :disabled="busy" :title="t('agent.page.newSession')"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg> {{ t('agent.page.newChat') }}</button></header>
-      <div class="connection"><i :class="{online:store.onlineCount>0}" />{{ store.onlineCount }} {{ t('agent.page.executorsOnline') }} <button @click="store.fetchAgents()" :title="t('agent.page.refresh')" aria-label="refresh"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
-      <p v-if="doneBanner" class="run-banner" role="status" @click="doneBanner = ''">{{ doneBanner }}</p>
-      <nav class="sidebar-mode">
-        <button type="button" :class="{ chosen: sidebarTab === 'sessions' }" @click="sidebarTab = 'sessions'">{{ t('agent.page.sidebarChats') }}</button>
-        <button type="button" :class="{ chosen: sidebarTab === 'tasks' }" @click="sidebarTab = 'tasks'">
-          {{ t('agent.page.tasksTitle') }}<span v-if="reconRunningCount" class="sidebar-badge">{{ reconRunningCount > 9 ? '9+' : reconRunningCount }}</span>
+      <header>
+        <h1>Agent</h1>
+        <button class="new-chat" @click="create" :disabled="busy" :title="t('agent.page.newSession')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          {{ t('agent.page.newChat') }}
         </button>
-      </nav>
+      </header>
+      <div class="connection"><i :class="{online:store.onlineCount>0}" />{{ store.onlineCount }} {{ t('agent.page.executorsOnline') }} <IconButton variant="standard" size="xs" :label="t('agent.page.refresh')" @click="store.fetchAgents()">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </IconButton></div>
+      <p v-if="doneBanner" class="run-banner" role="status" @click="doneBanner = ''">{{ doneBanner }}</p>
+      <!-- One ButtonGroup instead of the hand-written .sidebar-mode. The badge rides on
+           the item definition rather than an absolutely-positioned span. -->
+      <ButtonGroup
+        :model-value="sidebarTab"
+        :items="sidebarTabItems"
+        variant="connected"
+        shape="round"
+        stretch
+        :label="t('agent.page.sidebarChats') + ' / ' + t('agent.page.tasksTitle')"
+        class="sidebar-mode"
+        @update:model-value="sidebarTab = $event as 'sessions' | 'tasks'"
+      />
       <template v-if="sidebarTab === 'sessions'">
       <input v-model="search" :placeholder="t('agent.page.searchSessions')" :aria-label="t('agent.page.searchSessionsLabel')" />
-      <nav class="filter-bar"><button v-for="filter in [{id:'all',label:t('agent.page.all')},{id:'life',label:t('agent.page.fromLife')},{id:'user',label:t('agent.page.myChats')}]" :key="filter.id" :class="{chosen:source===filter.id}" @click="source=filter.id">{{ filter.label }}</button></nav>
+      <ButtonGroup
+        :model-value="source"
+        :items="sourceItems"
+        variant="connected"
+        shape="round"
+        stretch
+        :label="t('agent.page.all')"
+        class="filter-bar"
+        @update:model-value="source = $event as 'all' | 'life' | 'user'"
+      />
       <div class="sidebar-toggles">
         <label class="muted"><input v-model="showArchived" type="checkbox" /> {{ t('agent.page.showArchived') }}</label>
-        <nav class="order-toggle"><button type="button" :class="{chosen:orderMode==='manual'}" @click="setOrderMode('manual')">{{ t('agent.page.manual') }}</button><button type="button" :class="{chosen:orderMode==='recent'}" @click="setOrderMode('recent')">{{ t('agent.page.recent') }}</button></nav>
+        <ButtonGroup
+          :model-value="orderMode"
+          :items="orderModeItems"
+          variant="connected"
+          shape="round"
+          :label="t('agent.page.manual') + ' / ' + t('agent.page.recent')"
+          class="order-toggle"
+          @update:model-value="setOrderMode($event as 'manual' | 'recent')"
+        />
       </div>
       <div class="session-list">
         <section v-if="search.trim()" class="ws-group">
@@ -2626,9 +2730,9 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
               <span class="ws-title" :title="group.path">{{ group.title }}<i v-if="!group.exists" class="ws-missing" :title="t('agent.page.missingDirectory')">!</i></span>
               <span class="ws-count">{{ group.sessions.length }}</span>
               <span class="ws-actions">
-                <button type="button" @click.stop="createIn(group.id)" :disabled="busy" :title="t('agent.page.newSessionHere')">+</button>
-                <button type="button" @click.stop="openRename(group)" :title="t('agent.page.rename')">✎</button>
-                <button type="button" class="danger" @click.stop="deleteWorkspace(group)" :title="t('agent.page.removeWorkspace')">×</button>
+                <button class="md-state-layer" type="button" @click.stop="createIn(group.id)" :disabled="busy" :title="t('agent.page.newSessionHere')">+</button>
+                <button class="md-state-layer" type="button" @click.stop="openRename(group)" :title="t('agent.page.rename')">✎</button>
+                <button type="button" class="danger md-state-layer" @click.stop="deleteWorkspace(group)" :title="t('agent.page.removeWorkspace')">×</button>
               </span>
             </header>
             <div class="ws-sessions">
@@ -2718,7 +2822,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             </div>
             <p>{{ row.objective }}</p>
             <div class="recon-taskrow-meta">
-              <small v-if="row.goalProgress">{{ t('agent.page.taskGoalProgress') }} <b>{{ row.goalProgress }}</b></small>
+              <small v-if="row.goalProgress">{{ t('agent.page.taskGoalProgress') }} <b>{{ row.goalProgress.met }}/{{ row.goalProgress.total }}</b></small>
               <small>{{ row.createdAt.slice(5, 16).replace('T', ' ') }}</small>
             </div>
           </li>
@@ -2783,18 +2887,16 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
               <input v-model="hintDraft" :placeholder="t('agent.page.taskHint')" />
               <button type="submit" :disabled="!hintDraft.trim()">{{ t('agent.page.taskSend') }}</button>
             </form>
-            <div class="recon-tabs">
-              <button type="button" :class="{ active: taskDetailTab === 'sessions' }" @click="taskDetailTab = 'sessions'">{{ t('agent.page.taskTabSessions') }}</button>
-              <button type="button" :class="{ active: taskDetailTab === 'overview' }" @click="taskDetailTab = 'overview'">{{ t('agent.page.taskTabOverview') }}</button>
-              <button type="button" :class="{ active: taskDetailTab === 'plans' }" @click="taskDetailTab = 'plans'">{{ t('agent.page.taskTabPlans') }}</button>
-              <button type="button" :class="{ active: taskDetailTab === 'graph' }" @click="taskDetailTab = 'graph'">{{ t('agent.page.taskTabGraph') }}</button>
-              <button type="button" :class="{ active: taskDetailTab === 'board' }" @click="taskDetailTab = 'board'">{{ t('agent.page.taskTabBoard') }}</button>
-              <button type="button" :class="{ active: taskDetailTab === 'findings' }" @click="taskDetailTab = 'findings'">{{ t('agent.page.taskTabFindings') }}</button>
-              <button type="button" :class="{ active: taskDetailTab === 'assets' }" @click="taskDetailTab = 'assets'">{{ t('agent.page.taskTabAssets') }}</button>
-              <button type="button" :class="{ active: taskDetailTab === 'approvals' }" @click="taskDetailTab = 'approvals'">{{ t('agent.page.taskTabApprovals') }}</button>
-              <button v-if="taskDetail.state.kind === 'craft'" type="button" :class="{ active: taskDetailTab === 'craft' }" @click="taskDetailTab = 'craft'">{{ t('agent.page.craftTab') }}</button>
-              <button type="button" :class="{ active: taskDetailTab === 'report' }" @click="taskDetailTab = 'report'">{{ t('agent.page.taskTabReport') }}</button>
-            </div>
+            <!-- Ten task tabs, from Tabs instead of a hand-written row of buttons.
+                 The list is derived so the craft tab only exists for craft tasks and
+                 the badge counts come from the same source as the panels. -->
+            <Tabs
+              v-model="taskDetailTab"
+              :tabs="taskTabs"
+              variant="primary"
+              :label="t('agent.page.taskTabOverview')"
+              class="recon-tabs"
+            />
             <!-- 会话：the conversation tree — planner rounds, worker intents, system events -->
             <template v-if="taskDetailTab === 'sessions'">
               <!-- Two states: the list, and one session opened as its own view.
@@ -3483,30 +3585,30 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
           <div v-if="attachments.length || attachError" class="attach-chips">
             <span v-for="(file, index) in attachments" :key="index" class="attach-chip" :title="`${file.mime} · ${file.size} B`">
               <span class="attach-chip-name">{{ file.name }}</span>
-              <button type="button" :aria-label="t('agent.page.removeAttachment')" :title="t('agent.page.remove')" @click="removeAttachment(index)">×</button>
+              <button type="button" :aria-label="t('agent.page.removeAttachment')" @click="removeAttachment(index)">×</button>
             </span>
             <span v-if="attachError" class="attach-error">{{ attachError }}</span>
           </div>
           <div v-if="steerNotice" class="steer-notice" role="status">{{ steerNotice }}</div>
           <textarea ref="composerArea" v-model="draft" :disabled="busy || session?.state === 'archived'" :placeholder="composerHint" :aria-label="t('agent.page.composerAria')" :class="{ steering: composerKind === 'steer' }" @keydown="onComposerKey" @paste="onPaste" />
           <div class="composer-actions">
-            <button type="button" class="attach-fly" :disabled="!!active || busy || uploading || session?.state === 'archived'" :aria-label="t('agent.page.addAttachment')" :title="uploading ? t('agent.page.uploading') : t('agent.page.attachHint')" @click="pickFiles">
+            <button type="button" class="attach-fly fly" :disabled="!!active || busy || uploading || session?.state === 'archived'" :aria-label="t('agent.page.addAttachment')" @click="pickFiles">
               <span v-if="uploading" class="tree-spin small" aria-hidden="true"></span>
               <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M16.5 6.5 8.9 14.1a2.5 2.5 0 0 0 3.5 3.5l7.6-7.6a4.5 4.5 0 0 0-6.4-6.4l-8.3 8.3a6.5 6.5 0 0 0 9.2 9.2l5.6-5.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
               <span class="hint right"><b>{{ t('agent.page.addAttachment') }}</b><i>{{ uploading ? t('agent.page.uploading') : t('agent.page.attachHint') }}</i></span>
             </button>
-            <button v-if="composerKind === 'steer'" type="button" class="send-fly" :disabled="steerBusy || !canSendNow" :aria-label="t('agent.page.steerSend')" :title="t('agent.page.steerSend')" @click="sendSteer()">
+            <button v-if="composerKind === 'steer'" type="button" class="send-fly fly" :disabled="steerBusy || !canSendNow" :aria-label="t('agent.page.steerSend')" @click="sendSteer()">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21.5 2.5 10.8 13.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M21.5 2.5 14.5 21.5l-3.7-8.3-8.3-3.7 19-7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
               <span class="hint right"><b>{{ t('agent.page.steerSend') }}</b><i>{{ t('agent.page.tipSteer') }}</i></span>
             </button>
-            <button v-else type="submit" class="send-fly" :disabled="!canSendNow" :aria-label="t('agent.page.send')" :title="t('agent.page.send')">
+            <button v-else type="submit" class="send-fly fly" :disabled="!canSendNow" :aria-label="t('agent.page.send')">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M21.5 2.5 10.8 13.2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M21.5 2.5 14.5 21.5l-3.7-8.3-8.3-3.7 19-7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
               <span class="hint right"><b>{{ t('agent.page.send') }}</b><i>{{ t('agent.page.tipSend') }}</i></span>
             </button>
-            <button v-if="composerKind === 'steer'" type="button" class="send-fly stop" @click="stop" :aria-label="t('agent.page.stop')" :title="t('agent.page.stop')">
+            <button v-if="composerKind === 'steer'" type="button" class="send-fly fly stop" @click="stop" :aria-label="t('agent.page.stop')" :title="t('agent.page.stop')">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>
             </button>
-            <button v-if="runningTasks.length > 1" type="button" class="send-fly stop-all" @click="stopAll" :aria-label="t('agent.page.stopAll')" :title="t('agent.page.stopAll')">
+            <button v-if="runningTasks.length > 1" type="button" class="send-fly fly stop-all" @click="stopAll" :aria-label="t('agent.page.stopAll')" :title="t('agent.page.stopAll')">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="8" width="14" height="9" rx="2" fill="currentColor"/><path d="M8 5h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </button>
           </div>
@@ -3517,11 +3619,20 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
             <span class="connection-hint"><span v-if="active?.kind === 'compact'" class="tree-spin small" aria-hidden="true" /><i v-else :class="{online:store.onlineCount>0}" />{{ active?.kind === 'compact' ? t('agent.page.compacting') : store.onlineCount ? t('agent.page.executorOnline') : t('agent.page.executorOffline') }}</span>
           </div>
           <div class="footer-actions">
-                        <div class="mode-switch" role="group" :aria-label="t('agent.page.taskKind')">
-              <button v-for="choice in kindChoices" :key="choice.value" type="button" class="mode-btn" :class="{ active: taskKind === choice.value }" :disabled="busy" :aria-pressed="taskKind === choice.value" :aria-label="choice.label" @click="taskKind = choice.value">
-                {{ choice.label }}
-                <span class="hint"><b>{{ choice.label }} · {{ choice.tag }}</b><i>{{ choice.desc }}</i></span>
-              </button>
+            <!-- One ButtonGroup for the three execution strategies. The old buttons kept
+                 their description in a hover-only span, which a touch or keyboard user
+                 never saw; the visible hint line below says it for everyone. -->
+            <div class="mode-switch-wrap">
+              <ButtonGroup
+                :model-value="taskKind"
+                :items="kindChoiceItems"
+                variant="connected"
+                shape="round"
+                :label="t('agent.page.taskKind')"
+                class="mode-switch"
+                @update:model-value="taskKind = $event as 'plan' | 'agent' | 'work'"
+              />
+              <span class="mode-hint md-type-label-small muted">{{ activeKindHint }}</span>
             </div>
             <span class="footer-sep" aria-hidden="true" />
                         <button type="button" class="ct" :class="{ on: permissionMode === 'full_access' }" :disabled="!!active || busy" :aria-pressed="permissionMode === 'full_access'" :aria-label="t('agent.page.permissions')" @click="permissionMode = permissionMode === 'full_access' ? 'normal' : 'full_access'">
@@ -3566,33 +3677,33 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
       </section>
     </div>
     <aside class="dock" :class="{open:dockOpen}" :aria-label="t('agent.page.contextTools')">
-      <button type="button" class="dock-btn dock-toggle" :title="dockOpen ? t('agent.page.collapse') : t('agent.page.contextTools')" :aria-expanded="dockOpen" @click="toggleDock">
+      <button type="button" class="dock-btn dock-toggle md-state-layer" :aria-expanded="dockOpen" @click="toggleDock">
         <svg v-if="!dockOpen" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="14" y="4" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="14" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="14" y="14" width="6" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/></svg>
         <svg v-else width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         <span class="hint left"><b>{{ t('agent.page.contextTools') }}</b><i>{{ t('agent.page.tipDock') }}</i></span>
       </button>
-      <button type="button" class="dock-btn" :class="{active:browserViewOpen}" :disabled="!browserStatus?.running" :title="t('agent.page.browserView')" @click="toggleBrowserView">
+      <button type="button" class="dock-btn md-state-layer" :class="{active:browserViewOpen}" :disabled="!browserStatus?.running" @click="toggleBrowserView">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="15" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M3 8.5h18" stroke="currentColor" stroke-width="1.7"/><circle cx="6.2" cy="6.3" r=".7" fill="currentColor"/><circle cx="8.7" cy="6.3" r=".7" fill="currentColor"/></svg>
         <span class="dock-dot" :class="{on:browserStatus?.running}" />
         <span class="hint left"><b>{{ t('agent.page.browserView') }}</b><i>{{ t('agent.page.tipBrowser') }}</i></span>
       </button>
-      <button type="button" class="dock-btn" :class="{active:treeOpen}" :title="t('agent.page.projectTree')" @click="toggleTree">
+      <button type="button" class="dock-btn md-state-layer" :class="{active:treeOpen}" @click="toggleTree">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
         <span class="hint left"><b>{{ t('agent.page.projectTree') }}</b><i>{{ t('agent.page.tipTree') }}</i></span>
       </button>
-      <button type="button" class="dock-btn" :class="{active:gitOpen}" :title="t('agent.page.gitTitle')" :disabled="!gitRoot" @click="gitOpen=!gitOpen">
+      <button type="button" class="dock-btn md-state-layer" :class="{active:gitOpen}" :disabled="!gitRoot" @click="gitOpen=!gitOpen">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="6" cy="6" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="6" cy="18" r="2.4" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="8" r="2.4" stroke="currentColor" stroke-width="1.7"/><path d="M6 8.4v7.2M18 10.4c0 3-2.4 3.6-6 3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <span class="hint left"><b>{{ t('agent.page.gitTitle') }}</b><i>{{ t('agent.page.tipGit') }}</i></span>
       </button>
-      <button type="button" class="dock-btn" :class="{active:termOpen}" :title="t('agent.page.terminal')" @click="toggleTerm">
+      <button type="button" class="dock-btn md-state-layer" :class="{active:termOpen}" @click="toggleTerm">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M7.5 9l3 3-3 3M13 15h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="hint left"><b>{{ t('agent.page.terminal') }}</b><i>{{ t('agent.page.tipTerm') }}</i></span>
       </button>
-      <button type="button" class="dock-btn" :class="{active:usageOpen}" :title="t('agent.page.contextUsage')" @click="toggleUsage">
+      <button type="button" class="dock-btn md-state-layer" :class="{active:usageOpen}" @click="toggleUsage">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="hint left"><b>{{ t('agent.page.contextUsage') }}</b><i>{{ t('agent.page.tipUsage') }}</i></span>
       </button>
-      <button type="button" class="dock-btn" :class="{active:hostOpen}" :title="t('agent.page.host')" @click="hostOpen=!hostOpen">
+      <button type="button" class="dock-btn md-state-layer" :class="{active:hostOpen}" @click="hostOpen=!hostOpen">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8M12 16v4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <span class="hint left"><b>{{ t('agent.page.host') }}</b><i>{{ t('agent.page.tipHost') }}</i></span>
       </button>
@@ -3646,7 +3757,7 @@ onUnmounted(() => {stopFileFollow();cancelAutoClose();rememberEditor();closeBrow
           <div v-if="treeLoading" class="tree-state"><span class="tree-spin" aria-hidden="true"></span>{{ t('agent.page.loading') }}</div>
           <div v-else-if="treeError" class="tree-state error">{{ treeError }}</div>
           <template v-else>
-            <button v-for="row in treeRows" :key="row.path" type="button" class="tree-row" :class="{dir:row.dir,sel:fileData?.path===row.path}" :style="{ paddingLeft: (10 + row.depth * 16) + 'px' }" :title="row.path" @click="treeToggle(row)">
+            <button v-for="row in treeRows" :key="row.path" type="button" class="tree-row md-state-layer" :class="{dir:row.dir,sel:fileData?.path===row.path}" :style="{ paddingLeft: (10 + row.depth * 16) + 'px' }" :title="row.path" @click="treeToggle(row)">
               <span class="tree-chev" :class="{open:row.expanded}">
                 <span v-if="row.loading" class="tree-spin small" aria-hidden="true"></span>
                 <svg v-else-if="row.dir" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>

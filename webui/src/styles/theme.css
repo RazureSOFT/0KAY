@@ -72,8 +72,78 @@
   --error: var(--md-error);
   --info: var(--md-primary);
 
-  /* Typography */
+  /* Typography
+   *
+   * `--font-size-*` is the legacy scale and stays for existing callers. The
+   * `--md-type-*` roles below are the semantic layer: MD3 names type by role
+   * (what it *is*) rather than by size (how big it looks), because a "small"
+   * label and a "small" body text are different things that happened to share a
+   * number. New components use the roles.
+   *
+   * Only six of MD3's fifteen roles are declared. The other nine have no caller
+   * and declaring them would invite drift: an unused token is an invitation to
+   * use it incorrectly. Add one when something actually needs it.
+   */
   --font-family: 'Segoe UI Variable', 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', system-ui, sans-serif;
+
+  /* Weights and tracking are the exact `TypeScaleTokens` values.
+   *
+   * Two things here run against web typography habit, and both were wrong in the first
+   * version of this file:
+   *
+   *  1. **Titles are Regular (400), not bold.** MD3 expresses hierarchy through size and
+   *     line height; a 22px title at 400 already outranks 14px body at 400. Bolding it as
+   *     well reads as a document heading in a chat product, which is not what these
+   *     roles are for.
+   *  2. **Tracking grows as size shrinks, and is zero at the top.** 22px → 0, 11px →
+   *     0.5px. This is optical compensation. Negative tracking on large text is a print
+   *     convention; MD3 does not use it, and the first version invented -0.2px.
+   *
+   * `TypefaceTokens.WeightRegular = 400`, `WeightMedium = 500`.
+   *
+   *   role          size/line  weight  tracking
+   *   TitleLarge     22 / 28     400      0
+   *   TitleMedium    16 / 24     500      0.2
+   *   TitleSmall     14 / 20     500      0.1
+   *   BodyLarge      16 / 24     400      0.5
+   *   BodyMedium     14 / 20     400      0.2
+   *   BodySmall      12 / 16     400      0.4
+   *   LabelLarge     14 / 20     500      0.1
+   *   LabelMedium    12 / 16     500      0.5
+   *   LabelSmall     11 / 16     500      0.5
+   */
+  --md-type-title-large-font: 400 22px/28px var(--font-family);
+  --md-type-title-medium-font: 500 16px/24px var(--font-family);
+  --md-type-title-small-font: 500 14px/20px var(--font-family);
+  --md-type-body-large-font: 400 16px/24px var(--font-family);
+  --md-type-body-medium-font: 400 14px/20px var(--font-family);
+  --md-type-body-small-font: 400 12px/16px var(--font-family);
+  --md-type-label-large-font: 500 14px/20px var(--font-family);
+  --md-type-label-medium-font: 500 12px/16px var(--font-family);
+  --md-type-label-small-font: 500 11px/16px var(--font-family);
+
+  --md-type-title-large-tracking: 0px;
+  --md-type-title-medium-tracking: 0.2px;
+  --md-type-title-small-tracking: 0.1px;
+  --md-type-body-large-tracking: 0.5px;
+  --md-type-body-medium-tracking: 0.2px;
+  --md-type-body-small-tracking: 0.4px;
+  --md-type-label-large-tracking: 0.1px;
+  --md-type-label-medium-tracking: 0.5px;
+  --md-type-label-small-tracking: 0.5px;
+
+  /* Raw sizes, for the rare case that needs a size without a role. */
+  --md-type-title-large-size: 22px;
+  --md-type-title-medium-size: 16px;
+  --md-type-title-small-size: 14px;
+  --md-type-body-large-size: 16px;
+  --md-type-body-medium-size: 14px;
+  --md-type-body-small-size: 12px;
+  --md-type-label-large-size: 14px;
+  --md-type-label-medium-size: 12px;
+  --md-type-label-small-size: 11px;
+
+  /* Legacy size scale (kept: existing components reference these names) */
   --font-size-xs: 11px;
   --font-size-sm: 12px;
   --font-size-base: 14px;
@@ -90,7 +160,63 @@
   --space-xl: 24px;
   --space-xxl: 32px;
 
-  /* MD3 Expressive shapes (extra-rounded) */
+  /* MD3 shape scale — the exact values from `ShapeTokens` (androidx v14_1_0).
+   *
+   * The Expressive update did not replace the baseline corners, it *added* a second
+   * tier of larger ones. Both exist, and components use both: an extended FAB is
+   * `CornerLarge` (16dp) while a large icon button is `CornerExtraLarge` (28dp), and
+   * a "differentiated" expressive button may use the Increased variants. Declaring
+   * only the Increased values, as this file did at first, silently rounds every
+   * component that asks for the baseline.
+   *
+   *   CornerExtraSmall          4dp
+   *   CornerSmall               8dp
+   *   CornerMedium             12dp
+   *   CornerLarge              16dp      baseline
+   *   CornerLargeIncreased     20dp      expressive addition
+   *   CornerExtraLarge         28dp      baseline
+   *   CornerExtraLargeIncreased 32dp     expressive addition
+   *   CornerExtraExtraLarge    48dp
+   *   CornerFull               circle
+   *
+   * `full` upstream is `CircleShape`, i.e. half the component's smaller side, not a
+   * large pixel number. A percentage would only be correct for a square, and these
+   * are used on pills of varying height, so `999px` is kept as the CSS idiom — it
+   * resolves to the same shape whenever the radius exceeds half the height, and it
+   * does not clip a tall control the way `50%` would on a wide one.
+   *
+   * Legacy `--radius-*` below is this app's older, larger scale and is left untouched
+   * so existing cards and dialogs keep their geometry.
+   */
+  --md-shape-none: 0px;
+  --md-shape-xs: 4px;
+  --md-shape-small: 8px;
+  --md-shape-medium: 12px;
+  --md-shape-large: 16px;
+  --md-shape-large-increased: 20px;
+  --md-shape-xl: 28px;
+  --md-shape-xl-increased: 32px;
+  --md-shape-xxl: 48px;
+  --md-shape-full: 999px;
+
+  /* MD3 state layer opacities.
+   *
+   * MD3 expresses interaction by compositing an extra translucent layer over a
+   * control rather than by replacing the control's own colour. Replacing the
+   * colour is what the app did before, which made "hovered" indistinguishable
+   * from "selected" — both became `secondary-container`. These three values are
+   * the spec's, and `color-mix()` applies them:
+   *
+   *   background: color-mix(in srgb, var(--md-on-surface) calc(var(--md-state-hover) * 100%), transparent)
+   */
+  --md-state-hover: 0.08;
+  --md-state-focus: 0.10;
+  --md-state-pressed: 0.10;
+  --md-state-dragged: 0.16;
+  --md-state-dragged: 0.16;
+  --md-state-dragged: 0.16;
+
+  /* Legacy radius scale (kept: see the note on --md-shape-* above) */
   --radius-xs: 12px;
   --radius-sm: 16px;
   --radius-md: 22px;
@@ -107,15 +233,62 @@
   --shadow-8: 0 8px 12px 6px rgba(0, 0, 0, 0.14);
   --shadow-16: 0 12px 17px 8px rgba(0, 0, 0, 0.14);
 
-  /* Motion — single source of truth. UI motion stays under 300ms. */
+  /* MD3 elevation levels, mapped to shadows by *dp of cast height*.
+   *
+   * `ElevationTokens` defines the levels as 0/1/3/6/8/12 **dp** — the height a surface
+   * is lifted above the one behind it, not a blur radius. Components name the level
+   * (`ContainerElevation = Level3`), so the level is what must exist as a token; the
+   * `--shadow-N` names above are this app's own scale and their numbers do not
+   * correspond to dp at all (`--shadow-3` is a 14px/44px blur, nothing like 6dp).
+   *
+   * These pairs are derived from dp with a consistent rule, so Level3 really is
+   * lighter than Level4 and both sit below Level5:
+   *
+   *   y-offset = dp          the surface's own lift, which is what the eye reads
+   *   blur     = dp × 3      soft falloff, roughly M3's ambient+spot combination
+   *   alpha    = 0.06 + dp × 0.012   taller surfaces accumulate more occlusion
+   *
+   * Level0 is deliberately `none`: an unpressed surface casts nothing.
+   */
+  --md-elevation-0: none;
+  --md-elevation-1: 0 1px 3px rgba(0, 0, 0, 0.072);
+  --md-elevation-2: 0 3px 9px rgba(0, 0, 0, 0.096);
+  --md-elevation-3: 0 6px 18px rgba(0, 0, 0, 0.132);
+  --md-elevation-4: 0 8px 24px rgba(0, 0, 0, 0.156);
+  --md-elevation-5: 0 12px 36px rgba(0, 0, 0, 0.204);
+
+  /* Motion.
+   *
+   * The easing values below are Material's published curves, and `.easeEmphasized`
+   * and `.easeStandard` being equal is correct — upstream defines both as
+   * `CubicBezierEasing(0.2, 0, 0, 1)`. They stay for the few places that interpolate
+   * something a spring cannot express.
+   *
+   * Motion proper is the spring set in `spring-tokens.css`, generated from the
+   * published stiffness/damping pairs. A spring has no single "duration", so the
+   * tokens come as a curve + duration pair:
+   *
+   *   spatial  → position, size, rotation, corner radius (may overshoot)
+   *   effects  → colour, opacity (critically damped, never overshoots)
+   *
+   * Prefer them over `--transition-*` for anything that moves. `--transition-*`
+   * stays for colour/opacity changes on cheap controls where the extra spring
+   * machinery buys nothing.
+   */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   --ease-standard: cubic-bezier(0.2, 0, 0, 1);
   --ease-emphasized: cubic-bezier(0.2, 0, 0, 1);
   --ease-emphasized-decel: cubic-bezier(0.05, 0.7, 0.1, 1);
   --ease-emphasized-accel: cubic-bezier(0.3, 0, 0.8, 0.15);
-  --ease-spring: cubic-bezier(0.22, 1.3, 0.36, 1);
-  --ease-spring-soft: cubic-bezier(0.34, 1.25, 0.64, 1);
+
+  /* The old `--ease-spring` was a cubic-bezier with a +3% bump: a fixed one-shot
+     interpolation that cannot retarget, cannot be interrupted, and — unlike a real
+     spring — does not know the difference between movement and opacity. It is kept
+     only as the pre-JS fallback for engines without `linear()` support, and points
+     at the official decelerate curve rather than pretending to bounce. */
+  --ease-spring: var(--ease-emphasized-decel);
+  --ease-spring-soft: var(--ease-emphasized-decel);
   --duration-instant: 90ms;
   --duration-short: 140ms;
   --duration-medium: 220ms;
@@ -128,6 +301,14 @@
   --transition-normal: var(--duration-medium) var(--ease-out);
   --transition-slow: var(--duration-long) var(--ease-out);
   --transition-spring: var(--duration-medium) var(--ease-spring);
+
+  /* Shorthand for the two springs this app actually uses. Any `transition` that
+     names `--spring-*` gets both halves from one place, so the curve and its
+     duration cannot drift apart. Schemes are prefixed in the generated tokens
+     (`expressive-` / `standard-`), matching how Material names them. */
+  --spring-spatial: var(--md-spring-expressive-default-spatial-dur) var(--md-spring-soft);
+  --spring-spatial-fast: var(--md-spring-expressive-fast-spatial-dur) var(--md-spring-bounce);
+  --spring-effects: var(--md-spring-expressive-default-effects-dur) var(--md-spring-flat);
 
   /* Back-compat aliases for styles that predate the shared tokens */
   --set-spring: var(--ease-spring);
@@ -313,17 +494,37 @@ textarea.input, .textarea { resize: vertical; min-height: 80px; }
   to { transform: rotate(0) scale(1); opacity: 1; }
 }
 
-/* Collapse: height animation without measuring anything. Wrap the collapsible
-   content in `.collapse-grid` and toggle `.open`; the inner element must be a
-   direct child (it gets min-height:0 + overflow:hidden). The duration rides
-   --duration-medium, so prefers-reduced-motion flattens it for free. */
+/* Collapse: height animation without measuring anything. Wrap the collapsible content in
+   `.collapse-grid` and toggle `.open`; the inner element must be a direct child.
+
+   Two things make this harder than it looks, both measured rather than assumed:
+
+   1. A `fr` track has an `auto` minimum, so `0fr` alone does not collapse — the track
+      still resolves to the child's own box.
+   2. `overflow: hidden` cannot remove the child's *own* padding and border, and they are
+      part of that box. The tool step's body carried 8px + 15px of padding plus a 1px rule,
+      so every collapsed step stood 24px tall against a 44px header — 780px of nothing
+      across thirty steps.
+
+   So the padding and border collapse here too. The `!important` is deliberate and narrow:
+   the components that use this class set their own padding with a single class selector,
+   which ties and then wins on load order. Rather than have every caller remember to guard
+   that, the contract lives here where it is documented. */
 .collapse-grid {
   display: grid;
   grid-template-rows: 0fr;
   transition: grid-template-rows var(--duration-medium) var(--ease-emphasized);
+  overflow: hidden;
 }
 .collapse-grid.open { grid-template-rows: 1fr; }
-.collapse-grid > * { min-height: 0; overflow: hidden; }
+.collapse-grid > * {
+  min-block-size: 0;
+  overflow: hidden;
+}
+.collapse-grid:not(.open) > * {
+  padding-block: 0 !important;
+  border-block-start-width: 0 !important;
+}
 
 /* Focus ring for teleported layers (dialogs, toasts, popovers). The #app rule
    below cannot reach them — they are siblings of #app, not descendants. */
@@ -337,16 +538,125 @@ body > :not(#app):not(script):not(style):not(link)
 .animate-slideUp { animation: slideUp var(--duration-medium) var(--ease-emphasized-decel); }
 .animate-pulse { animation: pulse 2s infinite; }
 
+/* ============ MD3 typography roles ============
+   Apply with `class="md-type-title-large"` (or `typeClass()` from
+   plugin-web/agent/src/md/typescale.ts). Each role sets the full font shorthand,
+   so size, weight, line-height and family stay together — setting only
+   `font-size` is what produced the app's 10-size / 6-weight drift. */
+.md-type-title-large {
+  font: var(--md-type-title-large-font);
+  letter-spacing: var(--md-type-title-large-tracking);
+}
+.md-type-title-medium {
+  font: var(--md-type-title-medium-font);
+  letter-spacing: var(--md-type-title-medium-tracking);
+}
+.md-type-body-large {
+  font: var(--md-type-body-large-font);
+  letter-spacing: var(--md-type-body-large-tracking);
+}
+.md-type-body-medium {
+  font: var(--md-type-body-medium-font);
+  letter-spacing: var(--md-type-body-medium-tracking);
+}
+.md-type-body-small {
+  font: var(--md-type-body-small-font);
+  letter-spacing: var(--md-type-body-small-tracking);
+}
+.md-type-label-large {
+  font: var(--md-type-label-large-font);
+  letter-spacing: var(--md-type-label-large-tracking);
+}
+.md-type-label-medium {
+  font: var(--md-type-label-medium-font);
+  letter-spacing: var(--md-type-label-medium-tracking);
+}
+.md-type-label-small {
+  font: var(--md-type-label-small-font);
+  letter-spacing: var(--md-type-label-small-tracking);
+}
+.md-type-title-small {
+  font: var(--md-type-title-small-font);
+  letter-spacing: var(--md-type-title-small-tracking);
+}
+
+/* ============ MD3 state layer ============
+   A state layer is a translucent overlay that sits above a control's own colour,
+   so hovering never changes what the control *is* — only how it reads. Set it on
+   a `::before` so the control's background stays a token reference.
+
+   Usage (the element needs `position: relative` and `isolation: isolate`):
+
+     .thing { position: relative; isolation: isolate; }
+     .thing::before {
+       content: ''; position: absolute; inset: 0; border-radius: inherit;
+       background: currentColor; opacity: 0; pointer-events: none;
+       transition: opacity var(--duration-short) var(--ease-out);
+     }
+     .thing:hover::before { opacity: var(--md-state-hover); }
+
+   The `.md-state-layer` class below does the boilerplate; a component only has to
+   set the opacity on hover/focus/press. */
+.md-state-layer { position: relative; isolation: isolate; }
+.md-state-layer::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-short) var(--ease-out);
+  z-index: -1;
+}
+/* Combination follows the token semantics rather than CSS cascade order.
+ *
+ * MD3 computes pressed as an *additional* layer over whatever is already showing: a
+ * control that is focused and then pressed shows focus + pressed, not pressed alone.
+ * Declaring `opacity` per pseudo-class would make `:active` replace the focus value,
+ * which understates feedback exactly where a keyboard user is looking. Adding the
+ * opacities is the closest CSS equivalent, and it is why these are three separate
+ * rules rather than one `opacity` override. */
+.md-state-layer:hover::before { opacity: var(--md-state-hover); }
+.md-state-layer:focus-visible::before { opacity: var(--md-state-focus); }
+.md-state-layer:focus-visible:hover::before {
+  opacity: calc(var(--md-state-focus) + var(--md-state-hover) * 0.5);
+}
+.md-state-layer:active:not(:disabled)::before {
+  /* Pressed is the strongest state and subsumes hover; focus is additive on top. */
+  opacity: max(var(--md-state-pressed), calc(var(--md-state-focus) * 0.5 + var(--md-state-pressed)));
+}
+.md-state-layer[aria-grabbed='true']::before,
+.md-state-layer.is-dragging::before { opacity: var(--md-state-dragged); }
+
+/* Reduced motion: the layer's fade is decoration, not feedback — the colour still
+   changes, so dropping the transition is safe and matches the global rule. */
+@media (prefers-reduced-motion: reduce) {
+  .md-state-layer::before { transition: none; }
+}
+
 /* ============ #app Expressive treatments ============ */
 #app :is(button, a, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
   outline: 3px solid var(--md-primary);
   outline-offset: 3px;
 }
 
+/* Button baseline.
+ *
+ * `min-height` used to be here as a blanket 36px floor on every `#app button`.
+ * That floor beat every component's own scoped size (an id-prefixed selector is
+ * (1,0,1); a scoped class is (0,2,0)), so the app accumulated 43 `min-height: 0`
+ * overrides just to undo it — and it is the same mechanism that made the agent's
+ * circular send button collapse to a zero-width content box.
+ *
+ * The floor now lives on the size classes, where a component that declares its
+ * own box wins without having to fight an id selector. A control that wants the
+ * standard 36px target gets it by being a `.btn` or by using its own height; there
+ * is no longer a global floor to escape from.
+ */
 #app button {
   position: relative;
   isolation: isolate;
-  min-height: 36px;
   border-radius: 18px;
   font-weight: 600;
   letter-spacing: 0.1px;
@@ -358,31 +668,67 @@ body > :not(#app):not(script):not(style):not(link)
 #app button:active:not(:disabled) { transform: scale(0.96); border-radius: 11px; }
 #app button:disabled { opacity: 0.45; cursor: not-allowed; }
 
-/* Compact affordances opt out of the 36px floor above.
+/* The baseline above stops at component boundaries.
  *
- * `#app button` is (1,0,1) and beats every component's scoped `.x[data-v]`
- * (0,2,0), so without this a 22x22 remove chip renders 22x36 and a 30x30 star
- * renders 30x36 — the declared box simply loses. These selectors are (1,1,0)+
- * and win the box back.
+ * `#app button` is (1,0,1). A scoped component class compiles to `.x[data-v-…]`, which
+ * is (0,2,0) — lower, so the baseline wins and a component cannot set its own radius.
+ * Only an id-prefixed selector can outrank it, and a component should not have to know
+ * an id to style its own button. That is why the components set their geometry inline
+ * instead: a computed radius is data, not styling, and inline beats every selector.
  *
- * The list is explicit on purpose: relaxing the global floor would shrink every
- * normal control, and this is the app's visual system (see the cascade note
- * above), so the exceptions belong here rather than in each component. */
-/* New compact controls should not grow this list: give the element the
-   `.compact` class and it opts out of the 36px floor here. */
-#app .compact,
-#app :is(.remove-img, .remove-file, .link) { min-height: 0; }
-#app .models-actions button,
-#app .pp-star,
-#app .pp-remove { min-height: 0; border-radius: 8px; }
-#app .stage-reset { min-height: 0; border-radius: 50%; }
+ * The one thing this file must not do is leave the baseline's `:active` shape in place,
+ * because `border-radius: 11px` there would turn a pill into a rounded square on every
+ * press. Components override that themselves (they set the radius on `:active` too), so
+ * there is nothing to add here — this comment records why the exemption that looked
+ * necessary is not.
+ *
+ * 34 button elements in the app still carry no class and depend on the baseline. Once
+ * they are migrated to components the baseline can be deleted outright.
+ */
 
-#app :is(.btn-primary, button[type="submit"]) {
+/* Minimum touch target, declared by the controls that are meant to be tapped.
+ *
+ * This is the inverted form of the old rule. Instead of a blanket floor that
+ * every compact control had to escape, the target size is attached to the
+ * semantic button classes — `.btn`, primary/submit buttons, segmented buttons.
+ * Icon buttons, circular fly buttons and the other compact affordances have
+ * their own boxes and are left alone, so none of them needs `min-height: 0`.
+ *
+ * 40px matches this app's own button metrics (Material's minimum is 40dp for a
+ * non-dense control; 48 is the comfortable variant used for the primary CTA). */
+#app :is(.btn, .btn-primary, .btn-tonal, .btn-secondary, .btn-ghost, .btn-danger, .btn-danger-tonal) {
+  min-height: 40px;
+}
+
+/* A submit button is not automatically a "text button".
+ *
+ * `padding-inline: 24px` is right for a label-then-action button and wrong for
+ * an icon-only one: a 46px circular button whose content box is narrower than
+ * its own inline padding collapses to zero width, and the icon disappears while
+ * still being painted (height stays, width does not). The agent composer's send
+ * button hit exactly this — it rendered as an empty purple circle.
+ *
+ * So the inline padding is scoped to buttons that actually carry a label. Icon
+ * buttons opt out with `.icon-only` (the documented opt-out) or by being one of
+ * the existing `.fly` round buttons. Those sets are (1,2,1) / (1,1,0)+ and win
+ * against this rule, which is the point: they must not need !important to be
+ * round.
+ */
+#app :is(.btn-primary, button[type="submit"]):not(.icon-only):not(.fly) {
   background: var(--md-primary);
   color: var(--md-on-primary);
   border-color: transparent;
   padding-inline: 24px;
   border-radius: 24px;
+  min-height: 44px;
+}
+
+/* Icon-only buttons keep the filled role but none of the text affordance. */
+#app :is(.btn-primary, button[type="submit"]):is(.icon-only, .fly) {
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+  border-color: transparent;
+  padding: 0;
 }
 #app :is(.btn-tonal, .btn-secondary) {
   background: var(--md-secondary-container);
@@ -423,9 +769,11 @@ body > :not(#app):not(script):not(style):not(link)
  * block has been stripped down to only the declarations this file does not set,
  * so it no longer carries a second, disagreeing copy of the chrome.
  *
- * Same trap, one level up: `#app button { min-height: 36px }` above is (1,0,1)
- * and beats every component's `.x[data-v]` (0,2,0). A compact icon control must
- * opt out explicitly — see the exception list next to that rule.
+ * Same trap, one level up — and it used to be worse: the blanket
+ * `#app button { min-height: 36px }` was (1,0,1) and beat every component's
+ * `.x[data-v]` (0,2,0), so compact controls had to opt out one by one and the app
+ * grew 43 `min-height: 0` patches. Button sizes are now declared by the button
+ * classes instead, so a component that sets its own box wins on its own merits.
  *
  */
 #app .app-shell { background: var(--md-surface-container); }
@@ -503,6 +851,24 @@ body > :not(#app):not(script):not(style):not(link)
  * declarations below stay for capable engines. */
 .route-view { flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .route-view > * { flex: 1; min-height: 0; }
+/* Without the -enter-active / -leave-active pair Vue has no `transition` to wait
+ * on: it applies -enter-from, then jumps straight to the final state on the next
+ * frame. That was the "route transition" for months — a hard swap with two frames
+ * of flicker (sampled opacity: 1, 1, 0, 0, 1). The active classes are what make
+ * the from/to values mean anything.
+ *
+ * A route change moves a whole pane, so it is spatial, not effects: it takes the
+ * slower of the two springs and keeps a small positional component. Leaving is
+ * faster than entering, and uses the accelerating curve so the outgoing page
+ * clears out of the way instead of lingering. */
+.route-enter-active {
+  transition: opacity var(--duration-enter) var(--ease-emphasized-decel),
+              transform var(--duration-enter) var(--ease-emphasized-decel);
+}
+.route-leave-active {
+  transition: opacity var(--duration-short) var(--ease-emphasized-accel),
+              transform var(--duration-short) var(--ease-emphasized-accel);
+}
 .route-enter-from { opacity: 0; transform: translateY(12px) scale(0.992); }
 .route-leave-to { opacity: 0; transform: translateY(-4px); }
 
@@ -584,7 +950,11 @@ body > :not(#app):not(script):not(style):not(link)
 #app .character-profile { padding: 18px; background: var(--md-tertiary-container); border-radius: var(--radius-lg); }
 
 /* Expressive interaction emphasis: composer, selected session, message. */
-#app .composer footer button[type="submit"] { border-radius: 999px; min-height: 44px; padding-inline: 24px; font-weight: 650; }
+/* The composer's own submit button is a pill with a label. Icon-only submit
+   buttons in the same footer (the agent plugin's circular send control) must
+   not inherit the inline padding — see the note next to `#app button[type=submit]`
+   above for why that padding zeroes an icon's content box. */
+#app .composer footer button[type="submit"]:not(.icon-only):not(.fly) { border-radius: 999px; min-height: 44px; padding-inline: 24px; font-weight: 650; }
 #app .composer footer button[type="submit"]:active { transform: scale(0.96); }
 #app .execution-options .app-select-trigger { border-radius: 12px; background: var(--md-surface-container); border-color: transparent; }
 
@@ -593,8 +963,13 @@ body > :not(#app):not(script):not(style):not(link)
 .inbox-dialog button:active { transform: scale(0.95); }
 .inbox-dialog button:focus-visible { outline: 3px solid var(--md-primary); outline-offset: 3px; }
 
-/* Ripple used by the state-layer press effect. */
-.motion-surface { overflow: hidden; }
+/* Press ripple.
+ *
+ * `.expressive-ripple-clip` is the element that clips; the ripple itself is a
+ * child of it. Nothing is ever added to the host button's class list — an
+ * earlier revision put `overflow: hidden` on the button permanently, which
+ * silently cut off every tooltip anchored above it. */
+.expressive-ripple-clip { position: absolute; inset: 0; overflow: hidden; border-radius: inherit; pointer-events: none; }
 .expressive-ripple { position: absolute; border-radius: 50%; pointer-events: none; background: currentColor; z-index: 3; }
 
 /* ============ MD3 Expressive native <select> ============
@@ -692,6 +1067,10 @@ body > :not(#app):not(script):not(style):not(link)
     --duration-short: 1ms;
     --duration-medium: 1ms;
     --duration-long: 1ms;
+    /* Easy to forget: this one is declared separately from the short/long ladder
+       and is what the route transition reads. Left untouched, reduced-motion users
+       still got a 280ms page slide. */
+    --duration-enter: 1ms;
     --transition-fast: 1ms var(--ease-out);
     --transition-normal: 1ms var(--ease-out);
     --transition-slow: 1ms var(--ease-out);
@@ -712,7 +1091,10 @@ body > :not(#app):not(script):not(style):not(link)
   #app .turn {
     transform: none !important;
   }
-  .expressive-ripple { display: none !important; }
+  /* The ripple keeps its flat flash here (see motion.ts); only the travelling
+     variant is suppressed. Hiding the node outright removed the last remaining
+     press cue for reduced-motion users. */
+  .expressive-ripple { animation: none !important; }
 }
 
 
