@@ -1,0 +1,40 @@
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <!--
+    What SignPath Foundation signs, and what it must refuse to sign.
+
+    The release workflow builds six variants (two OSes' worth of Windows, macOS and
+    Linux) and uploads each as its own GitHub artifact. Only the Windows ones can be
+    signed: Authenticode covers PE files, and SignPath Foundation issues a Windows
+    code-signing certificate.
+
+    `zip-file` rather than a bare file because the workflow hands over the whole upload,
+    which also contains the portable archive and the checksums.
+  -->
+  <zip-file>
+    <pe-file-set>
+      <!--
+        The NSIS installers and the portable executables, both per architecture.
+
+        The portable build matters as much as the installer: it is a plain `.exe` that
+        users run directly, so leaving it unsigned means the same "unknown publisher"
+        warning appears one click later. A signature on only one of the two would give a
+        false impression of which binaries are covered.
+
+        `${version}` comes from the workflow's `parameters`, which it reads off the
+        release tag, so a signature cannot claim a version the build did not produce.
+      -->
+      <include path="0KAY-Setup-*.exe">
+        <authenticode-sign description="0KAY installer">
+          <parameter name="product-name" value="0KAY" />
+          <parameter name="product-version" value="${version}" />
+        </authenticode-sign>
+      </include>
+      <include path="0KAY-[0-9]*-win-*.exe">
+        <authenticode-sign description="0KAY portable executable">
+          <parameter name="product-name" value="0KAY" />
+          <parameter name="product-version" value="${version}" />
+        </authenticode-sign>
+      </include>
+    </pe-file-set>
+  </zip-file>
+</artifact-configuration>

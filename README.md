@@ -240,6 +240,31 @@ python -B -m unittest discover -s life/tests -v   # L.I.F.E tests
 # core/ and mocr/: go test ./...
 ```
 
+## Code signing policy
+
+The Windows installers (`0KAY-Setup-*.exe`) are signed, and the signature reads
+**SignPath Foundation** rather than this project. That is deliberate: the certificate is
+issued to SignPath Foundation, whose hardware security module holds the private key, and
+they vouch for a narrower thing than authorship — that the binary was built by this
+repository's GitHub Actions workflow. A project cannot make that claim about itself.
+
+- **Source**: the only signed binaries are those built by
+  [`.github/workflows/release.yml`](.github/workflows/release.yml) from a tagged commit in
+  this repository, then signed by
+  [`.github/workflows/sign-windows.yml`](.github/workflows/sign-windows.yml). No build made
+  anywhere else is signed, and no locally built binary can be made to look signed.
+- **Scope**: Windows PE installers only. macOS and Linux packages are not signed here; they
+  carry their own platform's distribution trust (notarisation and package repositories).
+- **Approval**: every production signing request is approved by a human maintainer in the
+  SignPath web UI. Signing is a `workflow_dispatch` run, never automatic on push.
+- **Verification**: the workflow runs `Get-AuthenticodeSignature` on every output and fails
+  the run unless the status is `Valid`, so a broken chain cannot reach a release.
+- **Committers and reviewers**: [RazureSOFT](https://github.com/RazureSOFT). Pull requests
+  from anyone else are reviewed before merge.
+
+The signing service is provided free of charge by [SignPath.io](https://signpath.io/), with
+the certificate issued by [SignPath Foundation](https://signpath.org/).
+
 ## License
 
 MIT

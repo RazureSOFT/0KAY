@@ -1,0 +1,140 @@
+name: Sign Windows installers
+
+# Signs the Windows installers with the SignPath Foundation certificate.
+#
+# This is a separate workflow from `release.yml` on purpose. That one builds six
+# variants in parallel and attaches them to the release; this one runs after the
+# Windows artifacts exist, because SignPath requires a human to approve every
+# production signing request and there is no point blocking the macOS and Linux
+# builds on that approval.
+#
+# What gets signed, and what the signature means
+# ----------------------------------------------
+# The certificate is issued to SignPath Foundation, not to this project. It is
+# SignPath vouching that the binary was built from this repository's workflow — a
+# narrower claim than "RazureSOFT made this", and the honest one, since the private
+# key lives on SignPath's HSM and cannot be exported.
+#
+# Setup, once, by the maintainer:
+#
+#   1. Apply at https://signpath.org/apply/ with this repository's URL. The project is
+#      public and MIT-licensed, which is what they check.
+#   2. In SignPath, create a project and an artifact configuration that points at
+#      `.signpath/artifact-configuration.xml` in this repository.
+#   3. Add these repository secrets:
+#        SIGNPATH_API_TOKEN          - an API token with submit permission
+#        SIGNPATH_ORGANIZATION_ID    - the organization UUID
+#   4. Fill in the three <slug> values below.
+#
+# Signing is manual: `workflow_dispatch` with the release tag, so the approval lands on
+# a specific run rather than on every push.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag whose Windows installers should be signed
+        required: true
+      approval_note:
+        description: Why this build is being signed (recorded in the SignPath request)
+        required: false
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  sign:
+    name: Sign 0KAY-Setup
+    runs-on: windows-latest
+    # A signing request that is never approved would otherwise hold a runner for an
+    # hour; the approval itself happens in the SignPath web UI.
+    timeout-minutes: 60
+    steps:
+      # The artifacts are attached to the release by `release.yml`. Fetching them from
+      # the release rather than rebuilding means the bytes that were tested are the
+      # bytes that get signed, which is the whole point of a signature.
+      - name: Download the Windows installers
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          mkdir -p unsigned
+          # Both the installer and the portable executable: they are the two things a
+          # user runs, and signing only one leaves the other warning on launch.
+          gh release download "$TAG" \
+            --pattern '0KAY-Setup-*.exe' \
+            --pattern '0KAY-*-win-*.exe' \
+            --dir unsigned
+          count=$(find unsigned -name '*.exe' | wc -l)
+          echo "downloaded $count executable(s), $(du -sh unsigned | cut -f1)"
+          # Two architectures times two kinds of binary; failing loudly on a partial
+          # download beats signing whatever happened to arrive.
+          test "$count" -ge 2
+
+      - name: Read the version from the tag
+        id: version
+        shell: bash
+        env:
+          TAG: ${{ inputs.tag }}
+        run: |
+          # `0KAY-Setup-<version>-<arch>.exe`; the tag is `v<version>`.
+          version="${TAG#v}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          test -n "$version"
+
+      # The action wants a GitHub artifact, not a path, so the unsigned files go back up.
+      - name: Upload the unsigned installers
+        id: unsigned
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-installers
+          path: unsigned/*.exe
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Submit the signing request
+        id: sign
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          # Fill these in from the SignPath project page.
+          project-slug: <project-slug>
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: <artifact-configuration-slug>
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          # The installer name carries the version, and the artifact configuration
+          # puts it in the signature.
+          parameters: |
+            version: ${{ steps.version.outputs.version }}
+          wait-for-completion: true
+          output-artifact-directory: signed
+
+      - name: Verify the signature before publishing it
+        shell: pwsh
+        run: |
+          # A signed file whose signature does not verify is worse than an unsigned one:
+          # it looks trustworthy and is not. `Get-AuthenticodeSignature` reports the
+          # chain status, and anything but `Valid` fails the run.
+          $files = Get-ChildItem signed -Filter *.exe -Recurse
+          if (-not $files) { throw "no signed installer was produced" }
+          $failed = 0
+          foreach ($file in $files) {
+            $sig = Get-AuthenticodeSignature $file.FullName
+            $subject = $sig.SignerCertificate.Subject
+            Write-Host "$($file.Name): $($sig.Status) — $subject"
+            if ($sig.Status -ne 'Valid') { $failed++ }
+          }
+          if ($failed) { throw "$failed installer(s) did not verify" }
+
+      - name: Attach the signed installers to the release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          # `--clobber` replaces the unsigned upload from the same release. Leaving both
+          # would let someone download the unsigned one and conclude signing failed.
+          find signed -name '*.exe' -exec gh release upload "$TAG" {} --clobber \;
